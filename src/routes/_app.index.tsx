@@ -72,12 +72,12 @@ function Dashboard() {
       />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <Kpi label="Total Students" value={students.length} icon={Users} />
-        <Kpi label="New Registrations" value={newCount} icon={UserPlus} />
-        <Kpi label="Waitlisted" value={waitlisted} icon={Clock} />
-        <Kpi label="Alert Flags" value={alertCount} icon={AlertTriangle} />
-        <Kpi label="Duplicates" value={dupGroups.length} icon={Copy} />
-        <Kpi label="Forms Synced" value={formsSynced} icon={RefreshCw} hint={`${settings.forms.length} configured`} />
+        <Kpi label="Total Students" value={formatNumber(students.length)} icon={Users} />
+        <Kpi label="New Registrations" value={formatNumber(newCount)} icon={UserPlus} />
+        <Kpi label="Waitlisted" value={formatNumber(waitlisted)} icon={Clock} />
+        <Kpi label="Alert Flags" value={formatNumber(alertCount)} icon={AlertTriangle} />
+        <Kpi label="Duplicates" value={formatNumber(dupGroups.length)} icon={Copy} />
+        <Kpi label="Forms Synced" value={formatNumber(formsSynced)} icon={RefreshCw} hint={`${settings.forms.length} configured`} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
