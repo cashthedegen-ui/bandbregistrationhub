@@ -62,20 +62,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setSettings(s);
     const stored = storage.getStudents();
     if (stored.length === 0) {
-      const demo = buildDemoStudents();
+      const demo = buildDemoStudents().map(ensureDefaults);
       const { rows, groups } = detectDuplicates(demo);
       setStudentsState(rows);
       setDupGroups(groups);
       setIsDemo(true);
     } else {
-      const { rows, groups } = detectDuplicates(stored);
+      const { rows, groups } = detectDuplicates(stored.map(ensureDefaults));
       setStudentsState(rows);
       setDupGroups(groups);
     }
     setArchives(storage.getArchives());
     setLastSync(storage.getLastSync());
+    setStopCapacities(storage.getStopCapacities());
+    setSyncHistory(storage.getSyncHistory());
     setReady(true);
   }, []);
+
 
   const pushActivity = useCallback((text: string) => {
     setActivity((prev) => [{ id: `${Date.now()}-${Math.random()}`, ts: new Date().toISOString(), text }, ...prev].slice(0, 30));
@@ -159,6 +162,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const now = new Date().toISOString();
         setLastSync(now);
         storage.setLastSync(now);
+        const evt: SyncEvent = { id: `sync-${Date.now()}`, ts: now, total: rows.length, added, updated };
+        setSyncHistory((prev) => {
+          const next = [evt, ...prev].slice(0, 20);
+          storage.setSyncHistory(next);
+          return next;
+        });
         pushActivity(`Synced ${rows.length} submissions: ${added} new, ${updated} updated`);
         toast.success(`${added} new, ${updated} updated`);
       }
@@ -203,10 +212,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     toast.info("Demo data loaded");
   }, [persistStudents]);
 
+  const setStopCapacity = useCallback((schoolName: string, stopAddress: string, capacity: number) => {
+    setStopCapacities((prev) => {
+      const k = stopKey(schoolName, stopAddress);
+      const next = { ...prev };
+      if (!capacity || capacity <= 0) delete next[k]; else next[k] = capacity;
+      storage.setStopCapacities(next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo<Ctx>(() => ({
     ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity,
+    stopCapacities, syncHistory,
     updateSettings, updateStudent, setStudents, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo,
-  }), [ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity, updateSettings, updateStudent, setStudents, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo]);
+    setStopCapacity,
+  }), [ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity, stopCapacities, syncHistory, updateSettings, updateStudent, setStudents, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo, setStopCapacity]);
+
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
 }
