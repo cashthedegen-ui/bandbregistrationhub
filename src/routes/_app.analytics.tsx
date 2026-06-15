@@ -79,7 +79,7 @@ function Analytics() {
         <CardContent className="p-5">
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payments by School</h2>
-            <div className="text-sm text-muted-foreground">Total collected: <span className="text-emerald-300 font-semibold">${grandTotal.toFixed(2)}</span></div>
+            <div className="text-sm text-muted-foreground">Total collected: <span className="text-emerald-300 font-semibold">{formatCurrency(grandTotal)}</span></div>
           </div>
           {paymentBySchool.length === 0 ? (
             <div className="text-sm text-muted-foreground">No students yet.</div>
