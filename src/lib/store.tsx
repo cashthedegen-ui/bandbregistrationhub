@@ -117,13 +117,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (rows.length === 0) {
         toast.warning("No submissions returned. Check your token / form IDs.");
       } else {
-        persistStudents(rows);
+        const dedupeKey = (r: StudentRow) =>
+          `${(r.studentName || "").toLowerCase().trim()}|${(r.parentEmail || "").toLowerCase().trim()}`;
+        const existing = isDemo ? [] : students;
+        const map = new Map<string, StudentRow>();
+        for (const r of existing) map.set(dedupeKey(r), r);
+        let added = 0;
+        let updated = 0;
+        for (const incoming of rows) {
+          const key = dedupeKey(incoming);
+          const prev = map.get(key);
+          if (prev) {
+            map.set(key, {
+              ...incoming,
+              id: prev.id,
+              status: prev.status,
+              notes: prev.notes || incoming.notes,
+            });
+            updated++;
+          } else {
+            map.set(key, incoming);
+            added++;
+          }
+        }
+        const merged = Array.from(map.values());
+        persistStudents(merged);
         setIsDemo(false);
         const now = new Date().toISOString();
         setLastSync(now);
         storage.setLastSync(now);
-        pushActivity(`Synced ${rows.length} students from ${cfgs.filter((c) => c.formId).length} forms`);
-        toast.success(`Synced ${rows.length} students`);
+        pushActivity(`Synced ${rows.length} submissions: ${added} new, ${updated} updated`);
+        toast.success(`${added} new, ${updated} updated`);
       }
     } catch (e: any) {
       toast.error(`Sync failed: ${e?.message || e}`);
