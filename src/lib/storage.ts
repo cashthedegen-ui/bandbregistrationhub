@@ -10,13 +10,9 @@ const KEYS = {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   apiToken: "3984db4605cb5ca5892112044ee4080c",
-  formIds: {
-    "Hopkins School": "6500704",
-    "Hopkins Shoreline": "",
-    "King School": "",
-    "St. Luke's School": "",
-    "Foote School": "",
-  },
+  forms: [
+    { id: "f-hopkins", label: "Hopkins School Bus 26-27", formId: "6500704" },
+  ],
   receipt: {
     companyName: "B & B Transit",
     companyAddress: "Connecticut",
