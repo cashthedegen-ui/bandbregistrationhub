@@ -90,15 +90,15 @@ function Dashboard() {
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
                 <span className="text-yellow-300">Pending</span>
-                <span className="font-semibold tabular-nums">{pay.Pending}</span>
+                <span className="font-semibold tabular-nums">{formatNumber(pay.Pending)}</span>
               </div>
               <div className="flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
                 <span className="text-emerald-300">Received</span>
-                <span className="font-semibold tabular-nums">{pay.Received}</span>
+                <span className="font-semibold tabular-nums">{formatNumber(pay.Received)}</span>
               </div>
               <div className="flex items-center justify-between rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
                 <span className="text-red-300">Overdue</span>
-                <span className="font-semibold tabular-nums">{pay.Overdue}</span>
+                <span className="font-semibold tabular-nums">{formatNumber(pay.Overdue)}</span>
               </div>
             </div>
           </CardContent>
