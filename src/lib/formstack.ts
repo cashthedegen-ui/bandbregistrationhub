@@ -263,15 +263,27 @@ function expandSubmission(
 ): StudentRow[] {
   const data = sub?.data ?? [];
   const parentName = parseNameField(pickValue(data, map.parentName));
-  const parentAddress = pickValue(data, map.parentAddress).replace(/\r?\n/g, ", ");
+  const parentAddress = parseAddressField(pickValue(data, map.parentAddress));
   const parentPhone = pickValue(data, map.parentPhone);
   const parentEmail = pickValue(data, map.parentEmail);
-  const stop1 = map.stops[0] ? pickValue(data, map.stops[0]) : "";
-  const stop2 = map.stops[1] ? pickValue(data, map.stops[1]) : "";
+  const stop1 = parseAddressField(map.stops[0] ? pickValue(data, map.stops[0]) : "");
+  const stop2 = parseAddressField(map.stops[1] ? pickValue(data, map.stops[1]) : "");
   const countRaw = pickValue(data, map.studentCount);
   const parsedCount = parseInt(countRaw, 10);
 
-  const studentDefs = map.students;
+  // Hopkins (form 6500704) hardcoded student name field IDs as fallback
+  const HOPKINS_STUDENT_IDS = ["194977398", "194977407", "194977408"];
+  const studentDefs = [...map.students];
+  if (cfg.formId === "6500704") {
+    for (let i = 0; i < HOPKINS_STUDENT_IDS.length; i++) {
+      const id = HOPKINS_STUDENT_IDS[i];
+      if (pickValue(data, id)) {
+        if (studentDefs[i]) studentDefs[i].name = id;
+        else studentDefs[i] = { name: id, grade: studentDefs[i]?.grade || "" };
+      }
+    }
+  }
+
   const cap = Math.max(1, studentDefs.length || 1);
   const count = parsedCount > 0 ? Math.min(parsedCount, cap) : cap;
 
