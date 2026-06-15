@@ -226,7 +226,7 @@ function StudentsPage() {
                         setSelected(next);
                       }} />
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{idx + 1}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{formatNumber(idx + 1)}</td>
                     <td className="px-3 py-2.5 font-medium">{r.studentName}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.grade}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.schoolName}</td>
