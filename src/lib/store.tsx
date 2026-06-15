@@ -8,13 +8,18 @@ import { toast } from "sonner";
 
 interface Activity { id: string; ts: string; text: string; }
 
-const ensureDefaults = (r: StudentRow): StudentRow => ({
-  ...r,
-  paymentStatus: r.paymentStatus || "Pending",
-  notes: r.notes || "",
-  paid: r.paid ?? false,
-  amountPaid: r.amountPaid ?? 0,
-});
+const ensureDefaults = (r: StudentRow): StudentRow => {
+  const paymentType = r.paymentType || (r.paid ? "Self Pay" : "Unpaid");
+  return {
+    ...r,
+    paymentStatus: r.paymentStatus || "Pending",
+    notes: r.notes || "",
+    paymentType,
+    paid: paymentType !== "Unpaid",
+    amountPaid: r.amountPaid ?? 0,
+    financialAidNotes: r.financialAidNotes || "",
+  };
+};
 
 
 interface Ctx {
