@@ -14,11 +14,13 @@ import { Card } from "@/components/ui/card";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { AlertTriangle, CheckCheck, Copy, Download, FileText, Filter, Search, X } from "lucide-react";
-import type { Status, StudentRow } from "@/lib/types";
+import { AlertTriangle, CheckCheck, Copy, Download, FileText, Filter, Search, StickyNote, X } from "lucide-react";
+import type { PaymentStatus, Status, StudentRow } from "@/lib/types";
 import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/students")({
@@ -26,7 +28,14 @@ export const Route = createFileRoute("/_app/students")({
   component: StudentsPage,
 });
 
-const STATUSES: Status[] = ["New", "Reviewed", "Confirmed", "Exported"];
+const STATUSES: Status[] = ["New", "Reviewed", "Confirmed", "Exported", "Waitlisted"];
+const PAYMENTS: PaymentStatus[] = ["Pending", "Received", "Overdue"];
+
+const PAYMENT_CLASS: Record<PaymentStatus, string> = {
+  Pending: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
+  Received: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  Overdue: "bg-red-500/15 text-red-300 border-red-500/30",
+};
 
 function StatusBadge({ status }: { status: Status }) {
   const map: Record<Status, string> = {
@@ -34,6 +43,7 @@ function StatusBadge({ status }: { status: Status }) {
     Reviewed: "bg-primary/15 text-primary border-primary/30",
     Confirmed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
     Exported: "bg-muted text-muted-foreground border-border",
+    Waitlisted: "bg-amber-500/15 text-amber-300 border-amber-500/30",
   };
   return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${map[status]}`}>{status}</span>;
 }
