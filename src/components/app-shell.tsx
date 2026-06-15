@@ -7,14 +7,14 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const nav = [
+const nav: { to: string; label: string; icon: any; exact?: boolean }[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/students", label: "Students", icon: Users },
   { to: "/routes", label: "Routes", icon: RouteIcon },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/archive", label: "Archive", icon: Archive },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
-] as const;
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { syncAll, syncing, syncProgress, lastSync, isDemo, settings } = useStore();
