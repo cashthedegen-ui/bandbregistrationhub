@@ -168,11 +168,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const key = dedupeKey(incoming);
           const prev = map.get(key);
           if (prev) {
+            // Preserve all manually-entered fields; only update Formstack-sourced fields.
             map.set(key, {
-              ...incoming,
-              id: prev.id,
-              status: prev.status,
-              notes: prev.notes || incoming.notes,
+              ...prev,
+              submissionId: incoming.submissionId,
+              formId: incoming.formId,
+              schoolName: incoming.schoolName,
+              studentName: incoming.studentName,
+              grade: incoming.grade,
+              stopAddress: incoming.stopAddress,
+              stopAddress2: incoming.stopAddress2,
+              parentName: incoming.parentName,
+              parentPhone: incoming.parentPhone,
+              parentEmail: incoming.parentEmail,
+              parentAddress: incoming.parentAddress,
+              submissionDate: incoming.submissionDate,
             });
             updated++;
           } else {
