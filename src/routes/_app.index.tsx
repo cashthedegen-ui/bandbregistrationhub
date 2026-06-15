@@ -118,7 +118,7 @@ function Dashboard() {
                     </span>
                     <span className="truncate flex-1">{a.addr}</span>
                     <span className="text-xs text-muted-foreground">{a.route}</span>
-                    <span className="tabular-nums font-medium">{a.count}/{a.cap}</span>
+                    <span className="tabular-nums font-medium">{formatNumber(a.count)}/{formatNumber(a.cap)}</span>
                   </li>
                 ))}
               </ul>
