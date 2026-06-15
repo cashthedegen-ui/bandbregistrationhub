@@ -101,15 +101,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setSyncing(true);
     setSyncProgress({ done: 0, total: 0, label: "Discovering forms…" });
     try {
-      // If any form IDs are missing, look them up from the form list.
-      let cfgs = Object.entries(settings.formIds).map(([label, id]) => ({ schoolLabel: label, formId: id }));
-      const missing = cfgs.filter((c) => !c.formId);
-      if (missing.length) {
-        const all = await fetchForms(settings.apiToken);
-        for (const m of missing) {
-          const found = all.find((f: any) => (f.name || "").toLowerCase().includes(m.schoolLabel.toLowerCase().split(" ")[0]));
-          if (found) m.formId = String(found.id);
-        }
+      // Use configured forms; skip entries with no formId.
+      const cfgs = settings.forms
+        .filter((f) => f.formId.trim())
+        .map((f) => ({ schoolLabel: f.label || `Form ${f.formId}`, formId: f.formId.trim() }));
+      if (cfgs.length === 0) {
+        toast.error("Add at least one Form ID in Settings.");
+        setSyncing(false);
+        return;
       }
       setSyncProgress({ done: 0, total: cfgs.length, label: "Fetching submissions…" });
       const rows = await fetchAllSubmissions(cfgs, settings.apiToken, (done, total, label) => {
