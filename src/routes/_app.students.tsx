@@ -14,13 +14,18 @@ import { Card } from "@/components/ui/card";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { AlertTriangle, CheckCheck, Copy, Download, FileText, Filter, Search, StickyNote, X } from "lucide-react";
-import type { PaymentStatus, Status, StudentRow } from "@/lib/types";
+import { AlertTriangle, BadgeCheck, CheckCheck, Copy, Download, FileText, Filter, Pencil, Search, StickyNote, Trash2, X } from "lucide-react";
+import type { PaymentStatus, PaymentType, Status, StudentRow } from "@/lib/types";
 import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatNumber } from "@/lib/utils";
 
@@ -31,11 +36,18 @@ export const Route = createFileRoute("/_app/students")({
 
 const STATUSES: Status[] = ["New", "Reviewed", "Confirmed", "Exported", "Waitlisted"];
 const PAYMENTS: PaymentStatus[] = ["Pending", "Received", "Overdue"];
+const PAYMENT_TYPES: PaymentType[] = ["Self Pay", "Financial Aid", "Unpaid"];
 
 const PAYMENT_CLASS: Record<PaymentStatus, string> = {
   Pending: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
   Received: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   Overdue: "bg-red-500/15 text-red-300 border-red-500/30",
+};
+
+const PAYMENT_TYPE_CLASS: Record<PaymentType, string> = {
+  "Self Pay": "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  "Financial Aid": "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  "Unpaid": "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
 };
 
 function StatusBadge({ status }: { status: Status }) {
@@ -50,7 +62,7 @@ function StatusBadge({ status }: { status: Status }) {
 }
 
 function StudentsPage() {
-  const { students, updateStudent, setStudents, dupGroups, settings } = useStore();
+  const { students, updateStudent, deleteStudent, setStudents, dupGroups, settings } = useStore();
   const [q, setQ] = useState("");
   const [school, setSchool] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
@@ -62,6 +74,9 @@ function StudentsPage() {
   const [receiptOpen, setReceiptOpen] = useState<StudentRow[] | null>(null);
   const [notesRow, setNotesRow] = useState<StudentRow | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
+  const [editRow, setEditRow] = useState<StudentRow | null>(null);
+  const [editDraft, setEditDraft] = useState<StudentRow | null>(null);
+  const [deleteRow, setDeleteRow] = useState<StudentRow | null>(null);
 
 
   const schools = useMemo(() => Array.from(new Set(students.map((s) => s.schoolName))).filter(Boolean), [students]);
