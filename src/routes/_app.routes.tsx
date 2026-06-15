@@ -126,7 +126,7 @@ function RoutesPage() {
                           </div>
                         </div>
                         <span className={`text-[10px] rounded-full border px-1.5 py-0.5 shrink-0 ${PAYMENT_CLASS[k.paymentStatus || "Pending"]}`}>
-                          {k.paid ? `$${(k.amountPaid || 0).toFixed(0)}` : (k.paymentStatus || "Pending")}
+                          {k.paid ? formatCurrency(k.amountPaid || 0, { decimals: 0 }) : (k.paymentStatus || "Pending")}
                         </span>
                         {k.stopAddress2 && (
                           <button
