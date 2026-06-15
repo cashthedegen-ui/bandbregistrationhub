@@ -37,15 +37,20 @@ const STOP_SCOPE = "__all__";
 function RoutesPage() {
   const { students, stopCapacities, setStopCapacity, updateStudent } = useStore();
 
+  const confirmedStudents = useMemo(
+    () => students.filter((s) => s.paid && s.status === "Confirmed"),
+    [students],
+  );
+
   const stops = useMemo(() => {
     const map = new Map<string, StudentRow[]>();
-    for (const s of students) {
+    for (const s of confirmedStudents) {
       const k = (s.stopAddress || "Unassigned").trim();
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(s);
     }
     return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
-  }, [students]);
+  }, [confirmedStudents]);
 
   const moveToSecond = (r: StudentRow) => {
     if (!r.stopAddress2) return toast.warning("No 2nd choice on file");
@@ -57,9 +62,9 @@ function RoutesPage() {
     <>
       <PageHeader
         title="Routes"
-        subtitle="One card per bus stop, independent of school. Set seat capacity to track availability."
+        subtitle="Confirmed and paid riders only. One card per bus stop, independent of school."
         actions={
-          <Button variant="secondary" onClick={() => exportRoutesWorkbook(students)}>
+          <Button variant="secondary" onClick={() => exportRoutesWorkbook(confirmedStudents)}>
             <Download className="h-4 w-4 mr-2" /> Export Routes
           </Button>
         }
@@ -67,7 +72,7 @@ function RoutesPage() {
 
       {stops.length === 0 ? (
         <Card className="bg-card border-border p-12 text-center text-sm text-muted-foreground">
-          No stops yet. Sync forms to populate stops.
+          No confirmed, paid riders yet. Confirm students and mark payment on the Students tab.
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
