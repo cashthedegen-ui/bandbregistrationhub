@@ -108,14 +108,17 @@ function StudentsPage() {
       <PageHeader
         title="Students"
         subtitle={`${filtered.length} of ${students.length} students`}
-      >
-        <Button size="sm" variant="secondary" onClick={markAllReviewed}>
-          <CheckCheck className="h-4 w-4 mr-1.5" /> Mark All as Reviewed
-        </Button>
-        <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={exportAllClean}>
-          <Download className="h-4 w-4 mr-1.5" /> Export to Excel
-        </Button>
-      </PageHeader>
+        actions={
+          <>
+            <Button size="sm" variant="secondary" onClick={markAllReviewed}>
+              <CheckCheck className="h-4 w-4 mr-1.5" /> Mark All as Reviewed
+            </Button>
+            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={exportAllClean}>
+              <Download className="h-4 w-4 mr-1.5" /> Export to Excel
+            </Button>
+          </>
+        }
+      />
 
       {dupGroups.length > 0 && dupBanner && (
         <Card className="mb-4 border-primary/30 bg-primary/5 p-3 flex items-center gap-3">
