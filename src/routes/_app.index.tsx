@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, Clock, Copy, DollarSign, FileSpreadsheet, RefreshCw, UserPlus, Users } from "lucide-react";
 import { exportMaster } from "@/lib/excel";
 import { stopKey } from "@/lib/storage";
+import { formatNumber } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "Dashboard — B & B Transit" }] }),
