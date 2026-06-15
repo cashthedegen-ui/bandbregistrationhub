@@ -1,4 +1,5 @@
-export type Status = "New" | "Reviewed" | "Confirmed" | "Exported";
+export type Status = "New" | "Reviewed" | "Confirmed" | "Exported" | "Waitlisted";
+export type PaymentStatus = "Pending" | "Received" | "Overdue";
 
 export interface StudentRow {
   id: string;            // unique per student row
@@ -18,8 +19,17 @@ export interface StudentRow {
   duplicateFlag: boolean;
   duplicateGroupId?: string;
   status: Status;
+  paymentStatus: PaymentStatus;
   submissionDate: string; // ISO
   checkNumber?: string;
+}
+
+export interface SyncEvent {
+  id: string;
+  ts: string;
+  total: number;
+  added: number;
+  updated: number;
 }
 
 export interface FormMeta {
