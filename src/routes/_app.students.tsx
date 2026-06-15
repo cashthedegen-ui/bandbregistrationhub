@@ -201,7 +201,7 @@ function StudentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map((r) => (
+                {filtered.map((r, idx) => (
                   <tr key={r.id} className="hover:bg-muted/20 cursor-pointer" onClick={() => setOpenRow(r)}>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={selected.has(r.id)} onCheckedChange={(v) => {
@@ -210,6 +210,7 @@ function StudentsPage() {
                         setSelected(next);
                       }} />
                     </td>
+                    <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{idx + 1}</td>
                     <td className="px-3 py-2.5 font-medium">{r.studentName}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.grade}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.schoolName}</td>
