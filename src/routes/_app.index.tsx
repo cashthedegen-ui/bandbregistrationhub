@@ -188,9 +188,9 @@ function Dashboard() {
                   {syncHistory.map((e) => (
                     <tr key={e.id}>
                       <td className="py-2 pr-4">{new Date(e.ts).toLocaleString()}</td>
-                      <td className="py-2 pr-4 text-right tabular-nums">{e.total}</td>
-                      <td className="py-2 pr-4 text-right tabular-nums text-sky-300">{e.added}</td>
-                      <td className="py-2 text-right tabular-nums text-muted-foreground">{e.updated}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">{formatNumber(e.total)}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums text-sky-300">{formatNumber(e.added)}</td>
+                      <td className="py-2 text-right tabular-nums text-muted-foreground">{formatNumber(e.updated)}</td>
                     </tr>
                   ))}
                 </tbody>
