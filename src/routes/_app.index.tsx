@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, Clock, Copy, DollarSign, FileSpreadsheet, RefreshCw, UserPlus, Users } from "lucide-react";
 import { exportMaster } from "@/lib/excel";
 import { stopKey } from "@/lib/storage";
+import { formatNumber } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "Dashboard — B & B Transit" }] }),
@@ -71,12 +72,12 @@ function Dashboard() {
       />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <Kpi label="Total Students" value={students.length} icon={Users} />
-        <Kpi label="New Registrations" value={newCount} icon={UserPlus} />
-        <Kpi label="Waitlisted" value={waitlisted} icon={Clock} />
-        <Kpi label="Alert Flags" value={alertCount} icon={AlertTriangle} />
-        <Kpi label="Duplicates" value={dupGroups.length} icon={Copy} />
-        <Kpi label="Forms Synced" value={formsSynced} icon={RefreshCw} hint={`${settings.forms.length} configured`} />
+        <Kpi label="Total Students" value={formatNumber(students.length)} icon={Users} />
+        <Kpi label="New Registrations" value={formatNumber(newCount)} icon={UserPlus} />
+        <Kpi label="Waitlisted" value={formatNumber(waitlisted)} icon={Clock} />
+        <Kpi label="Alert Flags" value={formatNumber(alertCount)} icon={AlertTriangle} />
+        <Kpi label="Duplicates" value={formatNumber(dupGroups.length)} icon={Copy} />
+        <Kpi label="Forms Synced" value={formatNumber(formsSynced)} icon={RefreshCw} hint={`${settings.forms.length} configured`} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
@@ -89,15 +90,15 @@ function Dashboard() {
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
                 <span className="text-yellow-300">Pending</span>
-                <span className="font-semibold tabular-nums">{pay.Pending}</span>
+                <span className="font-semibold tabular-nums">{formatNumber(pay.Pending)}</span>
               </div>
               <div className="flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
                 <span className="text-emerald-300">Received</span>
-                <span className="font-semibold tabular-nums">{pay.Received}</span>
+                <span className="font-semibold tabular-nums">{formatNumber(pay.Received)}</span>
               </div>
               <div className="flex items-center justify-between rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
                 <span className="text-red-300">Overdue</span>
-                <span className="font-semibold tabular-nums">{pay.Overdue}</span>
+                <span className="font-semibold tabular-nums">{formatNumber(pay.Overdue)}</span>
               </div>
             </div>
           </CardContent>
@@ -117,7 +118,7 @@ function Dashboard() {
                     </span>
                     <span className="truncate flex-1">{a.addr}</span>
                     <span className="text-xs text-muted-foreground">{a.route}</span>
-                    <span className="tabular-nums font-medium">{a.count}/{a.cap}</span>
+                    <span className="tabular-nums font-medium">{formatNumber(a.count)}/{formatNumber(a.cap)}</span>
                   </li>
                 ))}
               </ul>
@@ -159,7 +160,7 @@ function Dashboard() {
               </Button>
               <Link to="/students" className="block">
                 <Button variant="secondary" className="w-full justify-start">
-                  <Copy className="h-4 w-4 mr-2" /> Review {dupGroups.length} duplicates
+                  <Copy className="h-4 w-4 mr-2" /> Review {formatNumber(dupGroups.length)} duplicates
                 </Button>
               </Link>
             </div>
@@ -187,9 +188,9 @@ function Dashboard() {
                   {syncHistory.map((e) => (
                     <tr key={e.id}>
                       <td className="py-2 pr-4">{new Date(e.ts).toLocaleString()}</td>
-                      <td className="py-2 pr-4 text-right tabular-nums">{e.total}</td>
-                      <td className="py-2 pr-4 text-right tabular-nums text-sky-300">{e.added}</td>
-                      <td className="py-2 text-right tabular-nums text-muted-foreground">{e.updated}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">{formatNumber(e.total)}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums text-sky-300">{formatNumber(e.added)}</td>
+                      <td className="py-2 text-right tabular-nums text-muted-foreground">{formatNumber(e.updated)}</td>
                     </tr>
                   ))}
                 </tbody>

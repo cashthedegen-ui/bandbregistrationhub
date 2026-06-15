@@ -22,6 +22,7 @@ import { ReceiptModal } from "@/components/receipt-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { formatNumber } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/students")({
   head: () => ({ meta: [{ title: "Students — B & B Transit" }] }),
@@ -120,7 +121,7 @@ function StudentsPage() {
     <>
       <PageHeader
         title="Students"
-        subtitle={`${filtered.length} of ${students.length} students`}
+        subtitle={`${formatNumber(filtered.length)} of ${formatNumber(students.length)} students`}
         actions={
           <>
             <Button size="sm" variant="secondary" onClick={markAllReviewed}>
@@ -225,7 +226,7 @@ function StudentsPage() {
                         setSelected(next);
                       }} />
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{idx + 1}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{formatNumber(idx + 1)}</td>
                     <td className="px-3 py-2.5 font-medium">{r.studentName}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.grade}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.schoolName}</td>

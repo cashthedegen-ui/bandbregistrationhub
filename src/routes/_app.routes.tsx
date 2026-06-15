@@ -9,6 +9,7 @@ import { Download, FileText, ArrowRightLeft } from "lucide-react";
 import { exportRoutesWorkbook } from "@/lib/excel";
 import { downloadDriverSheet } from "@/lib/driver-sheet";
 import { stopKey } from "@/lib/storage";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 import type { PaymentStatus, StudentRow } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -86,7 +87,7 @@ function RoutesPage() {
                       </div>
                     </div>
                     <div className={`text-2xl font-semibold tabular-nums ${capacityClass(kids.length, cap)}`}>
-                      {kids.length}{cap ? `/${cap}` : ""}
+                      {formatNumber(kids.length)}{cap ? `/${formatNumber(cap)}` : ""}
                     </div>
                   </div>
 
@@ -125,7 +126,7 @@ function RoutesPage() {
                           </div>
                         </div>
                         <span className={`text-[10px] rounded-full border px-1.5 py-0.5 shrink-0 ${PAYMENT_CLASS[k.paymentStatus || "Pending"]}`}>
-                          {k.paid ? `$${(k.amountPaid || 0).toFixed(0)}` : (k.paymentStatus || "Pending")}
+                          {k.paid ? formatCurrency(k.amountPaid || 0, { decimals: 0 }) : (k.paymentStatus || "Pending")}
                         </span>
                         {k.stopAddress2 && (
                           <button

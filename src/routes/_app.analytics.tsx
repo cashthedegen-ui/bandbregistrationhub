@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useStore } from "@/lib/store";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -68,9 +69,9 @@ function Analytics() {
       <PageHeader title="Analytics" subtitle="Trends across all school registrations." />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Stat label="Total Students" value={students.length} />
-        <Stat label="Alerts" value={alertRows.length} />
-        <Stat label="Duplicates" value={dupGroups.length} />
+        <Stat label="Total Students" value={formatNumber(students.length)} />
+        <Stat label="Alerts" value={formatNumber(alertRows.length)} />
+        <Stat label="Duplicates" value={formatNumber(dupGroups.length)} />
         <Stat label="Reviewed" value={`${reviewedPct}%`} />
       </div>
 
@@ -78,7 +79,7 @@ function Analytics() {
         <CardContent className="p-5">
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payments by School</h2>
-            <div className="text-sm text-muted-foreground">Total collected: <span className="text-emerald-300 font-semibold">${grandTotal.toFixed(2)}</span></div>
+            <div className="text-sm text-muted-foreground">Total collected: <span className="text-emerald-300 font-semibold">{formatCurrency(grandTotal)}</span></div>
           </div>
           {paymentBySchool.length === 0 ? (
             <div className="text-sm text-muted-foreground">No students yet.</div>
@@ -96,9 +97,9 @@ function Analytics() {
                 {paymentBySchool.map((r) => (
                   <tr key={r.school}>
                     <td className="py-2 font-medium">{r.school}</td>
-                    <td className="py-2 text-right tabular-nums">{r.total}</td>
-                    <td className="py-2 text-right tabular-nums text-muted-foreground">{r.paid}</td>
-                    <td className="py-2 text-right tabular-nums text-emerald-300">${r.collected.toFixed(2)}</td>
+                    <td className="py-2 text-right tabular-nums">{formatNumber(r.total)}</td>
+                    <td className="py-2 text-right tabular-nums text-muted-foreground">{formatNumber(r.paid)}</td>
+                    <td className="py-2 text-right tabular-nums text-emerald-300">{formatCurrency(r.collected)}</td>
                   </tr>
                 ))}
               </tbody>
