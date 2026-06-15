@@ -51,6 +51,19 @@ function downloadWorkbook(rows: StudentRow[], filename: string) {
   XLSX.writeFile(wb, filename);
 }
 
+export function exportStudentsClean(rows: StudentRow[], filename = "BB_Transit_Students.xlsx") {
+  const headers = ["#", "Student Name", "Grade", "School", "Bus Stop", "Parent Name", "Phone", "Email", "Address", "Status"];
+  const data = rows.map((r, i) => [
+    i + 1, r.studentName, r.grade, r.schoolName, r.stopAddress,
+    r.parentName, r.parentPhone, r.parentEmail, r.parentAddress, r.status,
+  ]);
+  const sheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  sheet["!cols"] = [{ wch: 5 }, { wch: 24 }, { wch: 8 }, { wch: 22 }, { wch: 30 }, { wch: 22 }, { wch: 14 }, { wch: 26 }, { wch: 32 }, { wch: 12 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheet, "Students");
+  XLSX.writeFile(wb, filename);
+}
+
 export function exportRoutesWorkbook(rows: StudentRow[]) {
   const wb = XLSX.utils.book_new();
   const byRoute = new Map<string, StudentRow[]>();
