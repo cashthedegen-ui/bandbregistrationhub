@@ -48,7 +48,7 @@ export const storage = {
     return {
       ...DEFAULT_SETTINGS,
       ...s,
-      formIds: { ...DEFAULT_SETTINGS.formIds, ...(s.formIds || {}) },
+      forms: (s.forms && s.forms.length ? s.forms : DEFAULT_SETTINGS.forms),
       receipt: { ...DEFAULT_SETTINGS.receipt, ...(s.receipt || {}) },
     };
   },
