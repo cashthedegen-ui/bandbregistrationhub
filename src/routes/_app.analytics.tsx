@@ -69,9 +69,9 @@ function Analytics() {
       <PageHeader title="Analytics" subtitle="Trends across all school registrations." />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Stat label="Total Students" value={students.length} />
-        <Stat label="Alerts" value={alertRows.length} />
-        <Stat label="Duplicates" value={dupGroups.length} />
+        <Stat label="Total Students" value={formatNumber(students.length)} />
+        <Stat label="Alerts" value={formatNumber(alertRows.length)} />
+        <Stat label="Duplicates" value={formatNumber(dupGroups.length)} />
         <Stat label="Reviewed" value={`${reviewedPct}%`} />
       </div>
 
