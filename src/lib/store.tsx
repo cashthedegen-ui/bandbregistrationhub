@@ -1,12 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { storage } from "./storage";
-import type { AppSettings, ArchivedSeason, StudentRow } from "./types";
+import { storage, stopKey } from "./storage";
+import type { AppSettings, ArchivedSeason, StudentRow, SyncEvent } from "./types";
 import { buildDemoStudents } from "./demo-data";
 import { detectDuplicates, type DuplicateGroup } from "./duplicates";
 import { fetchAllSubmissions } from "./formstack";
 import { toast } from "sonner";
 
 interface Activity { id: string; ts: string; text: string; }
+
+const ensureDefaults = (r: StudentRow): StudentRow => ({
+  ...r,
+  paymentStatus: r.paymentStatus || "Pending",
+  notes: r.notes || "",
+});
+
 
 interface Ctx {
   ready: boolean;
@@ -19,6 +26,8 @@ interface Ctx {
   syncProgress: { done: number; total: number; label: string };
   isDemo: boolean;
   activity: Activity[];
+  stopCapacities: Record<string, number>;
+  syncHistory: SyncEvent[];
   updateSettings: (s: AppSettings) => void;
   updateStudent: (id: string, patch: Partial<StudentRow>) => void;
   setStudents: (rows: StudentRow[]) => void;
@@ -27,6 +36,7 @@ interface Ctx {
   restoreSeason: (id: string) => void;
   deleteArchive: (id: string) => void;
   loadDemo: () => void;
+  setStopCapacity: (schoolName: string, stopAddress: string, capacity: number) => void;
 }
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -42,6 +52,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0, label: "" });
   const [isDemo, setIsDemo] = useState(false);
   const [activity, setActivity] = useState<Activity[]>([]);
+  const [stopCapacities, setStopCapacities] = useState<Record<string, number>>({});
+  const [syncHistory, setSyncHistory] = useState<SyncEvent[]>([]);
+
 
   // hydrate on mount (client-only)
   useEffect(() => {
