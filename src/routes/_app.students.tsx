@@ -189,6 +189,7 @@ function StudentsPage() {
                   <th className="px-3 py-3 w-8"><Checkbox checked={allChecked} onCheckedChange={toggleAll} /></th>
                   <th className="px-3 py-3 text-left w-10">#</th>
                   <th className="px-3 py-3 text-left">Student</th>
+                  <th className="px-3 py-3 text-left">Grade</th>
                   <th className="px-3 py-3 text-left">School</th>
                   <th className="px-3 py-3 text-left">Stop</th>
                   <th className="px-3 py-3 text-left">Parent</th>
