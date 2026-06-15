@@ -186,7 +186,53 @@ const HARDCODED_MAPPINGS: Record<string, FormMapping> = {
     ],
     stops: ["194977405", "194977406"],
   },
+  "6499950": {
+    parentName: "194947333",
+    parentAddress: "194947334",
+    parentPhone: "194947335",
+    parentEmail: "194947336",
+    studentCount: "194947338",
+    students: [{ name: "194947339", grade: "194947340" }],
+    stops: ["194947346"],
+  },
+  "6515338": {
+    parentName: "195516091",
+    parentAddress: "195516092",
+    parentPhone: "195516093",
+    parentEmail: "195516094",
+    studentCount: "195516098",
+    students: [{ name: "195516099", grade: "195516100" }],
+    stops: ["195516107"],
+  },
+  "6515339": {
+    parentName: "195516121",
+    parentAddress: "195516122",
+    parentPhone: "195516123",
+    parentEmail: "195516124",
+    studentCount: "195516128",
+    students: [{ name: "195516129", grade: "195516130" }],
+    stops: ["195516137"],
+  },
+  "6515340": {
+    parentName: "195516151",
+    parentAddress: "195516152",
+    parentPhone: "195516153",
+    parentEmail: "195516154",
+    studentCount: "195516158",
+    students: [{ name: "195516159", grade: "195516160" }],
+    stops: ["195516167"],
+  },
+  "6503621": {
+    parentName: "195090260",
+    parentAddress: "195090261",
+    parentPhone: "195090262",
+    parentEmail: "195090263",
+    studentCount: "195090264",
+    students: [{ name: "195090265", grade: "195090266" }],
+    stops: ["195090275"],
+  },
 };
+
 
 async function fetchFormMapping(formId: string, token: string): Promise<FormMapping> {
   if (HARDCODED_MAPPINGS[formId]) return HARDCODED_MAPPINGS[formId];
