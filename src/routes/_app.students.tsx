@@ -226,7 +226,7 @@ function StudentsPage() {
                   <th className="px-3 py-3 text-left">Flags</th>
                   <th className="px-3 py-3 text-left">Status</th>
                   <th className="px-3 py-3 text-left">Payment</th>
-                  <th className="px-3 py-3 text-left">Paid</th>
+                  <th className="px-3 py-3 text-left">Payment Type</th>
                   <th className="px-3 py-3 text-left">Submitted</th>
                   <th className="px-3 py-3"></th>
                 </tr>
@@ -299,32 +299,60 @@ function StudentsPage() {
                       </Select>
                     </td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={!!r.paid}
-                          onCheckedChange={(v) => updateStudent(r.id, { paid: !!v, amountPaid: v ? (r.amountPaid || 0) : 0 })}
-                        />
-                        {r.paid && (
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={r.amountPaid ?? 0}
-                            onChange={(e) => updateStudent(r.id, { amountPaid: parseFloat(e.target.value) || 0 })}
-                            className="h-7 w-20 bg-background text-xs"
-                            placeholder="$"
-                          />
-                        )}
-                      </div>
+                      {(() => {
+                        const pt: PaymentType = r.paymentType || (r.paid ? "Self Pay" : "Unpaid");
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <Select value={pt} onValueChange={(v) => updateStudent(r.id, { paymentType: v as PaymentType })}>
+                              <SelectTrigger className={`h-7 w-32 text-xs border ${PAYMENT_TYPE_CLASS[pt]}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {PAYMENT_TYPES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            {pt === "Self Pay" && (
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={r.amountPaid ?? 0}
+                                onChange={(e) => updateStudent(r.id, { amountPaid: parseFloat(e.target.value) || 0 })}
+                                className="h-7 w-32 bg-background text-xs"
+                                placeholder="Amount $"
+                              />
+                            )}
+                            {pt === "Financial Aid" && (
+                              <Input
+                                value={r.financialAidNotes ?? ""}
+                                onChange={(e) => updateStudent(r.id, { financialAidNotes: e.target.value })}
+                                className="h-7 w-32 bg-background text-xs"
+                                placeholder="Aid details"
+                              />
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 py-2.5 text-muted-foreground text-xs">{new Date(r.submissionDate).toLocaleDateString()}</td>
-                    <td className="px-3 py-2.5 flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button size="icon" variant="ghost" onClick={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }} title={r.notes ? "Notes (saved)" : "Add notes"}>
-                        <StickyNote className={`h-4 w-4 ${r.notes ? "text-primary" : ""}`} />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => downloadReceipt(r, settings.receipt)} title="PDF receipt">
-                        <FileText className="h-4 w-4" />
-                      </Button>
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-1">
+                        {r.status !== "Confirmed" && (
+                          <Button size="icon" variant="ghost" onClick={() => { updateStudent(r.id, { status: "Confirmed" }); toast.success(`${r.studentName} confirmed`); }} title="Confirm student">
+                            <BadgeCheck className="h-4 w-4 text-emerald-400" />
+                          </Button>
+                        )}
+                        <Button size="icon" variant="ghost" onClick={() => { setEditRow(r); setEditDraft({ ...r }); }} title="Edit student">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }} title={r.notes ? "Notes (saved)" : "Add notes"}>
+                          <StickyNote className={`h-4 w-4 ${r.notes ? "text-primary" : ""}`} />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => downloadReceipt(r, settings.receipt)} title="PDF receipt">
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => setDeleteRow(r)} title="Delete student">
+                          <Trash2 className="h-4 w-4 text-red-400" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
