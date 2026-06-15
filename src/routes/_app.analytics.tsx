@@ -97,9 +97,9 @@ function Analytics() {
                 {paymentBySchool.map((r) => (
                   <tr key={r.school}>
                     <td className="py-2 font-medium">{r.school}</td>
-                    <td className="py-2 text-right tabular-nums">{r.total}</td>
-                    <td className="py-2 text-right tabular-nums text-muted-foreground">{r.paid}</td>
-                    <td className="py-2 text-right tabular-nums text-emerald-300">${r.collected.toFixed(2)}</td>
+                    <td className="py-2 text-right tabular-nums">{formatNumber(r.total)}</td>
+                    <td className="py-2 text-right tabular-nums text-muted-foreground">{formatNumber(r.paid)}</td>
+                    <td className="py-2 text-right tabular-nums text-emerald-300">{formatCurrency(r.collected)}</td>
                   </tr>
                 ))}
               </tbody>
