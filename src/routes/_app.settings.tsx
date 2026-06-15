@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { fetchForms } from "@/lib/formstack";
 import { toast } from "sonner";
 import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
-import type { FormEntry } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — B & B Transit" }] }),
