@@ -121,7 +121,7 @@ function StudentsPage() {
     <>
       <PageHeader
         title="Students"
-        subtitle={`${filtered.length} of ${students.length} students`}
+        subtitle={`${formatNumber(filtered.length)} of ${formatNumber(students.length)} students`}
         actions={
           <>
             <Button size="sm" variant="secondary" onClick={markAllReviewed}>
