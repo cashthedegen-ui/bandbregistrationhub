@@ -14,13 +14,18 @@ import { Card } from "@/components/ui/card";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { AlertTriangle, CheckCheck, Copy, Download, FileText, Filter, Search, StickyNote, X } from "lucide-react";
-import type { PaymentStatus, Status, StudentRow } from "@/lib/types";
+import { AlertTriangle, BadgeCheck, CheckCheck, Copy, Download, FileText, Filter, Pencil, Search, StickyNote, Trash2, X } from "lucide-react";
+import type { PaymentStatus, PaymentType, Status, StudentRow } from "@/lib/types";
 import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatNumber } from "@/lib/utils";
 
@@ -31,11 +36,18 @@ export const Route = createFileRoute("/_app/students")({
 
 const STATUSES: Status[] = ["New", "Reviewed", "Confirmed", "Exported", "Waitlisted"];
 const PAYMENTS: PaymentStatus[] = ["Pending", "Received", "Overdue"];
+const PAYMENT_TYPES: PaymentType[] = ["Self Pay", "Financial Aid", "Unpaid"];
 
 const PAYMENT_CLASS: Record<PaymentStatus, string> = {
   Pending: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
   Received: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   Overdue: "bg-red-500/15 text-red-300 border-red-500/30",
+};
+
+const PAYMENT_TYPE_CLASS: Record<PaymentType, string> = {
+  "Self Pay": "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  "Financial Aid": "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  "Unpaid": "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
 };
 
 function StatusBadge({ status }: { status: Status }) {
@@ -50,7 +62,7 @@ function StatusBadge({ status }: { status: Status }) {
 }
 
 function StudentsPage() {
-  const { students, updateStudent, setStudents, dupGroups, settings } = useStore();
+  const { students, updateStudent, deleteStudent, setStudents, dupGroups, settings } = useStore();
   const [q, setQ] = useState("");
   const [school, setSchool] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
@@ -62,6 +74,9 @@ function StudentsPage() {
   const [receiptOpen, setReceiptOpen] = useState<StudentRow[] | null>(null);
   const [notesRow, setNotesRow] = useState<StudentRow | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
+  const [editRow, setEditRow] = useState<StudentRow | null>(null);
+  const [editDraft, setEditDraft] = useState<StudentRow | null>(null);
+  const [deleteRow, setDeleteRow] = useState<StudentRow | null>(null);
 
 
   const schools = useMemo(() => Array.from(new Set(students.map((s) => s.schoolName))).filter(Boolean), [students]);
@@ -211,7 +226,7 @@ function StudentsPage() {
                   <th className="px-3 py-3 text-left">Flags</th>
                   <th className="px-3 py-3 text-left">Status</th>
                   <th className="px-3 py-3 text-left">Payment</th>
-                  <th className="px-3 py-3 text-left">Paid</th>
+                  <th className="px-3 py-3 text-left">Payment Type</th>
                   <th className="px-3 py-3 text-left">Submitted</th>
                   <th className="px-3 py-3"></th>
                 </tr>
@@ -284,32 +299,60 @@ function StudentsPage() {
                       </Select>
                     </td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={!!r.paid}
-                          onCheckedChange={(v) => updateStudent(r.id, { paid: !!v, amountPaid: v ? (r.amountPaid || 0) : 0 })}
-                        />
-                        {r.paid && (
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={r.amountPaid ?? 0}
-                            onChange={(e) => updateStudent(r.id, { amountPaid: parseFloat(e.target.value) || 0 })}
-                            className="h-7 w-20 bg-background text-xs"
-                            placeholder="$"
-                          />
-                        )}
-                      </div>
+                      {(() => {
+                        const pt: PaymentType = r.paymentType || (r.paid ? "Self Pay" : "Unpaid");
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <Select value={pt} onValueChange={(v) => updateStudent(r.id, { paymentType: v as PaymentType })}>
+                              <SelectTrigger className={`h-7 w-32 text-xs border ${PAYMENT_TYPE_CLASS[pt]}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {PAYMENT_TYPES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            {pt === "Self Pay" && (
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={r.amountPaid ?? 0}
+                                onChange={(e) => updateStudent(r.id, { amountPaid: parseFloat(e.target.value) || 0 })}
+                                className="h-7 w-32 bg-background text-xs"
+                                placeholder="Amount $"
+                              />
+                            )}
+                            {pt === "Financial Aid" && (
+                              <Input
+                                value={r.financialAidNotes ?? ""}
+                                onChange={(e) => updateStudent(r.id, { financialAidNotes: e.target.value })}
+                                className="h-7 w-32 bg-background text-xs"
+                                placeholder="Aid details"
+                              />
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 py-2.5 text-muted-foreground text-xs">{new Date(r.submissionDate).toLocaleDateString()}</td>
-                    <td className="px-3 py-2.5 flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button size="icon" variant="ghost" onClick={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }} title={r.notes ? "Notes (saved)" : "Add notes"}>
-                        <StickyNote className={`h-4 w-4 ${r.notes ? "text-primary" : ""}`} />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => downloadReceipt(r, settings.receipt)} title="PDF receipt">
-                        <FileText className="h-4 w-4" />
-                      </Button>
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-1">
+                        {r.status !== "Confirmed" && (
+                          <Button size="icon" variant="ghost" onClick={() => { updateStudent(r.id, { status: "Confirmed" }); toast.success(`${r.studentName} confirmed`); }} title="Confirm student">
+                            <BadgeCheck className="h-4 w-4 text-emerald-400" />
+                          </Button>
+                        )}
+                        <Button size="icon" variant="ghost" onClick={() => { setEditRow(r); setEditDraft({ ...r }); }} title="Edit student">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }} title={r.notes ? "Notes (saved)" : "Add notes"}>
+                          <StickyNote className={`h-4 w-4 ${r.notes ? "text-primary" : ""}`} />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => downloadReceipt(r, settings.receipt)} title="PDF receipt">
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => setDeleteRow(r)} title="Delete student">
+                          <Trash2 className="h-4 w-4 text-red-400" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -425,6 +468,129 @@ function StudentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit student dialog */}
+      <Dialog open={!!editRow} onOpenChange={(o) => { if (!o) { setEditRow(null); setEditDraft(null); } }}>
+        <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Student{editDraft ? ` — ${editDraft.studentName}` : ""}</DialogTitle>
+          </DialogHeader>
+          {editDraft && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <EditField label="Student Name" value={editDraft.studentName} onChange={(v) => setEditDraft({ ...editDraft, studentName: v })} />
+              <EditField label="Grade" value={editDraft.grade} onChange={(v) => setEditDraft({ ...editDraft, grade: v })} />
+              <EditField label="School" value={editDraft.schoolName} onChange={(v) => setEditDraft({ ...editDraft, schoolName: v })} />
+              <EditField label="Bus Stop (1st)" value={editDraft.stopAddress} onChange={(v) => setEditDraft({ ...editDraft, stopAddress: v })} />
+              <EditField label="Bus Stop (2nd)" value={editDraft.stopAddress2 || ""} onChange={(v) => setEditDraft({ ...editDraft, stopAddress2: v })} />
+              <EditField label="Parent Name" value={editDraft.parentName} onChange={(v) => setEditDraft({ ...editDraft, parentName: v })} />
+              <EditField label="Phone" value={editDraft.parentPhone} onChange={(v) => setEditDraft({ ...editDraft, parentPhone: v })} />
+              <EditField label="Email" value={editDraft.parentEmail} onChange={(v) => setEditDraft({ ...editDraft, parentEmail: v })} />
+              <div className="sm:col-span-2">
+                <EditField label="Address" value={editDraft.parentAddress} onChange={(v) => setEditDraft({ ...editDraft, parentAddress: v })} />
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</Label>
+                <Select value={editDraft.status} onValueChange={(v) => setEditDraft({ ...editDraft, status: v as Status })}>
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Payment Type</Label>
+                <Select
+                  value={editDraft.paymentType || (editDraft.paid ? "Self Pay" : "Unpaid")}
+                  onValueChange={(v) => setEditDraft({ ...editDraft, paymentType: v as PaymentType, paid: v !== "Unpaid" })}
+                >
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_TYPES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {(editDraft.paymentType || (editDraft.paid ? "Self Pay" : "Unpaid")) === "Self Pay" && (
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Amount Paid</Label>
+                  <Input
+                    type="number" min={0} step="0.01"
+                    value={editDraft.amountPaid ?? 0}
+                    onChange={(e) => setEditDraft({ ...editDraft, amountPaid: parseFloat(e.target.value) || 0 })}
+                    className="mt-1 bg-background"
+                  />
+                </div>
+              )}
+              {(editDraft.paymentType || (editDraft.paid ? "Self Pay" : "Unpaid")) === "Financial Aid" && (
+                <div className="sm:col-span-2">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Financial Aid Details</Label>
+                  <Input
+                    value={editDraft.financialAidNotes || ""}
+                    onChange={(e) => setEditDraft({ ...editDraft, financialAidNotes: e.target.value })}
+                    placeholder="e.g. Hopkins covering full tuition"
+                    className="mt-1 bg-background"
+                  />
+                </div>
+              )}
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Payment Status</Label>
+                <Select value={editDraft.paymentStatus || "Pending"} onValueChange={(v) => setEditDraft({ ...editDraft, paymentStatus: v as PaymentStatus })}>
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PAYMENTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="sm:col-span-2">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Notes</Label>
+                <Textarea
+                  value={editDraft.notes || ""}
+                  onChange={(e) => setEditDraft({ ...editDraft, notes: e.target.value })}
+                  className="mt-1 bg-background min-h-[80px]"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setEditRow(null); setEditDraft(null); }}>Cancel</Button>
+            <Button
+              className="bg-primary text-primary-foreground"
+              onClick={() => {
+                if (editRow && editDraft) {
+                  updateStudent(editRow.id, editDraft);
+                  toast.success("Student updated");
+                }
+                setEditRow(null);
+                setEditDraft(null);
+              }}
+            >Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteRow} onOpenChange={(o) => !o && setDeleteRow(null)}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this student?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes <span className="font-medium text-foreground">{deleteRow?.studentName}</span> from the roster. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteRow) {
+                  deleteStudent(deleteRow.id);
+                  toast.success(`Deleted ${deleteRow.studentName}`);
+                }
+                setDeleteRow(null);
+              }}
+            >Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -434,6 +600,15 @@ function Field({ label, value }: { label: string; value: string }) {
     <div>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+function EditField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</Label>
+      <Input value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 bg-background" />
     </div>
   );
 }

@@ -8,13 +8,18 @@ import { toast } from "sonner";
 
 interface Activity { id: string; ts: string; text: string; }
 
-const ensureDefaults = (r: StudentRow): StudentRow => ({
-  ...r,
-  paymentStatus: r.paymentStatus || "Pending",
-  notes: r.notes || "",
-  paid: r.paid ?? false,
-  amountPaid: r.amountPaid ?? 0,
-});
+const ensureDefaults = (r: StudentRow): StudentRow => {
+  const paymentType = r.paymentType || (r.paid ? "Self Pay" : "Unpaid");
+  return {
+    ...r,
+    paymentStatus: r.paymentStatus || "Pending",
+    notes: r.notes || "",
+    paymentType,
+    paid: paymentType !== "Unpaid",
+    amountPaid: r.amountPaid ?? 0,
+    financialAidNotes: r.financialAidNotes || "",
+  };
+};
 
 
 interface Ctx {
@@ -32,6 +37,7 @@ interface Ctx {
   syncHistory: SyncEvent[];
   updateSettings: (s: AppSettings) => void;
   updateStudent: (id: string, patch: Partial<StudentRow>) => void;
+  deleteStudent: (id: string) => void;
   setStudents: (rows: StudentRow[]) => void;
   syncAll: () => Promise<void>;
   archiveSeason: (label: string) => void;
@@ -100,7 +106,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const updateStudent = useCallback((id: string, patch: Partial<StudentRow>) => {
     setStudentsState((prev) => {
-      const next = prev.map((r) => (r.id === id ? { ...r, ...patch } : r));
+      const next = prev.map((r) => {
+        if (r.id !== id) return r;
+        const merged = { ...r, ...patch } as StudentRow;
+        if (patch.paymentType !== undefined) {
+          merged.paid = patch.paymentType !== "Unpaid";
+          if (patch.paymentType === "Unpaid") merged.amountPaid = 0;
+        }
+        return merged;
+      });
+      storage.setStudents(next);
+      return next;
+    });
+  }, []);
+
+  const deleteStudent = useCallback((id: string) => {
+    setStudentsState((prev) => {
+      const next = prev.filter((r) => r.id !== id);
       storage.setStudents(next);
       return next;
     });
@@ -227,9 +249,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Ctx>(() => ({
     ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity,
     stopCapacities, syncHistory,
-    updateSettings, updateStudent, setStudents, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo,
+    updateSettings, updateStudent, deleteStudent, setStudents, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo,
     setStopCapacity,
-  }), [ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity, stopCapacities, syncHistory, updateSettings, updateStudent, setStudents, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo, setStopCapacity]);
+  }), [ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity, stopCapacities, syncHistory, updateSettings, updateStudent, deleteStudent, setStudents, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo, setStopCapacity]);
 
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;

@@ -1,5 +1,6 @@
 export type Status = "New" | "Reviewed" | "Confirmed" | "Exported" | "Waitlisted";
 export type PaymentStatus = "Pending" | "Received" | "Overdue";
+export type PaymentType = "Self Pay" | "Financial Aid" | "Unpaid";
 
 export interface StudentRow {
   id: string;            // unique per student row
@@ -24,6 +25,8 @@ export interface StudentRow {
   checkNumber?: string;
   paid?: boolean;
   amountPaid?: number;
+  paymentType?: PaymentType;
+  financialAidNotes?: string;
 }
 
 export interface SyncEvent {
