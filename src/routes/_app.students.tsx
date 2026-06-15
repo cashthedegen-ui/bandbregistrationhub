@@ -290,13 +290,10 @@ function StudentsPage() {
                     <div className="flex gap-2 mt-3">
                       <Button size="sm" className="bg-primary text-primary-foreground" onClick={() => { updateStudent(r.id, { duplicateFlag: false }); toast.success("Kept"); }}>Keep</Button>
                       <Button size="sm" variant="destructive" onClick={() => {
-                        // soft remove: filter out via setStudents
-                        const remaining = students.filter((x) => x.id !== r.id);
-                        (window as any).__bbt_remove?.(r.id);
+                        setStudents(students.filter((x) => x.id !== r.id));
                         toast.success("Removed");
-                        // simple: replace store
-                        useStore;
                       }}>Remove</Button>
+
                     </div>
                   </Card>
                 ))}
