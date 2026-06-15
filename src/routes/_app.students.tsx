@@ -22,6 +22,7 @@ import { ReceiptModal } from "@/components/receipt-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { formatNumber } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/students")({
   head: () => ({ meta: [{ title: "Students — B & B Transit" }] }),
