@@ -1,9 +1,9 @@
 import type { FormMeta, StudentRow } from "./types";
 
-const CORS_PROXY = "https://corsproxy.io/?";
+const PROXY = "/api/formstack";
 
 async function proxy(url: string, token: string) {
-  const res = await fetch(`${CORS_PROXY}${url}`, {
+  const res = await fetch(`${PROXY}?url=${encodeURIComponent(url)}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`Formstack ${res.status}`);
