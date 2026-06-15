@@ -171,7 +171,25 @@ function buildMapping(fields: FieldDef[]): FormMapping {
   return { parentName, parentPhone, parentEmail, parentAddress, studentCount, students, stops };
 }
 
+// Hardcoded mapping for Hopkins School Bus Enrollment 26-27 (form 6500704)
+const HARDCODED_MAPPINGS: Record<string, FormMapping> = {
+  "6500704": {
+    parentName: "194977392",
+    parentAddress: "194977393",
+    parentPhone: "194977394",
+    parentEmail: "194977395",
+    studentCount: "194977397",
+    students: [
+      { name: "194977398", grade: "194977399" },
+      { name: "194977400", grade: "194977401" },
+      { name: "194977402", grade: "194977403" },
+    ],
+    stops: ["194977405", "194977406"],
+  },
+};
+
 async function fetchFormMapping(formId: string, token: string): Promise<FormMapping> {
+  if (HARDCODED_MAPPINGS[formId]) return HARDCODED_MAPPINGS[formId];
   const form = await proxy(`https://www.formstack.com/api/v2/form/${formId}.json`, token);
   const fields: FieldDef[] = (form?.fields || []).map((f: any) => ({
     id: String(f.id),
