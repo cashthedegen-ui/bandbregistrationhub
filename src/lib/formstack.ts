@@ -228,7 +228,11 @@ const HARDCODED_MAPPINGS: Record<string, FormMapping> = {
     parentPhone: "195090262",
     parentEmail: "195090263",
     studentCount: "195090264",
-    students: [{ name: "195090265", grade: "195090266" }],
+    students: [
+      { name: "195090265", grade: "195090266" },
+      { name: "195090268", grade: "195090269" },
+      { name: "195090271", grade: "195090272" },
+    ],
     stops: ["195090275"],
   },
 };
