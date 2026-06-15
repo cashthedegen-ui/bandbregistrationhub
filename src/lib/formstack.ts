@@ -15,26 +15,10 @@ export async function fetchForms(token: string): Promise<any[]> {
   return data?.forms || [];
 }
 
-export interface SchoolFormCfg { schoolLabel: string; formId: string; }
-
-// Known field IDs from spec
-const F = {
-  parentName: "194977392",
-  homeAddress: "194977393",
-  parentPhone: "194977394",
-  parentEmail: "194977395",
-  studentCount: "194977397",
-  student1Name: "194977398",
-  student1Grade: "194977399",
-  stop1: "194977405",
-  stop2: "194977406",
-  signature: "194977412",
-  // Likely subsequent student fields (best-effort)
-  student2Name: "194977400",
-  student2Grade: "194977401",
-  student3Name: "194977402",
-  student3Grade: "194977403",
-};
+export interface SchoolFormCfg {
+  schoolLabel: string;
+  formId: string;
+}
 
 function parseNameField(raw: string): string {
   if (!raw) return "";
@@ -55,8 +39,7 @@ function parseNameField(raw: string): string {
 }
 
 function pickValue(data: any, fieldId: string): string {
-  if (!data) return "";
-  // data can be array [{field,value}] or object {fieldId: {value}} depending on endpoint
+  if (!data || !fieldId) return "";
   if (Array.isArray(data)) {
     const hit = data.find((d: any) => String(d.field) === fieldId);
     return hit?.value != null ? String(hit.value) : "";
@@ -70,6 +53,117 @@ function pickValue(data: any, fieldId: string): string {
   return "";
 }
 
+// ---- Dynamic field mapping ----
+
+interface FieldDef {
+  id: string;
+  label: string;
+  internal_label?: string;
+  name?: string;
+  type?: string;
+  section?: string;
+}
+
+interface FormMapping {
+  parentName: string;
+  parentPhone: string;
+  parentEmail: string;
+  parentAddress: string;
+  studentCount: string;
+  students: Array<{ name: string; grade: string }>;
+  stops: string[];
+}
+
+function norm(s: string | undefined): string {
+  return (s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function findField(
+  fields: FieldDef[],
+  matchers: Array<RegExp | string>,
+  opts: { type?: string; skipIds?: Set<string> } = {},
+): string {
+  for (const m of matchers) {
+    for (const f of fields) {
+      if (opts.skipIds?.has(f.id)) continue;
+      if (opts.type && f.type && f.type !== opts.type) continue;
+      const hay = `${norm(f.label)} | ${norm(f.internal_label)} | ${norm(f.name)}`;
+      const ok = typeof m === "string" ? hay.includes(m) : m.test(hay);
+      if (ok) return f.id;
+    }
+  }
+  return "";
+}
+
+function buildMapping(fields: FieldDef[]): FormMapping {
+  const used = new Set<string>();
+  const take = (id: string) => {
+    if (id) used.add(id);
+    return id;
+  };
+
+  const parentName = take(
+    findField(fields, [/\bparent\b.*name|guardian.*name|\bparent\/guardian\b/, /^name$/, /full name/], {
+      skipIds: used,
+    }),
+  );
+  const parentPhone = take(
+    findField(fields, [/parent.*phone|guardian.*phone|\bphone\b|mobile|cell/], { skipIds: used }),
+  );
+  const parentEmail = take(findField(fields, [/email/], { skipIds: used }));
+  const parentAddress = take(
+    findField(fields, [/home address|parent address|mailing address|\baddress\b/], { skipIds: used }),
+  );
+  const studentCount = take(
+    findField(fields, [/number of (students|children|riders)|how many (students|children|riders)|student count/], {
+      skipIds: used,
+    }),
+  );
+
+  // Student name/grade pairs — collect all "student N name" + "student N grade"
+  const students: Array<{ name: string; grade: string }> = [];
+  for (let i = 1; i <= 6; i++) {
+    const nameRe = new RegExp(`student\\s*${i}.*name|child\\s*${i}.*name|rider\\s*${i}.*name|name.*student\\s*${i}`);
+    const gradeRe = new RegExp(`student\\s*${i}.*grade|child\\s*${i}.*grade|rider\\s*${i}.*grade|grade.*student\\s*${i}`);
+    const nId = take(findField(fields, [nameRe], { skipIds: used }));
+    const gId = take(findField(fields, [gradeRe], { skipIds: used }));
+    if (nId || gId) students.push({ name: nId, grade: gId });
+  }
+  // Fallback: if none found, look for any name + grade pair
+  if (students.length === 0) {
+    const nId = take(findField(fields, [/student.*name|child.*name|rider.*name/], { skipIds: used }));
+    const gId = take(findField(fields, [/grade|class|year/], { skipIds: used }));
+    if (nId || gId) students.push({ name: nId, grade: gId });
+  }
+
+  // Bus stops
+  const stops: string[] = [];
+  for (let i = 1; i <= 4; i++) {
+    const re = new RegExp(`(bus )?stop\\s*${i}|pickup\\s*${i}|drop\\s*off\\s*${i}|afternoon|morning`);
+    const id = take(findField(fields, [re], { skipIds: used }));
+    if (id) stops.push(id);
+  }
+  if (stops.length === 0) {
+    const id = take(findField(fields, [/stop|pickup|drop\s*off/], { skipIds: used }));
+    if (id) stops.push(id);
+  }
+
+  return { parentName, parentPhone, parentEmail, parentAddress, studentCount, students, stops };
+}
+
+async function fetchFormMapping(formId: string, token: string): Promise<FormMapping> {
+  const form = await proxy(`https://www.formstack.com/api/v2/form/${formId}.json`, token);
+  const fields: FieldDef[] = (form?.fields || []).map((f: any) => ({
+    id: String(f.id),
+    label: f.label || "",
+    internal_label: f.internal_label || "",
+    name: f.name || "",
+    type: f.type || "",
+    section: f.section || "",
+  }));
+  return buildMapping(fields);
+}
+
 export async function fetchAllSubmissions(
   cfgs: SchoolFormCfg[],
   token: string,
@@ -77,12 +171,22 @@ export async function fetchAllSubmissions(
 ): Promise<StudentRow[]> {
   const all: StudentRow[] = [];
 
-  // Step 1: collect all submission IDs (paginated) across all configured forms
+  // Step 1: build field mapping per form + collect submission IDs
   type IdRef = { id: string; timestamp?: string; cfg: SchoolFormCfg };
   const idRefs: IdRef[] = [];
+  const mappings = new Map<string, FormMapping>();
 
   for (const cfg of cfgs) {
     if (!cfg.formId) continue;
+    onProgress?.(0, 0, `Loading field map for ${cfg.schoolLabel}…`);
+    try {
+      const map = await fetchFormMapping(cfg.formId, token);
+      mappings.set(cfg.formId, map);
+    } catch (e) {
+      console.error("Form mapping failed", cfg.formId, e);
+      mappings.set(cfg.formId, buildMapping([]));
+    }
+
     onProgress?.(0, 0, `Listing submissions for ${cfg.schoolLabel}…`);
     let page = 1;
     while (true) {
@@ -104,7 +208,6 @@ export async function fetchAllSubmissions(
   let done = 0;
   onProgress?.(done, total, `Fetching 0 of ${total} submissions…`);
 
-  // Step 2: fetch each submission's field data (batched for speed)
   const CONCURRENCY = 6;
   let cursor = 0;
   async function worker() {
@@ -116,7 +219,8 @@ export async function fetchAllSubmissions(
           `https://www.formstack.com/api/v2/submission/${ref.id}.json`,
           token,
         );
-        const rows = expandSubmission(sub, ref.cfg, ref.timestamp);
+        const map = mappings.get(ref.cfg.formId) || buildMapping([]);
+        const rows = expandSubmission(sub, ref.cfg, ref.timestamp, map);
         all.push(...rows);
       } catch (e) {
         console.error("Submission fetch failed", ref.id, e);
@@ -131,32 +235,35 @@ export async function fetchAllSubmissions(
   return all;
 }
 
-function expandSubmission(sub: any, cfg: SchoolFormCfg, listTimestamp?: string): StudentRow[] {
+function expandSubmission(
+  sub: any,
+  cfg: SchoolFormCfg,
+  listTimestamp: string | undefined,
+  map: FormMapping,
+): StudentRow[] {
   const data = sub?.data ?? [];
-  const parentName = parseNameField(pickValue(data, F.parentName));
-  const parentAddress = pickValue(data, F.homeAddress).replace(/\r?\n/g, ", ");
-  const parentPhone = pickValue(data, F.parentPhone);
-  const parentEmail = pickValue(data, F.parentEmail);
-  const stop1 = pickValue(data, F.stop1);
-  const stop2 = pickValue(data, F.stop2);
-  const countRaw = pickValue(data, F.studentCount);
-  const count = Math.max(1, Math.min(3, parseInt(countRaw, 10) || 1));
+  const parentName = parseNameField(pickValue(data, map.parentName));
+  const parentAddress = pickValue(data, map.parentAddress).replace(/\r?\n/g, ", ");
+  const parentPhone = pickValue(data, map.parentPhone);
+  const parentEmail = pickValue(data, map.parentEmail);
+  const stop1 = map.stops[0] ? pickValue(data, map.stops[0]) : "";
+  const stop2 = map.stops[1] ? pickValue(data, map.stops[1]) : "";
+  const countRaw = pickValue(data, map.studentCount);
+  const parsedCount = parseInt(countRaw, 10);
 
-  const studentFields: Array<[string, string]> = [
-    [F.student1Name, F.student1Grade],
-    [F.student2Name, F.student2Grade],
-    [F.student3Name, F.student3Grade],
-  ];
+  const studentDefs = map.students;
+  const cap = Math.max(1, studentDefs.length || 1);
+  const count = parsedCount > 0 ? Math.min(parsedCount, cap) : cap;
 
   const students: { name: string; grade: string }[] = [];
   for (let i = 0; i < count; i++) {
-    const [nId, gId] = studentFields[i];
-    const name = parseNameField(pickValue(data, nId));
-    const grade = pickValue(data, gId);
-    if (name) students.push({ name, grade });
+    const def = studentDefs[i];
+    if (!def) break;
+    const name = parseNameField(pickValue(data, def.name));
+    const grade = pickValue(data, def.grade);
+    if (name || grade) students.push({ name: name || "(Unnamed student)", grade });
   }
   if (students.length === 0) {
-    // ensure at least one row even if names missing
     students.push({ name: "(Unknown student)", grade: "" });
   }
 
