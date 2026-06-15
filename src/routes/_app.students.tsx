@@ -468,6 +468,129 @@ function StudentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit student dialog */}
+      <Dialog open={!!editRow} onOpenChange={(o) => { if (!o) { setEditRow(null); setEditDraft(null); } }}>
+        <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Student{editDraft ? ` — ${editDraft.studentName}` : ""}</DialogTitle>
+          </DialogHeader>
+          {editDraft && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <EditField label="Student Name" value={editDraft.studentName} onChange={(v) => setEditDraft({ ...editDraft, studentName: v })} />
+              <EditField label="Grade" value={editDraft.grade} onChange={(v) => setEditDraft({ ...editDraft, grade: v })} />
+              <EditField label="School" value={editDraft.schoolName} onChange={(v) => setEditDraft({ ...editDraft, schoolName: v })} />
+              <EditField label="Bus Stop (1st)" value={editDraft.stopAddress} onChange={(v) => setEditDraft({ ...editDraft, stopAddress: v })} />
+              <EditField label="Bus Stop (2nd)" value={editDraft.stopAddress2 || ""} onChange={(v) => setEditDraft({ ...editDraft, stopAddress2: v })} />
+              <EditField label="Parent Name" value={editDraft.parentName} onChange={(v) => setEditDraft({ ...editDraft, parentName: v })} />
+              <EditField label="Phone" value={editDraft.parentPhone} onChange={(v) => setEditDraft({ ...editDraft, parentPhone: v })} />
+              <EditField label="Email" value={editDraft.parentEmail} onChange={(v) => setEditDraft({ ...editDraft, parentEmail: v })} />
+              <div className="sm:col-span-2">
+                <EditField label="Address" value={editDraft.parentAddress} onChange={(v) => setEditDraft({ ...editDraft, parentAddress: v })} />
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</Label>
+                <Select value={editDraft.status} onValueChange={(v) => setEditDraft({ ...editDraft, status: v as Status })}>
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Payment Type</Label>
+                <Select
+                  value={editDraft.paymentType || (editDraft.paid ? "Self Pay" : "Unpaid")}
+                  onValueChange={(v) => setEditDraft({ ...editDraft, paymentType: v as PaymentType, paid: v !== "Unpaid" })}
+                >
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_TYPES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {(editDraft.paymentType || (editDraft.paid ? "Self Pay" : "Unpaid")) === "Self Pay" && (
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Amount Paid</Label>
+                  <Input
+                    type="number" min={0} step="0.01"
+                    value={editDraft.amountPaid ?? 0}
+                    onChange={(e) => setEditDraft({ ...editDraft, amountPaid: parseFloat(e.target.value) || 0 })}
+                    className="mt-1 bg-background"
+                  />
+                </div>
+              )}
+              {(editDraft.paymentType || (editDraft.paid ? "Self Pay" : "Unpaid")) === "Financial Aid" && (
+                <div className="sm:col-span-2">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Financial Aid Details</Label>
+                  <Input
+                    value={editDraft.financialAidNotes || ""}
+                    onChange={(e) => setEditDraft({ ...editDraft, financialAidNotes: e.target.value })}
+                    placeholder="e.g. Hopkins covering full tuition"
+                    className="mt-1 bg-background"
+                  />
+                </div>
+              )}
+              <div>
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Payment Status</Label>
+                <Select value={editDraft.paymentStatus || "Pending"} onValueChange={(v) => setEditDraft({ ...editDraft, paymentStatus: v as PaymentStatus })}>
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PAYMENTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="sm:col-span-2">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Notes</Label>
+                <Textarea
+                  value={editDraft.notes || ""}
+                  onChange={(e) => setEditDraft({ ...editDraft, notes: e.target.value })}
+                  className="mt-1 bg-background min-h-[80px]"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setEditRow(null); setEditDraft(null); }}>Cancel</Button>
+            <Button
+              className="bg-primary text-primary-foreground"
+              onClick={() => {
+                if (editRow && editDraft) {
+                  updateStudent(editRow.id, editDraft);
+                  toast.success("Student updated");
+                }
+                setEditRow(null);
+                setEditDraft(null);
+              }}
+            >Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteRow} onOpenChange={(o) => !o && setDeleteRow(null)}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this student?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes <span className="font-medium text-foreground">{deleteRow?.studentName}</span> from the roster. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteRow) {
+                  deleteStudent(deleteRow.id);
+                  toast.success(`Deleted ${deleteRow.studentName}`);
+                }
+                setDeleteRow(null);
+              }}
+            >Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
