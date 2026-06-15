@@ -14,9 +14,9 @@ import { Card } from "@/components/ui/card";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { AlertTriangle, Copy, FileText, Filter, Search, X } from "lucide-react";
+import { AlertTriangle, CheckCheck, Copy, Download, FileText, Filter, Search, X } from "lucide-react";
 import type { Status, StudentRow } from "@/lib/types";
-import { exportRows } from "@/lib/excel";
+import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
 import { toast } from "sonner";
@@ -88,6 +88,19 @@ function StudentsPage() {
     setReceiptOpen(selectedRows);
   };
 
+  const markAllReviewed = () => {
+    const newOnes = students.filter((s) => s.status === "New");
+    if (!newOnes.length) return toast.info("No students with status 'New'");
+    newOnes.forEach((r) => updateStudent(r.id, { status: "Reviewed" }));
+    toast.success(`Marked ${newOnes.length} as Reviewed`);
+  };
+
+  const exportAllClean = () => {
+    if (!students.length) return toast.warning("No students to export");
+    exportStudentsClean(students);
+    toast.success(`Exported ${students.length} students`);
+  };
+
   const activeDupGroup = dupGroupOpen ? dupGroups.find((g) => g.id === dupGroupOpen) : null;
 
   return (
@@ -95,6 +108,16 @@ function StudentsPage() {
       <PageHeader
         title="Students"
         subtitle={`${filtered.length} of ${students.length} students`}
+        actions={
+          <>
+            <Button size="sm" variant="secondary" onClick={markAllReviewed}>
+              <CheckCheck className="h-4 w-4 mr-1.5" /> Mark All as Reviewed
+            </Button>
+            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={exportAllClean}>
+              <Download className="h-4 w-4 mr-1.5" /> Export to Excel
+            </Button>
+          </>
+        }
       />
 
       {dupGroups.length > 0 && dupBanner && (
@@ -164,6 +187,7 @@ function StudentsPage() {
               <thead className="bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-3 py-3 w-8"><Checkbox checked={allChecked} onCheckedChange={toggleAll} /></th>
+                  <th className="px-3 py-3 text-left w-10">#</th>
                   <th className="px-3 py-3 text-left">Student</th>
                   <th className="px-3 py-3 text-left">Grade</th>
                   <th className="px-3 py-3 text-left">School</th>
@@ -177,7 +201,7 @@ function StudentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map((r) => (
+                {filtered.map((r, idx) => (
                   <tr key={r.id} className="hover:bg-muted/20 cursor-pointer" onClick={() => setOpenRow(r)}>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={selected.has(r.id)} onCheckedChange={(v) => {
@@ -186,6 +210,7 @@ function StudentsPage() {
                         setSelected(next);
                       }} />
                     </td>
+                    <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{idx + 1}</td>
                     <td className="px-3 py-2.5 font-medium">{r.studentName}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.grade}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.schoolName}</td>
