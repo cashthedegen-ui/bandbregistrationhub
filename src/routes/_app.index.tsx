@@ -32,7 +32,7 @@ function Kpi({ label, value, icon: Icon, hint }: { label: string; value: string 
 
 function Dashboard() {
   const { students, dupGroups, activity, settings, syncAll, syncing } = useStore();
-  const formsSynced = Object.values(settings.formIds).filter(Boolean).length;
+  const formsSynced = settings.forms.filter((f) => f.formId).length;
   const newCount = students.filter((s) => s.status === "New").length;
   const alertCount = students.filter((s) => s.alertFlag).length;
 
@@ -48,7 +48,7 @@ function Dashboard() {
         <Kpi label="New Registrations" value={newCount} icon={UserPlus} />
         <Kpi label="Alert Flags" value={alertCount} icon={AlertTriangle} />
         <Kpi label="Duplicates" value={dupGroups.length} icon={Copy} />
-        <Kpi label="Forms Synced" value={formsSynced} icon={RefreshCw} hint={`${Object.keys(settings.formIds).length} configured`} />
+        <Kpi label="Forms Synced" value={formsSynced} icon={RefreshCw} hint={`${settings.forms.length} configured`} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">

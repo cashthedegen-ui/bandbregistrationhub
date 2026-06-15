@@ -44,8 +44,14 @@ export interface ReceiptSettings {
   footer: string;
 }
 
+export interface FormEntry {
+  id: string;      // local uid
+  label: string;   // e.g. "Hopkins School Bus 26-27"
+  formId: string;  // Formstack form id
+}
+
 export interface AppSettings {
   apiToken: string;
-  formIds: Record<string, string>; // schoolLabel -> formId
+  forms: FormEntry[];
   receipt: ReceiptSettings;
 }
