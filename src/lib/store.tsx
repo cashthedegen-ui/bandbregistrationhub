@@ -3,7 +3,7 @@ import { storage } from "./storage";
 import type { AppSettings, ArchivedSeason, StudentRow } from "./types";
 import { buildDemoStudents } from "./demo-data";
 import { detectDuplicates, type DuplicateGroup } from "./duplicates";
-import { fetchAllSubmissions, fetchForms } from "./formstack";
+import { fetchAllSubmissions } from "./formstack";
 import { toast } from "sonner";
 
 interface Activity { id: string; ts: string; text: string; }
