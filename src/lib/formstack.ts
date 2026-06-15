@@ -38,6 +38,26 @@ function parseNameField(raw: string): string {
   return [first, last].filter(Boolean).join(" ").trim() || s.trim();
 }
 
+function parseAddressField(raw: string): string {
+  if (!raw) return "";
+  const s = String(raw);
+  if (!s.includes("=")) return s.replace(/\r?\n/g, ", ").trim();
+  const parts = s.split(/\r?\n|,/);
+  const kv: Record<string, string> = {};
+  for (const p of parts) {
+    const m = p.match(/^\s*([a-z0-9_ ]+?)\s*=\s*(.*)$/i);
+    if (!m) continue;
+    kv[m[1].trim().toLowerCase()] = m[2].trim();
+  }
+  const street = [kv["address"], kv["address2"] || kv["address 2"]].filter(Boolean).join(" ");
+  const city = kv["city"] || "";
+  const state = kv["state"] || "";
+  const zip = kv["zip"] || kv["zip code"] || kv["postal"] || "";
+  const tail = [state, zip].filter(Boolean).join(" ");
+  const out = [street, city, tail].filter(Boolean).join(", ");
+  return out || s.replace(/\r?\n/g, ", ").trim();
+}
+
 function pickValue(data: any, fieldId: string): string {
   if (!data || !fieldId) return "";
   if (Array.isArray(data)) {
