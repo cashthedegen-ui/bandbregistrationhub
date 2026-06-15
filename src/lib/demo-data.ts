@@ -54,6 +54,7 @@ export function buildDemoStudents(): StudentRow[] {
         alertFlag: alert,
         duplicateFlag: false,
         status: (["New", "Reviewed", "Confirmed", "Exported"] as const)[n % 4],
+        paymentStatus: (["Pending", "Received", "Pending", "Overdue"] as const)[n % 4],
         submissionDate: new Date(Date.now() - n * 86400000 * 0.4).toISOString(),
       });
       n++;

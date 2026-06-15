@@ -4,16 +4,27 @@ import { PageHeader } from "@/components/page-header";
 import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Download } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ChevronDown, ChevronUp, Download, FileText } from "lucide-react";
 import { exportRoutesWorkbook } from "@/lib/excel";
+import { downloadDriverSheet } from "@/lib/driver-sheet";
+import { stopKey } from "@/lib/storage";
 
 export const Route = createFileRoute("/_app/routes")({
   head: () => ({ meta: [{ title: "Routes — B & B Transit" }] }),
   component: RoutesPage,
 });
 
+function capacityClass(filled: number, cap: number) {
+  if (!cap) return "text-muted-foreground";
+  const pct = filled / cap;
+  if (filled >= cap) return "text-red-400 font-semibold";
+  if (pct >= 0.9) return "text-yellow-400 font-semibold";
+  return "text-muted-foreground";
+}
+
 function RoutesPage() {
-  const { students } = useStore();
+  const { students, stopCapacities, setStopCapacity } = useStore();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const grouped = useMemo(() => {
@@ -32,7 +43,7 @@ function RoutesPage() {
     <>
       <PageHeader
         title="Routes"
-        subtitle="One card per school route. Click a route to expand all stops."
+        subtitle="One card per school route. Set seat capacity per stop to track availability."
         actions={
           <Button variant="secondary" onClick={() => exportRoutesWorkbook(students)}>
             <Download className="h-4 w-4 mr-2" /> Export Routes
@@ -78,21 +89,55 @@ function RoutesPage() {
                       </span>
                     ))}
                   </div>
-                  <ul className="mt-4 space-y-2.5">
+                  <div className="mt-4 flex gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => downloadDriverSheet(route, list)}>
+                      <FileText className="h-4 w-4 mr-1.5" /> Driver Sheet
+                    </Button>
+                  </div>
+                  <ul className="mt-4 space-y-3">
                     {visibleStops.map(([addr, kids]) => {
                       const hasAlert = kids.some((k) => k.alertFlag);
+                      const cap = stopCapacities[stopKey(route, addr)] || 0;
+                      const full = cap > 0 && kids.length >= cap;
+                      const near = cap > 0 && !full && kids.length / cap >= 0.9;
                       return (
                         <li key={addr} className="text-xs">
                           <div className="flex items-center gap-2">
                             {hasAlert && <span className="h-2 w-2 rounded-full bg-destructive shrink-0" />}
+                            {full && <span className="text-[10px] rounded-full border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-red-300 shrink-0">FULL</span>}
+                            {near && <span className="text-[10px] rounded-full border border-yellow-500/40 bg-yellow-500/10 px-1.5 py-0.5 text-yellow-300 shrink-0">90%</span>}
                             <span className="text-foreground/90 truncate">{addr}</span>
-                            <span className="ml-auto text-muted-foreground">{kids.length}</span>
+                            <span className={`ml-auto tabular-nums ${capacityClass(kids.length, cap)}`}>
+                              {kids.length}{cap ? `/${cap}` : ""}{cap ? " seats" : ""}
+                            </span>
+                          </div>
+                          <div className="mt-1 ml-4 flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground">Capacity:</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              defaultValue={cap || ""}
+                              onBlur={(e) => {
+                                const v = parseInt(e.target.value, 10);
+                                setStopCapacity(route, addr, Number.isFinite(v) ? v : 0);
+                              }}
+                              className="h-6 w-16 text-xs bg-background"
+                              placeholder="—"
+                            />
                           </div>
                           <ul className="mt-1 ml-4 text-muted-foreground space-y-0.5">
                             {kids.map((k) => (
-                              <li key={k.id}>• {k.studentName} <span className="text-[10px]">G{k.grade}</span></li>
+                              <li key={k.id}>
+                                • {k.studentName} <span className="text-[10px]">G{k.grade}</span>
+                                {k.status === "Waitlisted" && <span className="ml-1 text-[10px] text-amber-400">(waitlisted)</span>}
+                              </li>
                             ))}
                           </ul>
+                          {full && (
+                            <div className="mt-1 ml-4 text-[10px] text-red-300">
+                              At capacity — mark new students at this stop as Waitlisted.
+                            </div>
+                          )}
                         </li>
                       );
                     })}

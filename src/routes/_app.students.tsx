@@ -14,11 +14,13 @@ import { Card } from "@/components/ui/card";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { AlertTriangle, CheckCheck, Copy, Download, FileText, Filter, Search, X } from "lucide-react";
-import type { Status, StudentRow } from "@/lib/types";
+import { AlertTriangle, CheckCheck, Copy, Download, FileText, Filter, Search, StickyNote, X } from "lucide-react";
+import type { PaymentStatus, Status, StudentRow } from "@/lib/types";
 import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/students")({
@@ -26,7 +28,14 @@ export const Route = createFileRoute("/_app/students")({
   component: StudentsPage,
 });
 
-const STATUSES: Status[] = ["New", "Reviewed", "Confirmed", "Exported"];
+const STATUSES: Status[] = ["New", "Reviewed", "Confirmed", "Exported", "Waitlisted"];
+const PAYMENTS: PaymentStatus[] = ["Pending", "Received", "Overdue"];
+
+const PAYMENT_CLASS: Record<PaymentStatus, string> = {
+  Pending: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
+  Received: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  Overdue: "bg-red-500/15 text-red-300 border-red-500/30",
+};
 
 function StatusBadge({ status }: { status: Status }) {
   const map: Record<Status, string> = {
@@ -34,6 +43,7 @@ function StatusBadge({ status }: { status: Status }) {
     Reviewed: "bg-primary/15 text-primary border-primary/30",
     Confirmed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
     Exported: "bg-muted text-muted-foreground border-border",
+    Waitlisted: "bg-amber-500/15 text-amber-300 border-amber-500/30",
   };
   return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${map[status]}`}>{status}</span>;
 }
@@ -49,6 +59,9 @@ function StudentsPage() {
   const [dupBanner, setDupBanner] = useState(true);
   const [dupGroupOpen, setDupGroupOpen] = useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = useState<StudentRow[] | null>(null);
+  const [notesRow, setNotesRow] = useState<StudentRow | null>(null);
+  const [notesDraft, setNotesDraft] = useState("");
+
 
   const schools = useMemo(() => Array.from(new Set(students.map((s) => s.schoolName))).filter(Boolean), [students]);
   const grades = useMemo(() => Array.from(new Set(students.map((s) => s.grade))).filter(Boolean), [students]);
@@ -196,6 +209,7 @@ function StudentsPage() {
                   <th className="px-3 py-3 text-left">Phone</th>
                   <th className="px-3 py-3 text-left">Flags</th>
                   <th className="px-3 py-3 text-left">Status</th>
+                  <th className="px-3 py-3 text-left">Payment</th>
                   <th className="px-3 py-3 text-left">Submitted</th>
                   <th className="px-3 py-3"></th>
                 </tr>
@@ -242,8 +256,19 @@ function StudentsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground text-xs">{new Date(r.submissionDate).toLocaleDateString()}</td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <Select value={r.paymentStatus || "Pending"} onValueChange={(v) => updateStudent(r.id, { paymentStatus: v as PaymentStatus })}>
+                        <SelectTrigger className={`h-7 w-28 text-xs border ${PAYMENT_CLASS[r.paymentStatus || "Pending"]}`}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {PAYMENTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-3 py-2.5 text-muted-foreground text-xs">{new Date(r.submissionDate).toLocaleDateString()}</td>
+                    <td className="px-3 py-2.5 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Button size="icon" variant="ghost" onClick={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }} title={r.notes ? "Notes (saved)" : "Add notes"}>
+                        <StickyNote className={`h-4 w-4 ${r.notes ? "text-primary" : ""}`} />
+                      </Button>
                       <Button size="icon" variant="ghost" onClick={() => downloadReceipt(r, settings.receipt)} title="PDF receipt">
                         <FileText className="h-4 w-4" />
                       </Button>
@@ -335,6 +360,33 @@ function StudentsPage() {
           onDownloadAll={() => downloadAllReceipts(receiptOpen, settings.receipt)}
         />
       )}
+
+      <Dialog open={!!notesRow} onOpenChange={(o) => !o && setNotesRow(null)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Notes — {notesRow?.studentName}</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={notesDraft}
+            onChange={(e) => setNotesDraft(e.target.value)}
+            placeholder="Add free-text notes for this student…"
+            className="min-h-[160px] bg-background"
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setNotesRow(null)}>Cancel</Button>
+            <Button
+              className="bg-primary text-primary-foreground"
+              onClick={() => {
+                if (notesRow) {
+                  updateStudent(notesRow.id, { notes: notesDraft });
+                  toast.success("Notes saved");
+                }
+                setNotesRow(null);
+              }}
+            >Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

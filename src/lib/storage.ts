@@ -1,4 +1,4 @@
-import type { AppSettings, ArchivedSeason, StudentRow } from "./types";
+import type { AppSettings, ArchivedSeason, StudentRow, SyncEvent } from "./types";
 
 const KEYS = {
   settings: "bbt:settings",
@@ -6,6 +6,8 @@ const KEYS = {
   archives: "bbt:archives",
   master: "bbt:master",
   lastSync: "bbt:lastSync",
+  stopCaps: "bbt:stopCapacities",
+  syncHistory: "bbt:syncHistory",
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -61,4 +63,12 @@ export const storage = {
   setMaster: (s: StudentRow[]) => write(KEYS.master, s),
   getLastSync: (): string | null => read<string | null>(KEYS.lastSync, null),
   setLastSync: (d: string) => write(KEYS.lastSync, d),
+  getStopCapacities: (): Record<string, number> => read<Record<string, number>>(KEYS.stopCaps, {}),
+  setStopCapacities: (m: Record<string, number>) => write(KEYS.stopCaps, m),
+  getSyncHistory: (): SyncEvent[] => read<SyncEvent[]>(KEYS.syncHistory, []),
+  setSyncHistory: (h: SyncEvent[]) => write(KEYS.syncHistory, h),
 };
+
+export const stopKey = (schoolName: string, stopAddress: string) =>
+  `${(schoolName || "").trim()}||${(stopAddress || "").trim()}`;
+

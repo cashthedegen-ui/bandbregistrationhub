@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useStore } from "@/lib/store";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Copy, FileSpreadsheet, RefreshCw, UserPlus, Users } from "lucide-react";
+import { AlertTriangle, Clock, Copy, DollarSign, FileSpreadsheet, RefreshCw, UserPlus, Users } from "lucide-react";
 import { exportMaster } from "@/lib/excel";
+import { stopKey } from "@/lib/storage";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "Dashboard — B & B Transit" }] }),
@@ -31,10 +33,35 @@ function Kpi({ label, value, icon: Icon, hint }: { label: string; value: string 
 }
 
 function Dashboard() {
-  const { students, dupGroups, activity, settings, syncAll, syncing } = useStore();
+  const { students, dupGroups, activity, settings, syncAll, syncing, stopCapacities, syncHistory } = useStore();
   const formsSynced = settings.forms.filter((f) => f.formId).length;
   const newCount = students.filter((s) => s.status === "New").length;
   const alertCount = students.filter((s) => s.alertFlag).length;
+  const waitlisted = students.filter((s) => s.status === "Waitlisted").length;
+
+  const pay = useMemo(() => {
+    const p = { Pending: 0, Received: 0, Overdue: 0 };
+    for (const s of students) p[s.paymentStatus || "Pending"]++;
+    return p;
+  }, [students]);
+
+  const stopAlerts = useMemo(() => {
+    const stops = new Map<string, { route: string; addr: string; count: number }>();
+    for (const s of students) {
+      const k = stopKey(s.schoolName, s.stopAddress);
+      const cur = stops.get(k) || { route: s.schoolName, addr: s.stopAddress, count: 0 };
+      cur.count++;
+      stops.set(k, cur);
+    }
+    const out: { route: string; addr: string; count: number; cap: number; level: "full" | "near" }[] = [];
+    for (const [k, v] of stops) {
+      const cap = stopCapacities[k] || 0;
+      if (!cap) continue;
+      if (v.count >= cap) out.push({ ...v, cap, level: "full" });
+      else if (v.count / cap >= 0.9) out.push({ ...v, cap, level: "near" });
+    }
+    return out;
+  }, [students, stopCapacities]);
 
   return (
     <>
@@ -43,20 +70,66 @@ function Dashboard() {
         subtitle="Operational overview of student registrations across all schools."
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Kpi label="Total Students" value={students.length} icon={Users} />
         <Kpi label="New Registrations" value={newCount} icon={UserPlus} />
+        <Kpi label="Waitlisted" value={waitlisted} icon={Clock} />
         <Kpi label="Alert Flags" value={alertCount} icon={AlertTriangle} />
         <Kpi label="Duplicates" value={dupGroups.length} icon={Copy} />
         <Kpi label="Forms Synced" value={formsSynced} icon={RefreshCw} hint={`${settings.forms.length} configured`} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
+        <Card className="bg-card border-border lg:col-span-1">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <DollarSign className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payments</h2>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
+                <span className="text-yellow-300">Pending</span>
+                <span className="font-semibold tabular-nums">{pay.Pending}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+                <span className="text-emerald-300">Received</span>
+                <span className="font-semibold tabular-nums">{pay.Received}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
+                <span className="text-red-300">Overdue</span>
+                <span className="font-semibold tabular-nums">{pay.Overdue}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border lg:col-span-2">
+          <CardContent className="p-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Stop Capacity Alerts</h2>
+            {stopAlerts.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-4">No stops near or at capacity. Set capacities on the Routes tab.</div>
+            ) : (
+              <ul className="divide-y divide-border text-sm">
+                {stopAlerts.slice(0, 8).map((a, i) => (
+                  <li key={i} className="py-2 flex items-center gap-3">
+                    <span className={`text-[10px] rounded-full border px-2 py-0.5 ${a.level === "full" ? "border-red-500/40 bg-red-500/10 text-red-300" : "border-yellow-500/40 bg-yellow-500/10 text-yellow-300"}`}>
+                      {a.level === "full" ? "FULL" : "90%"}
+                    </span>
+                    <span className="truncate flex-1">{a.addr}</span>
+                    <span className="text-xs text-muted-foreground">{a.route}</span>
+                    <span className="tabular-nums font-medium">{a.count}/{a.cap}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
         <Card className="lg:col-span-2 bg-card border-border">
           <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Recent Activity</h2>
-            </div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Recent Activity</h2>
             {activity.length === 0 ? (
               <div className="text-sm text-muted-foreground py-6 text-center">
                 No activity yet. Sync forms or load demo data to get started.
@@ -93,6 +166,38 @@ function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="bg-card border-border mt-6">
+        <CardContent className="p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Sync History</h2>
+          {syncHistory.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-4">No syncs yet. Click "Sync all forms" to fetch registrations.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 pr-4">When</th>
+                    <th className="text-right py-2 pr-4">Total Fetched</th>
+                    <th className="text-right py-2 pr-4">New</th>
+                    <th className="text-right py-2">Existing</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {syncHistory.map((e) => (
+                    <tr key={e.id}>
+                      <td className="py-2 pr-4">{new Date(e.ts).toLocaleString()}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">{e.total}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums text-sky-300">{e.added}</td>
+                      <td className="py-2 text-right tabular-nums text-muted-foreground">{e.updated}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }
