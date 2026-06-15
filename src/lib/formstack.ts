@@ -38,6 +38,26 @@ function parseNameField(raw: string): string {
   return [first, last].filter(Boolean).join(" ").trim() || s.trim();
 }
 
+function parseAddressField(raw: string): string {
+  if (!raw) return "";
+  const s = String(raw);
+  if (!s.includes("=")) return s.replace(/\r?\n/g, ", ").trim();
+  const parts = s.split(/\r?\n|,/);
+  const kv: Record<string, string> = {};
+  for (const p of parts) {
+    const m = p.match(/^\s*([a-z0-9_ ]+?)\s*=\s*(.*)$/i);
+    if (!m) continue;
+    kv[m[1].trim().toLowerCase()] = m[2].trim();
+  }
+  const street = [kv["address"], kv["address2"] || kv["address 2"]].filter(Boolean).join(" ");
+  const city = kv["city"] || "";
+  const state = kv["state"] || "";
+  const zip = kv["zip"] || kv["zip code"] || kv["postal"] || "";
+  const tail = [state, zip].filter(Boolean).join(" ");
+  const out = [street, city, tail].filter(Boolean).join(", ");
+  return out || s.replace(/\r?\n/g, ", ").trim();
+}
+
 function pickValue(data: any, fieldId: string): string {
   if (!data || !fieldId) return "";
   if (Array.isArray(data)) {
@@ -243,15 +263,27 @@ function expandSubmission(
 ): StudentRow[] {
   const data = sub?.data ?? [];
   const parentName = parseNameField(pickValue(data, map.parentName));
-  const parentAddress = pickValue(data, map.parentAddress).replace(/\r?\n/g, ", ");
+  const parentAddress = parseAddressField(pickValue(data, map.parentAddress));
   const parentPhone = pickValue(data, map.parentPhone);
   const parentEmail = pickValue(data, map.parentEmail);
-  const stop1 = map.stops[0] ? pickValue(data, map.stops[0]) : "";
-  const stop2 = map.stops[1] ? pickValue(data, map.stops[1]) : "";
+  const stop1 = parseAddressField(map.stops[0] ? pickValue(data, map.stops[0]) : "");
+  const stop2 = parseAddressField(map.stops[1] ? pickValue(data, map.stops[1]) : "");
   const countRaw = pickValue(data, map.studentCount);
   const parsedCount = parseInt(countRaw, 10);
 
-  const studentDefs = map.students;
+  // Hopkins (form 6500704) hardcoded student name field IDs as fallback
+  const HOPKINS_STUDENT_IDS = ["194977398", "194977407", "194977408"];
+  const studentDefs = [...map.students];
+  if (cfg.formId === "6500704") {
+    for (let i = 0; i < HOPKINS_STUDENT_IDS.length; i++) {
+      const id = HOPKINS_STUDENT_IDS[i];
+      if (pickValue(data, id)) {
+        if (studentDefs[i]) studentDefs[i].name = id;
+        else studentDefs[i] = { name: id, grade: studentDefs[i]?.grade || "" };
+      }
+    }
+  }
+
   const cap = Math.max(1, studentDefs.length || 1);
   const count = parsedCount > 0 ? Math.min(parsedCount, cap) : cap;
 
