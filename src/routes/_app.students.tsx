@@ -14,9 +14,9 @@ import { Card } from "@/components/ui/card";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { AlertTriangle, Copy, FileText, Filter, Search, X } from "lucide-react";
+import { AlertTriangle, CheckCheck, Copy, Download, FileText, Filter, Search, X } from "lucide-react";
 import type { Status, StudentRow } from "@/lib/types";
-import { exportRows } from "@/lib/excel";
+import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
 import { toast } from "sonner";
