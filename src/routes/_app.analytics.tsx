@@ -49,20 +49,29 @@ function Analytics() {
   const reviewedPct = students.length ? Math.round((students.filter((s) => s.status !== "New").length / students.length) * 100) : 0;
 
   const paymentBySchool = useMemo(() => {
-    const m = new Map<string, { total: number; collected: number; paid: number }>();
+    const m = new Map<string, { total: number; selfPay: number; selfPayCollected: number; aid: number; unpaid: number }>();
     for (const s of students) {
       const k = s.schoolName || "Unassigned";
-      const cur = m.get(k) || { total: 0, collected: 0, paid: 0 };
+      const cur = m.get(k) || { total: 0, selfPay: 0, selfPayCollected: 0, aid: 0, unpaid: 0 };
       cur.total += 1;
-      if (s.paid) {
-        cur.paid += 1;
-        cur.collected += Number(s.amountPaid) || 0;
+      const pt = s.paymentType || (s.paid ? "Self Pay" : "Unpaid");
+      if (pt === "Self Pay") {
+        cur.selfPay += 1;
+        cur.selfPayCollected += Number(s.amountPaid) || 0;
+      } else if (pt === "Financial Aid") {
+        cur.aid += 1;
+      } else {
+        cur.unpaid += 1;
       }
       m.set(k, cur);
     }
     return Array.from(m, ([school, v]) => ({ school, ...v })).sort((a, b) => b.total - a.total);
   }, [students]);
-  const grandTotal = paymentBySchool.reduce((a, b) => a + b.collected, 0);
+  const grandTotal = paymentBySchool.reduce((a, b) => a + b.selfPayCollected, 0);
+  const totals = paymentBySchool.reduce(
+    (a, b) => ({ selfPay: a.selfPay + b.selfPay, aid: a.aid + b.aid, unpaid: a.unpaid + b.unpaid }),
+    { selfPay: 0, aid: 0, unpaid: 0 },
+  );
 
   return (
     <>
@@ -77,9 +86,14 @@ function Analytics() {
 
       <Card className="bg-card border-border mb-6">
         <CardContent className="p-5">
-          <div className="flex items-baseline justify-between mb-3">
+          <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payments by School</h2>
-            <div className="text-sm text-muted-foreground">Total collected: <span className="text-emerald-300 font-semibold">{formatCurrency(grandTotal)}</span></div>
+            <div className="text-sm text-muted-foreground flex gap-4 flex-wrap">
+              <span>Self Pay: <span className="text-emerald-300 font-semibold">{formatNumber(totals.selfPay)}</span></span>
+              <span>Financial Aid: <span className="text-sky-300 font-semibold">{formatNumber(totals.aid)}</span></span>
+              <span>Unpaid: <span className="text-yellow-300 font-semibold">{formatNumber(totals.unpaid)}</span></span>
+              <span>Total collected: <span className="text-emerald-300 font-semibold">{formatCurrency(grandTotal)}</span></span>
+            </div>
           </div>
           {paymentBySchool.length === 0 ? (
             <div className="text-sm text-muted-foreground">No students yet.</div>
@@ -88,9 +102,11 @@ function Analytics() {
               <thead className="text-[11px] uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="text-left py-2">School</th>
-                  <th className="text-right py-2">Total Students</th>
-                  <th className="text-right py-2">Paid</th>
-                  <th className="text-right py-2">Total Collected</th>
+                  <th className="text-right py-2">Total</th>
+                  <th className="text-right py-2">Self Pay</th>
+                  <th className="text-right py-2">Financial Aid</th>
+                  <th className="text-right py-2">Unpaid</th>
+                  <th className="text-right py-2">Collected</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -98,8 +114,10 @@ function Analytics() {
                   <tr key={r.school}>
                     <td className="py-2 font-medium">{r.school}</td>
                     <td className="py-2 text-right tabular-nums">{formatNumber(r.total)}</td>
-                    <td className="py-2 text-right tabular-nums text-muted-foreground">{formatNumber(r.paid)}</td>
-                    <td className="py-2 text-right tabular-nums text-emerald-300">{formatCurrency(r.collected)}</td>
+                    <td className="py-2 text-right tabular-nums text-emerald-300">{formatNumber(r.selfPay)}</td>
+                    <td className="py-2 text-right tabular-nums text-sky-300">{formatNumber(r.aid)}</td>
+                    <td className="py-2 text-right tabular-nums text-yellow-300">{formatNumber(r.unpaid)}</td>
+                    <td className="py-2 text-right tabular-nums text-emerald-300">{formatCurrency(r.selfPayCollected)}</td>
                   </tr>
                 ))}
               </tbody>
