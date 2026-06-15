@@ -154,7 +154,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } finally {
       setSyncing(false);
     }
-  }, [settings, persistStudents, pushActivity]);
+  }, [settings, students, isDemo, persistStudents, pushActivity]);
 
   const archiveSeason = useCallback((label: string) => {
     const a: ArchivedSeason = {
