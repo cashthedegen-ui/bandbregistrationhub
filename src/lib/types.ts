@@ -22,6 +22,8 @@ export interface StudentRow {
   paymentStatus: PaymentStatus;
   submissionDate: string; // ISO
   checkNumber?: string;
+  paid?: boolean;
+  amountPaid?: number;
 }
 
 export interface SyncEvent {

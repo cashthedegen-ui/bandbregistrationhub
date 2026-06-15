@@ -47,6 +47,22 @@ function Analytics() {
   const alertRows = students.filter((s) => s.alertFlag);
   const reviewedPct = students.length ? Math.round((students.filter((s) => s.status !== "New").length / students.length) * 100) : 0;
 
+  const paymentBySchool = useMemo(() => {
+    const m = new Map<string, { total: number; collected: number; paid: number }>();
+    for (const s of students) {
+      const k = s.schoolName || "Unassigned";
+      const cur = m.get(k) || { total: 0, collected: 0, paid: 0 };
+      cur.total += 1;
+      if (s.paid) {
+        cur.paid += 1;
+        cur.collected += Number(s.amountPaid) || 0;
+      }
+      m.set(k, cur);
+    }
+    return Array.from(m, ([school, v]) => ({ school, ...v })).sort((a, b) => b.total - a.total);
+  }, [students]);
+  const grandTotal = paymentBySchool.reduce((a, b) => a + b.collected, 0);
+
   return (
     <>
       <PageHeader title="Analytics" subtitle="Trends across all school registrations." />
@@ -57,6 +73,39 @@ function Analytics() {
         <Stat label="Duplicates" value={dupGroups.length} />
         <Stat label="Reviewed" value={`${reviewedPct}%`} />
       </div>
+
+      <Card className="bg-card border-border mb-6">
+        <CardContent className="p-5">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payments by School</h2>
+            <div className="text-sm text-muted-foreground">Total collected: <span className="text-emerald-300 font-semibold">${grandTotal.toFixed(2)}</span></div>
+          </div>
+          {paymentBySchool.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No students yet.</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="text-left py-2">School</th>
+                  <th className="text-right py-2">Total Students</th>
+                  <th className="text-right py-2">Paid</th>
+                  <th className="text-right py-2">Total Collected</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {paymentBySchool.map((r) => (
+                  <tr key={r.school}>
+                    <td className="py-2 font-medium">{r.school}</td>
+                    <td className="py-2 text-right tabular-nums">{r.total}</td>
+                    <td className="py-2 text-right tabular-nums text-muted-foreground">{r.paid}</td>
+                    <td className="py-2 text-right tabular-nums text-emerald-300">${r.collected.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ChartCard title="Students by School">

@@ -12,6 +12,8 @@ const ensureDefaults = (r: StudentRow): StudentRow => ({
   ...r,
   paymentStatus: r.paymentStatus || "Pending",
   notes: r.notes || "",
+  paid: r.paid ?? false,
+  amountPaid: r.amountPaid ?? 0,
 });
 
 

@@ -204,12 +204,13 @@ function StudentsPage() {
                   <th className="px-3 py-3 text-left">Student</th>
                   <th className="px-3 py-3 text-left">Grade</th>
                   <th className="px-3 py-3 text-left">School</th>
-                  <th className="px-3 py-3 text-left">Stop</th>
+                  <th className="px-3 py-3 text-left">Stop (1st / 2nd)</th>
                   <th className="px-3 py-3 text-left">Parent</th>
                   <th className="px-3 py-3 text-left">Phone</th>
                   <th className="px-3 py-3 text-left">Flags</th>
                   <th className="px-3 py-3 text-left">Status</th>
                   <th className="px-3 py-3 text-left">Payment</th>
+                  <th className="px-3 py-3 text-left">Paid</th>
                   <th className="px-3 py-3 text-left">Submitted</th>
                   <th className="px-3 py-3"></th>
                 </tr>
@@ -228,7 +229,24 @@ function StudentsPage() {
                     <td className="px-3 py-2.5 font-medium">{r.studentName}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.grade}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.schoolName}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground max-w-[220px] truncate">{r.stopAddress}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground max-w-[260px]">
+                      <div className="truncate"><span className="text-[10px] text-primary mr-1">1st</span>{r.stopAddress || "—"}</div>
+                      {r.stopAddress2 && (
+                        <div className="truncate flex items-center gap-1">
+                          <span className="text-[10px] text-muted-foreground mr-1">2nd</span>
+                          <span className="truncate">{r.stopAddress2}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateStudent(r.id, { stopAddress: r.stopAddress2!, stopAddress2: r.stopAddress });
+                              toast.success("Moved to 2nd choice");
+                            }}
+                            className="ml-1 text-[10px] text-primary hover:underline shrink-0"
+                            title="Reassign to 2nd choice"
+                          >Move →</button>
+                        </div>
+                      )}
+                    </td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.parentName}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.parentPhone}</td>
                     <td className="px-3 py-2.5">
@@ -263,6 +281,25 @@ function StudentsPage() {
                           {PAYMENTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                    </td>
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={!!r.paid}
+                          onCheckedChange={(v) => updateStudent(r.id, { paid: !!v, amountPaid: v ? (r.amountPaid || 0) : 0 })}
+                        />
+                        {r.paid && (
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={r.amountPaid ?? 0}
+                            onChange={(e) => updateStudent(r.id, { amountPaid: parseFloat(e.target.value) || 0 })}
+                            className="h-7 w-20 bg-background text-xs"
+                            placeholder="$"
+                          />
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2.5 text-muted-foreground text-xs">{new Date(r.submissionDate).toLocaleDateString()}</td>
                     <td className="px-3 py-2.5 flex gap-1" onClick={(e) => e.stopPropagation()}>
