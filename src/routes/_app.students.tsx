@@ -360,6 +360,33 @@ function StudentsPage() {
           onDownloadAll={() => downloadAllReceipts(receiptOpen, settings.receipt)}
         />
       )}
+
+      <Dialog open={!!notesRow} onOpenChange={(o) => !o && setNotesRow(null)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Notes — {notesRow?.studentName}</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={notesDraft}
+            onChange={(e) => setNotesDraft(e.target.value)}
+            placeholder="Add free-text notes for this student…"
+            className="min-h-[160px] bg-background"
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setNotesRow(null)}>Cancel</Button>
+            <Button
+              className="bg-primary text-primary-foreground"
+              onClick={() => {
+                if (notesRow) {
+                  updateStudent(notesRow.id, { notes: notesDraft });
+                  toast.success("Notes saved");
+                }
+                setNotesRow(null);
+              }}
+            >Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
