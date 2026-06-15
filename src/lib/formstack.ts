@@ -289,19 +289,7 @@ function expandSubmission(
   const countRaw = pickValue(data, map.studentCount);
   const parsedCount = parseInt(countRaw, 10);
 
-  // Hopkins (form 6500704) hardcoded student name field IDs as fallback
-  const HOPKINS_STUDENT_IDS = ["194977398", "194977407", "194977408"];
   const studentDefs = [...map.students];
-  if (cfg.formId === "6500704") {
-    for (let i = 0; i < HOPKINS_STUDENT_IDS.length; i++) {
-      const id = HOPKINS_STUDENT_IDS[i];
-      if (pickValue(data, id)) {
-        if (studentDefs[i]) studentDefs[i].name = id;
-        else studentDefs[i] = { name: id, grade: studentDefs[i]?.grade || "" };
-      }
-    }
-  }
-
   const cap = Math.max(1, studentDefs.length || 1);
   const count = parsedCount > 0 ? Math.min(parsedCount, cap) : cap;
 
