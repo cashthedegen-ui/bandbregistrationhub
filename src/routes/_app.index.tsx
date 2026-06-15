@@ -32,7 +32,7 @@ function Kpi({ label, value, icon: Icon, hint }: { label: string; value: string 
 
 function Dashboard() {
   const { students, dupGroups, activity, settings, syncAll, syncing } = useStore();
-  const formsSynced = Object.values(settings.formIds).filter(Boolean).length;
+  const formsSynced = settings.forms.filter((f) => f.formId).length;
   const newCount = students.filter((s) => s.status === "New").length;
   const alertCount = students.filter((s) => s.alertFlag).length;
 
