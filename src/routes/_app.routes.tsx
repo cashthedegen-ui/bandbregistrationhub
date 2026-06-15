@@ -87,7 +87,7 @@ function RoutesPage() {
                       </div>
                     </div>
                     <div className={`text-2xl font-semibold tabular-nums ${capacityClass(kids.length, cap)}`}>
-                      {kids.length}{cap ? `/${cap}` : ""}
+                      {formatNumber(kids.length)}{cap ? `/${formatNumber(cap)}` : ""}
                     </div>
                   </div>
 
