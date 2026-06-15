@@ -370,6 +370,7 @@ function expandSubmission(
     alertFlag: false,
     duplicateFlag: false,
     status: "New" as const,
+    paymentStatus: "Pending" as const,
     submissionDate: ts ? new Date(ts).toISOString() : new Date().toISOString(),
     checkNumber: "",
   }));
