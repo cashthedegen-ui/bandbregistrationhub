@@ -160,7 +160,7 @@ function Dashboard() {
               </Button>
               <Link to="/students" className="block">
                 <Button variant="secondary" className="w-full justify-start">
-                  <Copy className="h-4 w-4 mr-2" /> Review {dupGroups.length} duplicates
+                  <Copy className="h-4 w-4 mr-2" /> Review {formatNumber(dupGroups.length)} duplicates
                 </Button>
               </Link>
             </div>
