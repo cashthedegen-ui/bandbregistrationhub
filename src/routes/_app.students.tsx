@@ -88,6 +88,19 @@ function StudentsPage() {
     setReceiptOpen(selectedRows);
   };
 
+  const markAllReviewed = () => {
+    const newOnes = students.filter((s) => s.status === "New");
+    if (!newOnes.length) return toast.info("No students with status 'New'");
+    newOnes.forEach((r) => updateStudent(r.id, { status: "Reviewed" }));
+    toast.success(`Marked ${newOnes.length} as Reviewed`);
+  };
+
+  const exportAllClean = () => {
+    if (!students.length) return toast.warning("No students to export");
+    exportStudentsClean(students);
+    toast.success(`Exported ${students.length} students`);
+  };
+
   const activeDupGroup = dupGroupOpen ? dupGroups.find((g) => g.id === dupGroupOpen) : null;
 
   return (
@@ -95,7 +108,14 @@ function StudentsPage() {
       <PageHeader
         title="Students"
         subtitle={`${filtered.length} of ${students.length} students`}
-      />
+      >
+        <Button size="sm" variant="secondary" onClick={markAllReviewed}>
+          <CheckCheck className="h-4 w-4 mr-1.5" /> Mark All as Reviewed
+        </Button>
+        <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={exportAllClean}>
+          <Download className="h-4 w-4 mr-1.5" /> Export to Excel
+        </Button>
+      </PageHeader>
 
       {dupGroups.length > 0 && dupBanner && (
         <Card className="mb-4 border-primary/30 bg-primary/5 p-3 flex items-center gap-3">
