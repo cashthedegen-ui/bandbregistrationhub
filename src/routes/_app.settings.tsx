@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { fetchForms } from "@/lib/formstack";
 import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
+import type { FormEntry } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — B & B Transit" }] }),
@@ -68,19 +69,63 @@ function SettingsPage() {
 
         <Card className="bg-card border-border">
           <CardContent className="p-5 space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Form IDs</h2>
-            {Object.entries(local.formIds).map(([school, id]) => (
-              <div key={school} className="grid grid-cols-[1fr_180px] gap-2 items-center">
-                <Label className="text-sm text-foreground">{school}</Label>
-                <Input
-                  value={id}
-                  onChange={(e) => setLocal({ ...local, formIds: { ...local.formIds, [school]: e.target.value } })}
-                  placeholder="Form ID"
-                  className="bg-background"
-                />
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Forms</h2>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setLocal({
+                  ...local,
+                  forms: [...local.forms, { id: `f-${Date.now()}`, label: "", formId: "" }],
+                })}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add Form
+              </Button>
+            </div>
+
+            {local.forms.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-6 text-center">
+                No forms configured. Click "Add Form" to pull submissions from a Formstack form.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {local.forms.map((f, i) => (
+                  <div key={f.id} className="grid grid-cols-[1fr_160px_auto] gap-2 items-center">
+                    <Input
+                      value={f.label}
+                      placeholder="Label (e.g. Hopkins School Bus 26-27)"
+                      onChange={(e) => {
+                        const forms = [...local.forms];
+                        forms[i] = { ...f, label: e.target.value };
+                        setLocal({ ...local, forms });
+                      }}
+                      className="bg-background"
+                    />
+                    <Input
+                      value={f.formId}
+                      placeholder="Form ID"
+                      onChange={(e) => {
+                        const forms = [...local.forms];
+                        forms[i] = { ...f, formId: e.target.value };
+                        setLocal({ ...local, forms });
+                      }}
+                      className="bg-background"
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setLocal({ ...local, forms: local.forms.filter((x) => x.id !== f.id) })}
+                      aria-label="Remove form"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
               </div>
-            ))}
-            <p className="text-[11px] text-muted-foreground">Leave blank to auto-discover from form list.</p>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              All listed forms are pulled in parallel when you click Sync All Forms.
+            </p>
           </CardContent>
         </Card>
 
