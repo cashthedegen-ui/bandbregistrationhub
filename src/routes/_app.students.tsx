@@ -59,6 +59,9 @@ function StudentsPage() {
   const [dupBanner, setDupBanner] = useState(true);
   const [dupGroupOpen, setDupGroupOpen] = useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = useState<StudentRow[] | null>(null);
+  const [notesRow, setNotesRow] = useState<StudentRow | null>(null);
+  const [notesDraft, setNotesDraft] = useState("");
+
 
   const schools = useMemo(() => Array.from(new Set(students.map((s) => s.schoolName))).filter(Boolean), [students]);
   const grades = useMemo(() => Array.from(new Set(students.map((s) => s.grade))).filter(Boolean), [students]);
