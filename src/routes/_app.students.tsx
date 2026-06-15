@@ -209,6 +209,7 @@ function StudentsPage() {
                   <th className="px-3 py-3 text-left">Phone</th>
                   <th className="px-3 py-3 text-left">Flags</th>
                   <th className="px-3 py-3 text-left">Status</th>
+                  <th className="px-3 py-3 text-left">Payment</th>
                   <th className="px-3 py-3 text-left">Submitted</th>
                   <th className="px-3 py-3"></th>
                 </tr>
@@ -255,8 +256,19 @@ function StudentsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground text-xs">{new Date(r.submissionDate).toLocaleDateString()}</td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <Select value={r.paymentStatus || "Pending"} onValueChange={(v) => updateStudent(r.id, { paymentStatus: v as PaymentStatus })}>
+                        <SelectTrigger className={`h-7 w-28 text-xs border ${PAYMENT_CLASS[r.paymentStatus || "Pending"]}`}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {PAYMENTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-3 py-2.5 text-muted-foreground text-xs">{new Date(r.submissionDate).toLocaleDateString()}</td>
+                    <td className="px-3 py-2.5 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Button size="icon" variant="ghost" onClick={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }} title={r.notes ? "Notes (saved)" : "Add notes"}>
+                        <StickyNote className={`h-4 w-4 ${r.notes ? "text-primary" : ""}`} />
+                      </Button>
                       <Button size="icon" variant="ghost" onClick={() => downloadReceipt(r, settings.receipt)} title="PDF receipt">
                         <FileText className="h-4 w-4" />
                       </Button>
