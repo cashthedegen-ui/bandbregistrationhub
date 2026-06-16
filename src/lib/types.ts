@@ -27,6 +27,11 @@ export interface StudentRow {
   amountPaid?: number;
   paymentType?: PaymentType;
   financialAidNotes?: string;
+  // Financial Aid split: family portion + school portion
+  familyPaid?: number;
+  schoolOwes?: number;
+  schoolPaidReceived?: boolean;
+  schoolPaidAmount?: number;
 }
 
 export interface SyncEvent {
