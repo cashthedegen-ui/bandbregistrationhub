@@ -18,6 +18,10 @@ const ensureDefaults = (r: StudentRow): StudentRow => {
     paid: paymentType !== "Unpaid",
     amountPaid: r.amountPaid ?? 0,
     financialAidNotes: r.financialAidNotes || "",
+    familyPaid: r.familyPaid ?? 0,
+    schoolOwes: r.schoolOwes ?? 0,
+    schoolPaidReceived: r.schoolPaidReceived ?? false,
+    schoolPaidAmount: r.schoolPaidAmount ?? 0,
   };
 };
 

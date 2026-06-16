@@ -321,12 +321,28 @@ function StudentsPage() {
                               />
                             )}
                             {pt === "Financial Aid" && (
-                              <Input
-                                value={r.financialAidNotes ?? ""}
-                                onChange={(e) => updateStudent(r.id, { financialAidNotes: e.target.value })}
-                                className="h-7 w-32 bg-background text-xs"
-                                placeholder="Aid details"
-                              />
+                              <>
+                                <Input
+                                  type="number" min={0} step="0.01"
+                                  value={r.familyPaid ?? 0}
+                                  onChange={(e) => updateStudent(r.id, { familyPaid: parseFloat(e.target.value) || 0 })}
+                                  className="h-7 w-32 bg-background text-xs"
+                                  placeholder="Family Paid $"
+                                />
+                                <Input
+                                  type="number" min={0} step="0.01"
+                                  value={r.schoolOwes ?? 0}
+                                  onChange={(e) => updateStudent(r.id, { schoolOwes: parseFloat(e.target.value) || 0 })}
+                                  className="h-7 w-32 bg-background text-xs"
+                                  placeholder="School Owes $"
+                                />
+                                <Input
+                                  value={r.financialAidNotes ?? ""}
+                                  onChange={(e) => updateStudent(r.id, { financialAidNotes: e.target.value })}
+                                  className="h-7 w-32 bg-background text-xs"
+                                  placeholder="Aid details"
+                                />
+                              </>
                             )}
                           </div>
                         );
@@ -521,15 +537,53 @@ function StudentsPage() {
                 </div>
               )}
               {(editDraft.paymentType || (editDraft.paid ? "Self Pay" : "Unpaid")) === "Financial Aid" && (
-                <div className="sm:col-span-2">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Financial Aid Details</Label>
-                  <Input
-                    value={editDraft.financialAidNotes || ""}
-                    onChange={(e) => setEditDraft({ ...editDraft, financialAidNotes: e.target.value })}
-                    placeholder="e.g. Hopkins covering full tuition"
-                    className="mt-1 bg-background"
-                  />
-                </div>
+                <>
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Family Paid</Label>
+                    <Input
+                      type="number" min={0} step="0.01"
+                      value={editDraft.familyPaid ?? 0}
+                      onChange={(e) => setEditDraft({ ...editDraft, familyPaid: parseFloat(e.target.value) || 0 })}
+                      className="mt-1 bg-background"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">School Owes</Label>
+                    <Input
+                      type="number" min={0} step="0.01"
+                      value={editDraft.schoolOwes ?? 0}
+                      onChange={(e) => setEditDraft({ ...editDraft, schoolOwes: parseFloat(e.target.value) || 0 })}
+                      className="mt-1 bg-background"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 sm:col-span-2 pt-1">
+                    <Checkbox
+                      checked={!!editDraft.schoolPaidReceived}
+                      onCheckedChange={(v) => setEditDraft({ ...editDraft, schoolPaidReceived: !!v })}
+                    />
+                    <Label className="text-xs">School portion received</Label>
+                  </div>
+                  {editDraft.schoolPaidReceived && (
+                    <div>
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">School Paid Amount</Label>
+                      <Input
+                        type="number" min={0} step="0.01"
+                        value={editDraft.schoolPaidAmount ?? 0}
+                        onChange={(e) => setEditDraft({ ...editDraft, schoolPaidAmount: parseFloat(e.target.value) || 0 })}
+                        className="mt-1 bg-background"
+                      />
+                    </div>
+                  )}
+                  <div className="sm:col-span-2">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Financial Aid Details</Label>
+                    <Input
+                      value={editDraft.financialAidNotes || ""}
+                      onChange={(e) => setEditDraft({ ...editDraft, financialAidNotes: e.target.value })}
+                      placeholder="e.g. Hopkins covering full tuition"
+                      className="mt-1 bg-background"
+                    />
+                  </div>
+                </>
               )}
               <div>
                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Payment Status</Label>

@@ -49,10 +49,15 @@ function Analytics() {
   const reviewedPct = students.length ? Math.round((students.filter((s) => s.status !== "New").length / students.length) * 100) : 0;
 
   const paymentBySchool = useMemo(() => {
-    const m = new Map<string, { total: number; selfPay: number; selfPayCollected: number; aid: number; unpaid: number }>();
+    const m = new Map<string, {
+      total: number;
+      selfPay: number; selfPayCollected: number;
+      aid: number; aidFamilyCollected: number; aidSchoolOwed: number; aidSchoolReceived: number;
+      unpaid: number;
+    }>();
     for (const s of students) {
       const k = s.schoolName || "Unassigned";
-      const cur = m.get(k) || { total: 0, selfPay: 0, selfPayCollected: 0, aid: 0, unpaid: 0 };
+      const cur = m.get(k) || { total: 0, selfPay: 0, selfPayCollected: 0, aid: 0, aidFamilyCollected: 0, aidSchoolOwed: 0, aidSchoolReceived: 0, unpaid: 0 };
       cur.total += 1;
       const pt = s.paymentType || (s.paid ? "Self Pay" : "Unpaid");
       if (pt === "Self Pay") {
@@ -60,6 +65,9 @@ function Analytics() {
         cur.selfPayCollected += Number(s.amountPaid) || 0;
       } else if (pt === "Financial Aid") {
         cur.aid += 1;
+        cur.aidFamilyCollected += Number(s.familyPaid) || 0;
+        cur.aidSchoolOwed += Number(s.schoolOwes) || 0;
+        if (s.schoolPaidReceived) cur.aidSchoolReceived += Number(s.schoolPaidAmount) || Number(s.schoolOwes) || 0;
       } else {
         cur.unpaid += 1;
       }
@@ -67,7 +75,12 @@ function Analytics() {
     }
     return Array.from(m, ([school, v]) => ({ school, ...v })).sort((a, b) => b.total - a.total);
   }, [students]);
-  const grandTotal = paymentBySchool.reduce((a, b) => a + b.selfPayCollected, 0);
+  const grandSelfPay = paymentBySchool.reduce((a, b) => a + b.selfPayCollected, 0);
+  const grandFamily = paymentBySchool.reduce((a, b) => a + b.aidFamilyCollected, 0);
+  const grandSchoolOwed = paymentBySchool.reduce((a, b) => a + b.aidSchoolOwed, 0);
+  const grandSchoolReceived = paymentBySchool.reduce((a, b) => a + b.aidSchoolReceived, 0);
+  const grandCashIn = grandSelfPay + grandFamily + grandSchoolReceived;
+  const grandOutstanding = grandSchoolOwed - grandSchoolReceived;
   const totals = paymentBySchool.reduce(
     (a, b) => ({ selfPay: a.selfPay + b.selfPay, aid: a.aid + b.aid, unpaid: a.unpaid + b.unpaid }),
     { selfPay: 0, aid: 0, unpaid: 0 },
@@ -92,8 +105,13 @@ function Analytics() {
               <span>Self Pay: <span className="text-emerald-300 font-semibold">{formatNumber(totals.selfPay)}</span></span>
               <span>Financial Aid: <span className="text-sky-300 font-semibold">{formatNumber(totals.aid)}</span></span>
               <span>Unpaid: <span className="text-yellow-300 font-semibold">{formatNumber(totals.unpaid)}</span></span>
-              <span>Total collected: <span className="text-emerald-300 font-semibold">{formatCurrency(grandTotal)}</span></span>
             </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <MiniStat label="Cash In Hand" value={formatCurrency(grandCashIn)} tone="emerald" />
+            <MiniStat label="Family (Aid)" value={formatCurrency(grandFamily)} tone="sky" />
+            <MiniStat label="School Received" value={formatCurrency(grandSchoolReceived)} tone="emerald" />
+            <MiniStat label="School Outstanding" value={formatCurrency(grandOutstanding)} tone="yellow" />
           </div>
           {paymentBySchool.length === 0 ? (
             <div className="text-sm text-muted-foreground">No students yet.</div>
@@ -104,9 +122,12 @@ function Analytics() {
                   <th className="text-left py-2">School</th>
                   <th className="text-right py-2">Total</th>
                   <th className="text-right py-2">Self Pay</th>
-                  <th className="text-right py-2">Financial Aid</th>
+                  <th className="text-right py-2">Aid</th>
                   <th className="text-right py-2">Unpaid</th>
-                  <th className="text-right py-2">Collected</th>
+                  <th className="text-right py-2">Self Pay $</th>
+                  <th className="text-right py-2">Family $</th>
+                  <th className="text-right py-2">School Owed</th>
+                  <th className="text-right py-2">School Rec'd</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -118,6 +139,9 @@ function Analytics() {
                     <td className="py-2 text-right tabular-nums text-sky-300">{formatNumber(r.aid)}</td>
                     <td className="py-2 text-right tabular-nums text-yellow-300">{formatNumber(r.unpaid)}</td>
                     <td className="py-2 text-right tabular-nums text-emerald-300">{formatCurrency(r.selfPayCollected)}</td>
+                    <td className="py-2 text-right tabular-nums text-sky-300">{formatCurrency(r.aidFamilyCollected)}</td>
+                    <td className="py-2 text-right tabular-nums text-yellow-300">{formatCurrency(r.aidSchoolOwed)}</td>
+                    <td className="py-2 text-right tabular-nums text-emerald-300">{formatCurrency(r.aidSchoolReceived)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -213,6 +237,15 @@ function Stat({ label, value }: { label: string; value: any }) {
         <div className="mt-2 text-2xl font-semibold">{value}</div>
       </CardContent>
     </Card>
+  );
+}
+function MiniStat({ label, value, tone }: { label: string; value: string; tone: "emerald" | "sky" | "yellow" }) {
+  const c = tone === "emerald" ? "text-emerald-300" : tone === "sky" ? "text-sky-300" : "text-yellow-300";
+  return (
+    <div className="rounded-md border border-border bg-background/50 p-3">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`mt-1 text-lg font-semibold tabular-nums ${c}`}>{value}</div>
+    </div>
   );
 }
 function ChartCard({ title, children }: { title: string; children: any }) {
