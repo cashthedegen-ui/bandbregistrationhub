@@ -104,9 +104,6 @@ function Analytics() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <MiniStat label="Cash In Hand" value={formatCurrency(grandCashIn)} tone="emerald" />
-            <MiniStat label="Family (Aid)" value={formatCurrency(grandFamily)} tone="sky" />
-            <MiniStat label="School Received" value={formatCurrency(grandSchoolReceived)} tone="emerald" />
-            <MiniStat label="School Outstanding" value={formatCurrency(grandOutstanding)} tone="yellow" />
           </div>
           {paymentBySchool.length === 0 ? (
             <div className="text-sm text-muted-foreground">No students yet.</div>
