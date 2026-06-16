@@ -52,12 +52,12 @@ function Analytics() {
     const m = new Map<string, {
       total: number;
       selfPay: number; selfPayCollected: number;
-      aid: number; aidFamilyCollected: number;
+      aid: number; aidSchoolOwed: number;
       unpaid: number;
     }>();
     for (const s of students) {
       const k = s.schoolName || "Unassigned";
-      const cur = m.get(k) || { total: 0, selfPay: 0, selfPayCollected: 0, aid: 0, aidFamilyCollected: 0, unpaid: 0 };
+      const cur = m.get(k) || { total: 0, selfPay: 0, selfPayCollected: 0, aid: 0, aidSchoolOwed: 0, unpaid: 0 };
       cur.total += 1;
       const pt = s.paymentType || (s.paid ? "Self Pay" : "Unpaid");
       if (pt === "Self Pay") {
@@ -65,7 +65,7 @@ function Analytics() {
         cur.selfPayCollected += Number(s.amountPaid) || 0;
       } else if (pt === "Financial Aid") {
         cur.aid += 1;
-        cur.aidFamilyCollected += Number(s.familyPaid) || 0;
+        cur.aidSchoolOwed += Number(s.schoolOwes) || 0;
       } else {
         cur.unpaid += 1;
       }
@@ -74,8 +74,8 @@ function Analytics() {
     return Array.from(m, ([school, v]) => ({ school, ...v })).sort((a, b) => b.total - a.total);
   }, [students]);
   const grandSelfPay = paymentBySchool.reduce((a, b) => a + b.selfPayCollected, 0);
-  const grandFamily = paymentBySchool.reduce((a, b) => a + b.aidFamilyCollected, 0);
-  const grandCashIn = grandSelfPay + grandFamily;
+  const grandCashIn = grandSelfPay;
+  const grandSchoolOwed = paymentBySchool.reduce((a, b) => a + b.aidSchoolOwed, 0);
   const totals = paymentBySchool.reduce(
     (a, b) => ({ selfPay: a.selfPay + b.selfPay, aid: a.aid + b.aid, unpaid: a.unpaid + b.unpaid }),
     { selfPay: 0, aid: 0, unpaid: 0 },
@@ -117,7 +117,7 @@ function Analytics() {
                   <th className="text-right py-2">Aid</th>
                   <th className="text-right py-2">Unpaid</th>
                   <th className="text-right py-2">Self Pay $</th>
-                  <th className="text-right py-2">Family $</th>
+                  <th className="text-right py-2">Financial Aid $</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -129,7 +129,7 @@ function Analytics() {
                     <td className="py-2 text-right tabular-nums text-sky-300">{formatNumber(r.aid)}</td>
                     <td className="py-2 text-right tabular-nums text-yellow-300">{formatNumber(r.unpaid)}</td>
                     <td className="py-2 text-right tabular-nums text-emerald-300">{formatCurrency(r.selfPayCollected)}</td>
-                    <td className="py-2 text-right tabular-nums text-sky-300">{formatCurrency(r.aidFamilyCollected)}</td>
+                    <td className="py-2 text-right tabular-nums text-sky-300">{formatCurrency(r.aidSchoolOwed)}</td>
                   </tr>
                 ))}
               </tbody>
