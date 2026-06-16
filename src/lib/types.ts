@@ -1,4 +1,4 @@
-export type Status = "New" | "Reviewed" | "Confirmed" | "Exported" | "Waitlisted";
+export type Status = "New" | "Reviewed" | "Confirmed" | "Waitlisted";
 export type PaymentStatus = "Pending" | "Received" | "Overdue";
 export type PaymentType = "Self Pay" | "Financial Aid" | "Unpaid";
 
