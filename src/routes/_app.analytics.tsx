@@ -146,7 +146,7 @@ function Analytics() {
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
               <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
               <YAxis stroke="#94a3b8" fontSize={11} />
-              <Tooltip contentStyle={tooltipStyle} />
+              <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
               <Bar dataKey="value" fill="#f0c14b" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -159,7 +159,7 @@ function Analytics() {
                 {byStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
               <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} />
-              <Tooltip contentStyle={tooltipStyle} />
+              <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -170,7 +170,7 @@ function Analytics() {
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
               <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
               <YAxis stroke="#94a3b8" fontSize={11} />
-              <Tooltip contentStyle={tooltipStyle} />
+              <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
               <Bar dataKey="value" fill="#60a5fa" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -182,7 +182,7 @@ function Analytics() {
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
               <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} />
               <YAxis stroke="#94a3b8" fontSize={11} />
-              <Tooltip contentStyle={tooltipStyle} />
+              <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
               <Line type="monotone" dataKey="count" stroke="#f0c14b" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -216,7 +216,9 @@ function Analytics() {
   );
 }
 
-const tooltipStyle = { background: "#1a1d26", border: "1px solid #ffffff20", borderRadius: 8, fontSize: 12, color: "#fff" };
+const tooltipStyle = { background: "rgba(0,0,0,0.75)", border: "1px solid #ffffff20", borderRadius: 8, fontSize: 12, color: "#fff" };
+const tooltipItemStyle = { color: "#fff" };
+const tooltipLabelStyle = { color: "#fff" };
 
 function Stat({ label, value }: { label: string; value: any }) {
   return (
