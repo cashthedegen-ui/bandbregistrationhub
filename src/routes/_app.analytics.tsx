@@ -52,12 +52,12 @@ function Analytics() {
     const m = new Map<string, {
       total: number;
       selfPay: number; selfPayCollected: number;
-      aid: number; aidFamilyCollected: number; aidSchoolOwed: number; aidSchoolReceived: number;
+      aid: number; aidFamilyCollected: number;
       unpaid: number;
     }>();
     for (const s of students) {
       const k = s.schoolName || "Unassigned";
-      const cur = m.get(k) || { total: 0, selfPay: 0, selfPayCollected: 0, aid: 0, aidFamilyCollected: 0, aidSchoolOwed: 0, aidSchoolReceived: 0, unpaid: 0 };
+      const cur = m.get(k) || { total: 0, selfPay: 0, selfPayCollected: 0, aid: 0, aidFamilyCollected: 0, unpaid: 0 };
       cur.total += 1;
       const pt = s.paymentType || (s.paid ? "Self Pay" : "Unpaid");
       if (pt === "Self Pay") {
@@ -66,8 +66,6 @@ function Analytics() {
       } else if (pt === "Financial Aid") {
         cur.aid += 1;
         cur.aidFamilyCollected += Number(s.familyPaid) || 0;
-        cur.aidSchoolOwed += Number(s.schoolOwes) || 0;
-        if (s.schoolPaidReceived) cur.aidSchoolReceived += Number(s.schoolPaidAmount) || Number(s.schoolOwes) || 0;
       } else {
         cur.unpaid += 1;
       }
@@ -77,10 +75,7 @@ function Analytics() {
   }, [students]);
   const grandSelfPay = paymentBySchool.reduce((a, b) => a + b.selfPayCollected, 0);
   const grandFamily = paymentBySchool.reduce((a, b) => a + b.aidFamilyCollected, 0);
-  const grandSchoolOwed = paymentBySchool.reduce((a, b) => a + b.aidSchoolOwed, 0);
-  const grandSchoolReceived = paymentBySchool.reduce((a, b) => a + b.aidSchoolReceived, 0);
-  const grandCashIn = grandSelfPay + grandFamily + grandSchoolReceived;
-  const grandOutstanding = grandSchoolOwed - grandSchoolReceived;
+  const grandCashIn = grandSelfPay + grandFamily;
   const totals = paymentBySchool.reduce(
     (a, b) => ({ selfPay: a.selfPay + b.selfPay, aid: a.aid + b.aid, unpaid: a.unpaid + b.unpaid }),
     { selfPay: 0, aid: 0, unpaid: 0 },
