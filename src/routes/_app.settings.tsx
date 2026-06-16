@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { fetchForms } from "@/lib/formstack";
 import { toast } from "sonner";
-import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Plus, Trash2, LogOut } from "lucide-react";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — B & B Transit" }] }),
@@ -17,7 +18,8 @@ export const Route = createFileRoute("/_app/settings")({
 
 function SettingsPage() {
   const { settings, updateSettings, loadDemo } = useStore();
-  const [local, setLocal] = useState(settings);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [show, setShow] = useState(false);
   const [testing, setTesting] = useState(false);
 
