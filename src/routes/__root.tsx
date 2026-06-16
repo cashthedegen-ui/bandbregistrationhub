@@ -99,13 +99,13 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function AppBoot() {
-  const { ready, syncing } = useStore();
+  const { ready } = useStore();
   const [minDone, setMinDone] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setMinDone(true), 1500);
+    const t = setTimeout(() => setMinDone(true), 1400);
     return () => clearTimeout(t);
   }, []);
-  const visible = !ready || !minDone || syncing;
+  const visible = !ready || !minDone;
   return (
     <>
       <Outlet />
