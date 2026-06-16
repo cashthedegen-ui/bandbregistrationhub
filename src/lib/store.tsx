@@ -10,8 +10,11 @@ interface Activity { id: string; ts: string; text: string; }
 
 const ensureDefaults = (r: StudentRow): StudentRow => {
   const paymentType = r.paymentType || (r.paid ? "Self Pay" : "Unpaid");
+  // Migrate legacy "Exported" status to "Reviewed"
+  const status = ((r.status as string) === "Exported" ? "Reviewed" : r.status) as StudentRow["status"];
   return {
     ...r,
+    status,
     paymentStatus: r.paymentStatus || "Pending",
     notes: r.notes || "",
     paymentType,
