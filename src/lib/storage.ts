@@ -68,6 +68,8 @@ export const storage = {
   setStopCapacities: (m: Record<string, number>) => write(KEYS.stopCaps, m),
   getSyncHistory: (): SyncEvent[] => read<SyncEvent[]>(KEYS.syncHistory, []),
   setSyncHistory: (h: SyncEvent[]) => write(KEYS.syncHistory, h),
+  getDeletedSubmissions: (): string[] => read<string[]>(KEYS.deletedSubs, []),
+  setDeletedSubmissions: (ids: string[]) => write(KEYS.deletedSubs, ids),
 };
 
 export const stopKey = (schoolName: string, stopAddress: string) =>
