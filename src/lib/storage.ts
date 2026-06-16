@@ -8,6 +8,7 @@ const KEYS = {
   lastSync: "bbt:lastSync",
   stopCaps: "bbt:stopCapacities",
   syncHistory: "bbt:syncHistory",
+  deletedSubs: "bbt:deletedSubmissions",
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
