@@ -532,15 +532,42 @@ function StudentsPage() {
                 </Select>
               </div>
               {(editDraft.paymentType || (editDraft.paid ? "Self Pay" : "Unpaid")) === "Self Pay" && (
-                <div>
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Amount Paid</Label>
-                  <Input
-                    type="number" min={0} step="0.01"
-                    value={editDraft.amountPaid ?? 0}
-                    onChange={(e) => setEditDraft({ ...editDraft, amountPaid: parseFloat(e.target.value) || 0 })}
-                    className="mt-1 bg-background"
-                  />
-                </div>
+                <>
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Round Trip $</Label>
+                    <Input
+                      type="number" min={0} step="0.01"
+                      value={editDraft.rtAmount ?? 0}
+                      onChange={(e) => {
+                        const rt = parseFloat(e.target.value) || 0;
+                        const ow = editDraft.owAmount ?? 0;
+                        setEditDraft({ ...editDraft, rtAmount: rt, amountPaid: rt + ow });
+                      }}
+                      className="mt-1 bg-background"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">One Way $</Label>
+                    <Input
+                      type="number" min={0} step="0.01"
+                      value={editDraft.owAmount ?? 0}
+                      onChange={(e) => {
+                        const ow = parseFloat(e.target.value) || 0;
+                        const rt = editDraft.rtAmount ?? 0;
+                        setEditDraft({ ...editDraft, owAmount: ow, amountPaid: rt + ow });
+                      }}
+                      className="mt-1 bg-background"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Total Paid (RT + OW)</Label>
+                    <Input
+                      type="number" min={0} step="0.01" readOnly
+                      value={(editDraft.rtAmount ?? 0) + (editDraft.owAmount ?? 0)}
+                      className="mt-1 bg-muted"
+                    />
+                  </div>
+                </>
               )}
               {(editDraft.paymentType || (editDraft.paid ? "Self Pay" : "Unpaid")) === "Financial Aid" && (
                 <>

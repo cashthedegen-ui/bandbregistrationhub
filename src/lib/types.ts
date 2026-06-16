@@ -25,6 +25,8 @@ export interface StudentRow {
   checkNumber?: string;
   paid?: boolean;
   amountPaid?: number;
+  rtAmount?: number;
+  owAmount?: number;
   paymentType?: PaymentType;
   financialAidNotes?: string;
   // Financial Aid split: family portion + school portion
