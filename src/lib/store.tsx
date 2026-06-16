@@ -122,8 +122,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const deleteStudent = useCallback((id: string) => {
     setStudentsState((prev) => {
+      const target = prev.find((r) => r.id === id);
       const next = prev.filter((r) => r.id !== id);
       storage.setStudents(next);
+      if (target?.submissionId) {
+        const deleted = storage.getDeletedSubmissions();
+        if (!deleted.includes(target.submissionId)) {
+          storage.setDeletedSubmissions([...deleted, target.submissionId]);
+        }
+      }
       return next;
     });
   }, []);
