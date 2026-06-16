@@ -74,9 +74,7 @@ function Analytics() {
     }
     return Array.from(m, ([school, v]) => ({ school, ...v })).sort((a, b) => b.total - a.total);
   }, [students]);
-  const grandSelfPay = paymentBySchool.reduce((a, b) => a + b.selfPayCollected, 0);
-  const grandAidFamily = paymentBySchool.reduce((a, b) => a + b.aidFamilyPaid, 0);
-  const grandCashIn = grandSelfPay + grandAidFamily;
+  const grandCashIn = paymentBySchool.reduce((a, b) => a + b.selfPayCollected, 0);
   const grandSchoolOwed = paymentBySchool.reduce((a, b) => a + b.aidSchoolOwed, 0);
   const totals = paymentBySchool.reduce(
     (a, b) => ({ selfPay: a.selfPay + b.selfPay, aid: a.aid + b.aid, unpaid: a.unpaid + b.unpaid }),
