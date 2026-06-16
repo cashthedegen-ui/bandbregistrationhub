@@ -322,20 +322,26 @@ function StudentsPage() {
                             )}
                             {pt === "Financial Aid" && (
                               <>
-                                <Input
-                                  type="number" min={0} step="0.01"
-                                  value={r.familyPaid ?? 0}
-                                  onChange={(e) => updateStudent(r.id, { familyPaid: parseFloat(e.target.value) || 0 })}
-                                  className="h-7 w-32 bg-background text-xs"
-                                  placeholder="Family Paid $"
-                                />
-                                <Input
-                                  type="number" min={0} step="0.01"
-                                  value={r.schoolOwes ?? 0}
-                                  onChange={(e) => updateStudent(r.id, { schoolOwes: parseFloat(e.target.value) || 0 })}
-                                  className="h-7 w-32 bg-background text-xs"
-                                  placeholder="School Owes $"
-                                />
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-[10px] text-muted-foreground leading-none">Family Paid</span>
+                                  <Input
+                                    type="number" min={0} step="0.01"
+                                    value={r.familyPaid ?? 0}
+                                    onChange={(e) => updateStudent(r.id, { familyPaid: parseFloat(e.target.value) || 0 })}
+                                    className="h-7 w-32 bg-background text-xs"
+                                    placeholder="0"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-[10px] text-muted-foreground leading-none">School Owes</span>
+                                  <Input
+                                    type="number" min={0} step="0.01"
+                                    value={r.schoolOwes ?? 0}
+                                    onChange={(e) => updateStudent(r.id, { schoolOwes: parseFloat(e.target.value) || 0 })}
+                                    className="h-7 w-32 bg-background text-xs"
+                                    placeholder="0"
+                                  />
+                                </div>
                                 <Input
                                   value={r.financialAidNotes ?? ""}
                                   onChange={(e) => updateStudent(r.id, { financialAidNotes: e.target.value })}
