@@ -17,6 +17,8 @@ const ensureDefaults = (r: StudentRow): StudentRow => {
     paymentType,
     paid: paymentType !== "Unpaid",
     amountPaid: r.amountPaid ?? 0,
+    rtAmount: r.rtAmount ?? 0,
+    owAmount: r.owAmount ?? 0,
     financialAidNotes: r.financialAidNotes || "",
     familyPaid: r.familyPaid ?? 0,
     schoolOwes: r.schoolOwes ?? 0,
