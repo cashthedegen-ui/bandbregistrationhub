@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { fetchForms } from "@/lib/formstack";
 import { toast } from "sonner";
-import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Plus, Trash2, LogOut } from "lucide-react";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — B & B Transit" }] }),
@@ -17,6 +18,8 @@ export const Route = createFileRoute("/_app/settings")({
 
 function SettingsPage() {
   const { settings, updateSettings, loadDemo } = useStore();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [local, setLocal] = useState(settings);
   const [show, setShow] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -139,6 +142,26 @@ function SettingsPage() {
               <Field label="School year" v={local.receipt.schoolYear} on={(v) => setLocal({ ...local, receipt: { ...local.receipt, schoolYear: v } })} />
               <Field label="Footer" v={local.receipt.footer} on={(v) => setLocal({ ...local, receipt: { ...local.receipt, footer: v } })} />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border lg:col-span-2">
+          <CardContent className="p-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Account</h2>
+              <p className="text-sm text-foreground mt-1">{user?.email}</p>
+              <p className="text-xs text-muted-foreground">Signed in</p>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                await signOut();
+                toast.success("Signed out");
+                navigate({ to: "/auth", replace: true });
+              }}
+            >
+              <LogOut className="h-4 w-4 mr-2" /> Log out
+            </Button>
           </CardContent>
         </Card>
       </div>
