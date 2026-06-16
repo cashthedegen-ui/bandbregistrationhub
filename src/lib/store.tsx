@@ -122,8 +122,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const deleteStudent = useCallback((id: string) => {
     setStudentsState((prev) => {
+      const target = prev.find((r) => r.id === id);
       const next = prev.filter((r) => r.id !== id);
       storage.setStudents(next);
+      if (target?.submissionId) {
+        const deleted = storage.getDeletedSubmissions();
+        if (!deleted.includes(target.submissionId)) {
+          storage.setDeletedSubmissions([...deleted, target.submissionId]);
+        }
+      }
       return next;
     });
   }, []);
@@ -157,53 +164,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (rows.length === 0) {
         toast.warning("No submissions returned. Check your token / form IDs.");
       } else {
+        const deletedSubs = new Set(storage.getDeletedSubmissions());
+        const filteredRows = rows.filter((r) => !r.submissionId || !deletedSubs.has(r.submissionId));
+        const skippedDeleted = rows.length - filteredRows.length;
         const dedupeKey = (r: StudentRow) =>
           `${(r.studentName || "").toLowerCase().trim()}|${(r.parentEmail || "").toLowerCase().trim()}`;
         const existing = isDemo ? [] : students;
-        const map = new Map<string, StudentRow>();
-        for (const r of existing) map.set(dedupeKey(r), r);
+        const existingKeys = new Set(existing.map(dedupeKey));
+        const existingSubIds = new Set(existing.map((r) => r.submissionId).filter(Boolean) as string[]);
         let added = 0;
-        let updated = 0;
-        for (const incoming of rows) {
+        let skippedExisting = 0;
+        const toAppend: StudentRow[] = [];
+        for (const incoming of filteredRows) {
           const key = dedupeKey(incoming);
-          const prev = map.get(key);
-          if (prev) {
-            // Preserve all manually-entered fields; only update Formstack-sourced fields.
-            map.set(key, {
-              ...prev,
-              submissionId: incoming.submissionId,
-              formId: incoming.formId,
-              schoolName: incoming.schoolName,
-              studentName: incoming.studentName,
-              grade: incoming.grade,
-              stopAddress: incoming.stopAddress,
-              stopAddress2: incoming.stopAddress2,
-              parentName: incoming.parentName,
-              parentPhone: incoming.parentPhone,
-              parentEmail: incoming.parentEmail,
-              parentAddress: incoming.parentAddress,
-              submissionDate: incoming.submissionDate,
-            });
-            updated++;
-          } else {
-            map.set(key, incoming);
-            added++;
+          if (existingKeys.has(key) || (incoming.submissionId && existingSubIds.has(incoming.submissionId))) {
+            skippedExisting++;
+            continue;
           }
+          existingKeys.add(key);
+          if (incoming.submissionId) existingSubIds.add(incoming.submissionId);
+          toAppend.push(incoming);
+          added++;
         }
-        const merged = Array.from(map.values());
+        const merged = [...existing, ...toAppend];
         persistStudents(merged);
         setIsDemo(false);
         const now = new Date().toISOString();
         setLastSync(now);
         storage.setLastSync(now);
-        const evt: SyncEvent = { id: `sync-${Date.now()}`, ts: now, total: rows.length, added, updated };
+        const evt: SyncEvent = { id: `sync-${Date.now()}`, ts: now, total: rows.length, added, updated: skippedExisting };
         setSyncHistory((prev) => {
           const next = [evt, ...prev].slice(0, 20);
           storage.setSyncHistory(next);
           return next;
         });
-        pushActivity(`Synced ${rows.length} submissions: ${added} new, ${updated} updated`);
-        toast.success(`${added} new, ${updated} updated`);
+        pushActivity(`Synced ${rows.length} submissions: ${added} new, ${skippedExisting} already existed${skippedDeleted ? `, ${skippedDeleted} previously deleted` : ""}`);
+        toast.success(`${added} new added${skippedDeleted ? ` · ${skippedDeleted} skipped (deleted)` : ""}`);
       }
     } catch (e: any) {
       toast.error(`Sync failed: ${e?.message || e}`);
