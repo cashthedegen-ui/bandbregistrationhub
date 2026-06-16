@@ -144,6 +144,26 @@ function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="bg-card border-border lg:col-span-2">
+          <CardContent className="p-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Account</h2>
+              <p className="text-sm text-foreground mt-1">{user?.email}</p>
+              <p className="text-xs text-muted-foreground">Signed in</p>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                await signOut();
+                toast.success("Signed out");
+                navigate({ to: "/auth", replace: true });
+              }}
+            >
+              <LogOut className="h-4 w-4 mr-2" /> Log out
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </>
   );
