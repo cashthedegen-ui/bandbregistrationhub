@@ -11,8 +11,10 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { StoreProvider } from "../lib/store";
+import { StoreProvider, useStore } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
+import { LoadingScreen } from "../components/loading-screen";
+import { useState } from "react";
 
 function NotFoundComponent() {
   return (
@@ -96,12 +98,28 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function AppBoot() {
+  const { ready, syncing } = useStore();
+  const [minDone, setMinDone] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMinDone(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+  const visible = !ready || !minDone || syncing;
+  return (
+    <>
+      <Outlet />
+      <LoadingScreen visible={visible} />
+    </>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
       <StoreProvider>
-        <Outlet />
+        <AppBoot />
         <Toaster theme="dark" richColors position="top-right" />
       </StoreProvider>
     </QueryClientProvider>
