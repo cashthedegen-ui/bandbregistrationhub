@@ -20,6 +20,7 @@ function SettingsPage() {
   const { settings, updateSettings, loadDemo } = useStore();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [local, setLocal] = useState(settings);
   const [show, setShow] = useState(false);
   const [testing, setTesting] = useState(false);
 
