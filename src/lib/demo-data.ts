@@ -53,7 +53,7 @@ export function buildDemoStudents(): StudentRow[] {
         notes: alert ? "Allergy: peanuts. EpiPen required." : "",
         alertFlag: alert,
         duplicateFlag: false,
-        status: (["New", "Reviewed", "Confirmed", "Exported"] as const)[n % 4],
+        status: (["New", "Reviewed", "Confirmed", "Waitlisted"] as const)[n % 4],
         paymentStatus: (["Pending", "Received", "Pending", "Overdue"] as const)[n % 4],
         submissionDate: new Date(Date.now() - n * 86400000 * 0.4).toISOString(),
       });

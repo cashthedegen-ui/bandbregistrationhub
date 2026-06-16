@@ -34,7 +34,7 @@ export const Route = createFileRoute("/_app/students")({
   component: StudentsPage,
 });
 
-const STATUSES: Status[] = ["New", "Reviewed", "Confirmed", "Exported", "Waitlisted"];
+const STATUSES: Status[] = ["New", "Reviewed", "Confirmed", "Waitlisted"];
 const PAYMENTS: PaymentStatus[] = ["Pending", "Received", "Overdue"];
 const PAYMENT_TYPES: PaymentType[] = ["Self Pay", "Financial Aid", "Unpaid"];
 
@@ -55,7 +55,6 @@ function StatusBadge({ status }: { status: Status }) {
     New: "bg-sky-500/15 text-sky-300 border-sky-500/30",
     Reviewed: "bg-primary/15 text-primary border-primary/30",
     Confirmed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-    Exported: "bg-muted text-muted-foreground border-border",
     Waitlisted: "bg-amber-500/15 text-amber-300 border-amber-500/30",
   };
   return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${map[status]}`}>{status}</span>;
@@ -110,7 +109,7 @@ function StudentsPage() {
   const bulkExport = () => {
     if (!selectedRows.length) return toast.warning("No rows selected");
     exportRows(selectedRows, "BB_Transit_Selected.xlsx");
-    selectedRows.forEach((r) => updateStudent(r.id, { status: "Exported" }));
+    selectedRows.forEach((r) => updateStudent(r.id, { status: "Reviewed" }));
   };
   const bulkReceipts = () => {
     if (!selectedRows.length) return toast.warning("No rows selected");
