@@ -239,6 +239,15 @@ function Stat({ label, value }: { label: string; value: any }) {
     </Card>
   );
 }
+function MiniStat({ label, value, tone }: { label: string; value: string; tone: "emerald" | "sky" | "yellow" }) {
+  const c = tone === "emerald" ? "text-emerald-300" : tone === "sky" ? "text-sky-300" : "text-yellow-300";
+  return (
+    <div className="rounded-md border border-border bg-background/50 p-3">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`mt-1 text-lg font-semibold tabular-nums ${c}`}>{value}</div>
+    </div>
+  );
+}
 function ChartCard({ title, children }: { title: string; children: any }) {
   return (
     <Card className="bg-card border-border">
