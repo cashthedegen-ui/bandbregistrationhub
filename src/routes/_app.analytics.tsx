@@ -216,7 +216,9 @@ function Analytics() {
   );
 }
 
-const tooltipStyle = { background: "#1a1d26", border: "1px solid #ffffff20", borderRadius: 8, fontSize: 12, color: "#fff" };
+const tooltipStyle = { background: "rgba(0,0,0,0.75)", border: "1px solid #ffffff20", borderRadius: 8, fontSize: 12, color: "#fff" };
+const tooltipItemStyle = { color: "#fff" };
+const tooltipLabelStyle = { color: "#fff" };
 
 function Stat({ label, value }: { label: string; value: any }) {
   return (
