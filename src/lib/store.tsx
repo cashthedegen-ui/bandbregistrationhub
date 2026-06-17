@@ -298,7 +298,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } finally {
       setSyncing(false);
     }
-  }, [settings, students, isDemo, applyStudents, pushActivity]);
+  }, [settings, students, isDemo, deletedSubs, applyStudents, pushActivity]);
 
   const archiveSeason = useCallback((label: string) => {
     const a: ArchivedSeason = { id: `arc-${Date.now()}`, label, createdAt: new Date().toISOString(), students };
