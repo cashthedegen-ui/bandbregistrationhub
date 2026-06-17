@@ -1,15 +1,10 @@
 import type { StudentRow } from "./types";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
-const PROXY = `${SUPABASE_URL}/functions/v1/formstack-proxy`;
+const PROXY = "/api/formstack";
 
 async function proxy(url: string, _token?: string) {
   const res = await fetch(`${PROXY}?url=${encodeURIComponent(url)}`, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-    },
+    headers: { Accept: "application/json" },
   });
   if (!res.ok) throw new Error(`Formstack ${res.status}`);
   return res.json();
