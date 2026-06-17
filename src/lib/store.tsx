@@ -112,11 +112,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         const base = remoteSettings ?? {};
         const merged: AppSettings = {
-          ...DEFAULT_SETTINGS_LOCAL(),
+          ...DEFAULT_SETTINGS,
           ...base,
           apiToken: "",
           forms: mergeFormsWithDefaults(base.forms && base.forms.length ? base.forms : undefined),
-          receipt: { ...DEFAULT_SETTINGS_LOCAL().receipt, ...(base.receipt || {}) },
+          receipt: { ...DEFAULT_SETTINGS.receipt, ...(base.receipt || {}) },
         };
         setSettings(merged);
       } catch (e) {
