@@ -276,20 +276,30 @@ export async function fetchAllSubmissions(
     }
 
     onProgress?.(0, 0, `Listing submissions for ${cfg.schoolLabel}…`);
+    const PER_PAGE = 100;
     let page = 1;
-    while (true) {
+    let safety = 0;
+    while (safety++ < 500) {
       const list = await proxy(
-        `https://www.formstack.com/api/v2/form/${cfg.formId}/submission.json?per_page=25&page=${page}`,
+        `https://www.formstack.com/api/v2/form/${cfg.formId}/submission.json?per_page=${PER_PAGE}&page=${page}`,
         token,
       );
       const subs: any[] = list?.submissions || [];
       for (const s of subs) {
         idRefs.push({ id: String(s.id), timestamp: s.timestamp, cfg });
       }
-      const pages = Number(list?.pages || 1);
-      if (page >= pages || subs.length === 0) break;
+      const pages = Number(list?.pages || 0);
+      const total = Number(list?.total || 0);
+      // Stop only when we're sure there's no more data:
+      // - empty page, OR
+      // - we've collected `total` count (when known), OR
+      // - server reports a page count and we've reached it AND last page wasn't full
+      if (subs.length === 0) break;
+      if (total > 0 && page * PER_PAGE >= total) break;
+      if (pages > 0 && page >= pages && subs.length < PER_PAGE) break;
       page++;
     }
+    onProgress?.(0, 0, `Found ${idRefs.length} submissions so far…`);
   }
 
   const total = idRefs.length;
