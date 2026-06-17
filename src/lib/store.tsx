@@ -114,16 +114,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setLastSync(lastSyncSrc);
       if (lastSyncSrc) storage.setLastSync(lastSyncSrc);
 
-      if (remoteSettings) {
+      {
+        const base = remoteSettings ?? {};
         const merged: AppSettings = {
           ...localSettings,
-          ...remoteSettings,
+          ...base,
           apiToken: "",
-          forms: remoteSettings.forms && remoteSettings.forms.length ? remoteSettings.forms : localSettings.forms,
-          receipt: { ...localSettings.receipt, ...(remoteSettings.receipt || {}) },
+          forms: mergeFormsWithDefaults(
+            (base.forms && base.forms.length ? base.forms : localSettings.forms)
+          ),
+          receipt: { ...localSettings.receipt, ...(base.receipt || {}) },
         };
         setSettings(merged);
         storage.setSettings(merged);
+        // Persist the backfilled forms list to shared state so every user
+        // (including production) immediately sees all 9 forms.
+        const storedForms = remoteSettings?.forms ?? [];
+        if (storedForms.length !== merged.forms.length) {
+          void saveShared("settings", merged);
+        }
       }
 
       setReady(true);
