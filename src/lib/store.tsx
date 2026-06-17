@@ -154,35 +154,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     const unsubShared = subscribeShared((key, value) => {
       if (key === "archives") {
-        const a = (value as ArchivedSeason[] | undefined) ?? [];
-        setArchives(a);
-        storage.setArchives(a);
+        setArchives((value as ArchivedSeason[] | undefined) ?? []);
       } else if (key === "stopCapacities") {
-        const c = (value as Record<string, number> | undefined) ?? {};
-        setStopCapacities(c);
-        storage.setStopCapacities(c);
+        setStopCapacities((value as Record<string, number> | undefined) ?? {});
       } else if (key === "syncHistory") {
-        const h = (value as SyncEvent[] | undefined) ?? [];
-        setSyncHistory(h);
-        storage.setSyncHistory(h);
+        setSyncHistory((value as SyncEvent[] | undefined) ?? []);
       } else if (key === "lastSync") {
-        const ls = (value as string | null | undefined) ?? null;
-        setLastSync(ls);
-        if (ls) storage.setLastSync(ls);
+        setLastSync((value as string | null | undefined) ?? null);
+      } else if (key === "deletedSubmissions") {
+        setDeletedSubs((value as string[] | undefined) ?? []);
       } else if (key === "settings") {
         const rs = value as Partial<AppSettings> | undefined;
         if (rs) {
-          setSettings((prev) => {
-            const merged: AppSettings = {
-              ...prev,
-              ...rs,
-              apiToken: "",
-              forms: mergeFormsWithDefaults(rs.forms && rs.forms.length ? rs.forms : prev.forms),
-              receipt: { ...prev.receipt, ...(rs.receipt || {}) },
-            };
-            storage.setSettings(merged);
-            return merged;
-          });
+          setSettings((prev) => ({
+            ...prev,
+            ...rs,
+            apiToken: "",
+            forms: mergeFormsWithDefaults(rs.forms && rs.forms.length ? rs.forms : prev.forms),
+            receipt: { ...prev.receipt, ...(rs.receipt || {}) },
+          }));
         }
       }
     });
