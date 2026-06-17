@@ -358,6 +358,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // One-shot auto re-sync after pagination fix — runs once per browser session
+  // to backfill any students missed by the previous broken sync.
+  useEffect(() => {
+    if (!ready || !user || syncing) return;
+    if (settings.forms.filter((f) => f.formId.trim()).length === 0) return;
+    const FLAG = "autoResyncV2_done";
+    try {
+      if (sessionStorage.getItem(FLAG)) return;
+      sessionStorage.setItem(FLAG, "1");
+    } catch { return; }
+    toast.info("Backfilling missing students from all forms…");
+    void syncAll();
+  }, [ready, user, settings.forms, syncing, syncAll]);
+
   const value = useMemo<Ctx>(() => ({
     ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity,
     stopCapacities, syncHistory,
