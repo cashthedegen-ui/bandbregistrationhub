@@ -11,6 +11,18 @@ const KEYS = {
   deletedSubs: "bbt:deletedSubmissions",
 };
 
+export const DEFAULT_FORMS = [
+  { id: "f-hopkins", label: "Hopkins School Bus 26-27", formId: "6500704" },
+  { id: "f-hopkins-shoreline", label: "Hopkins Shoreline", formId: "6499950" },
+  { id: "f-foote-shoreline", label: "Foote Shoreline", formId: "6515338" },
+  { id: "f-foote-wall", label: "Foote Wallingford/North Haven", formId: "6515339" },
+  { id: "f-foote-woodbridge", label: "Foote Woodbridge", formId: "6515340" },
+  { id: "f-king", label: "King School", formId: "6482769" },
+  { id: "f-nd-prep", label: "Notre Dame Prep", formId: "6181520" },
+  { id: "f-nd-prep-train", label: "Notre Dame Prep Train Shuttle", formId: "6181571" },
+  { id: "f-st-lukes", label: "St Lukes Enrollment", formId: "6503621" },
+];
+
 export const DEFAULT_SETTINGS: AppSettings = {
   apiToken: "",
   forms: DEFAULT_FORMS.map((f) => ({ ...f })),
@@ -23,18 +35,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
     footer: "Thank you for riding with B & B Transit.",
   },
 };
-
-export const DEFAULT_FORMS = [
-  { id: "f-hopkins", label: "Hopkins School Bus 26-27", formId: "6500704" },
-  { id: "f-hopkins-shoreline", label: "Hopkins Shoreline", formId: "6499950" },
-  { id: "f-foote-shoreline", label: "Foote Shoreline", formId: "6515338" },
-  { id: "f-foote-wall", label: "Foote Wallingford/North Haven", formId: "6515339" },
-  { id: "f-foote-woodbridge", label: "Foote Woodbridge", formId: "6515340" },
-  { id: "f-king", label: "King School", formId: "6482769" },
-  { id: "f-nd-prep", label: "Notre Dame Prep", formId: "6181520" },
-  { id: "f-nd-prep-train", label: "Notre Dame Prep Train Shuttle", formId: "6181571" },
-  { id: "f-st-lukes", label: "St Lukes Enrollment", formId: "6503621" },
-];
 
 export function mergeFormsWithDefaults(stored: AppSettings["forms"] | undefined | null): AppSettings["forms"] {
   const list = Array.isArray(stored) ? stored.map((f) => ({ ...f })) : [];
