@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
-import { Route as ApiFormstackRouteImport } from './routes/api/formstack'
 import { Route as AppStudentsRouteImport } from './routes/_app.students'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppRoutesRouteImport } from './routes/_app.routes'
@@ -32,11 +31,6 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
-} as any)
-const ApiFormstackRoute = ApiFormstackRouteImport.update({
-  id: '/api/formstack',
-  path: '/api/formstack',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const AppStudentsRoute = AppStudentsRouteImport.update({
   id: '/students',
@@ -72,7 +66,6 @@ export interface FileRoutesByFullPath {
   '/routes': typeof AppRoutesRoute
   '/settings': typeof AppSettingsRoute
   '/students': typeof AppStudentsRoute
-  '/api/formstack': typeof ApiFormstackRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -81,7 +74,6 @@ export interface FileRoutesByTo {
   '/routes': typeof AppRoutesRoute
   '/settings': typeof AppSettingsRoute
   '/students': typeof AppStudentsRoute
-  '/api/formstack': typeof ApiFormstackRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -93,7 +85,6 @@ export interface FileRoutesById {
   '/_app/routes': typeof AppRoutesRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/students': typeof AppStudentsRoute
-  '/api/formstack': typeof ApiFormstackRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -106,7 +97,6 @@ export interface FileRouteTypes {
     | '/routes'
     | '/settings'
     | '/students'
-    | '/api/formstack'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -115,7 +105,6 @@ export interface FileRouteTypes {
     | '/routes'
     | '/settings'
     | '/students'
-    | '/api/formstack'
     | '/'
   id:
     | '__root__'
@@ -126,14 +115,12 @@ export interface FileRouteTypes {
     | '/_app/routes'
     | '/_app/settings'
     | '/_app/students'
-    | '/api/formstack'
     | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
-  ApiFormstackRoute: typeof ApiFormstackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -158,13 +145,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
-    }
-    '/api/formstack': {
-      id: '/api/formstack'
-      path: '/api/formstack'
-      fullPath: '/api/formstack'
-      preLoaderRoute: typeof ApiFormstackRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_app/students': {
       id: '/_app/students'
@@ -227,7 +207,6 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
-  ApiFormstackRoute: ApiFormstackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

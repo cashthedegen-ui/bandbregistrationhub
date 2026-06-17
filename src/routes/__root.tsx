@@ -125,7 +125,7 @@ function AppBoot() {
       setInitialSyncDone(true);
       return;
     }
-    if (!settings.apiToken || !settings.forms?.some((f) => f.formId?.trim())) {
+    if (!settings.forms?.some((f) => f.formId?.trim())) {
       // Nothing we can sync; proceed without blocking
       setInitialSyncDone(true);
       return;

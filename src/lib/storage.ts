@@ -12,7 +12,10 @@ const KEYS = {
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  apiToken: "3984db4605cb5ca5892112044ee4080c",
+  // API token is stored server-side as a Supabase secret (FORMSTACK_API_TOKEN)
+  // and accessed via the formstack-proxy edge function. Kept here as an empty
+  // string for backwards compatibility with existing settings shape.
+  apiToken: "",
   forms: [
     { id: "f-hopkins", label: "Hopkins School Bus 26-27", formId: "6500704" },
   ],
@@ -51,11 +54,13 @@ export const storage = {
     return {
       ...DEFAULT_SETTINGS,
       ...s,
+      // Always clear any locally-cached API token; the secret lives server-side.
+      apiToken: "",
       forms: (s.forms && s.forms.length ? s.forms : DEFAULT_SETTINGS.forms),
       receipt: { ...DEFAULT_SETTINGS.receipt, ...(s.receipt || {}) },
     };
   },
-  setSettings: (s: AppSettings) => write(KEYS.settings, s),
+  setSettings: (s: AppSettings) => write(KEYS.settings, { ...s, apiToken: "" }),
   getStudents: (): StudentRow[] => read<StudentRow[]>(KEYS.students, []),
   setStudents: (s: StudentRow[]) => write(KEYS.students, s),
   getArchives: (): ArchivedSeason[] => read<ArchivedSeason[]>(KEYS.archives, []),

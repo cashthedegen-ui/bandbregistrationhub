@@ -144,10 +144,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const syncAll = useCallback(async () => {
-    if (!settings.apiToken) {
-      toast.error("Add your Formstack API token in Settings.");
-      return;
-    }
     setSyncing(true);
     setSyncProgress({ done: 0, total: 0, label: "Discovering forms…" });
     try {
@@ -161,7 +157,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return;
       }
       setSyncProgress({ done: 0, total: cfgs.length, label: "Fetching submissions…" });
-      const rows = await fetchAllSubmissions(cfgs, settings.apiToken, (done, total, label) => {
+      const rows = await fetchAllSubmissions(cfgs, "", (done, total, label) => {
         setSyncProgress({ done, total, label });
       });
       if (rows.length === 0) {
