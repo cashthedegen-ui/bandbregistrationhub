@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { storage, stopKey } from "./storage";
+import { storage, stopKey, mergeFormsWithDefaults } from "./storage";
 import type { AppSettings, ArchivedSeason, StudentRow, SyncEvent } from "./types";
 import { buildDemoStudents } from "./demo-data";
 import { detectDuplicates, type DuplicateGroup } from "./duplicates";
