@@ -114,10 +114,55 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       try {
         const remoteStudents = await fetchAllStudents();
         if (cancelled) return;
-        if (remoteStudents.length > 0) applyStudents(remoteStudents);
+
+        // One-time reconciliation: if local cache has data the cloud is missing
+        // (extra rows OR payment edits that never saved due to the old blob bug),
+        // push the local copy up so production matches preview.
+        const remoteById = new Map(remoteStudents.map((r) => [r.id, r]));
+        const editedField = (r: StudentRow) =>
+          (r.paymentType && r.paymentType !== "Unpaid") ||
+          (r.amountPaid ?? 0) > 0 ||
+          (r.familyPaid ?? 0) > 0 ||
+          (r.schoolOwes ?? 0) > 0 ||
+          (r.notes && r.notes.trim() !== "") ||
+          r.paymentStatus === "Received" ||
+          r.status === "Confirmed" ||
+          r.status === "Reviewed";
+        const needsPush = cached.filter((local) => {
+          const remote = remoteById.get(local.id);
+          if (!remote) return true; // extra row in local
+          // local has edits remote doesn't
+          if (editedField(local) && !editedField(remote)) return true;
+          // local amounts differ from remote
+          if ((local.amountPaid ?? 0) !== (remote.amountPaid ?? 0)) return true;
+          if ((local.familyPaid ?? 0) !== (remote.familyPaid ?? 0)) return true;
+          if ((local.schoolOwes ?? 0) !== (remote.schoolOwes ?? 0)) return true;
+          if ((local.notes || "") !== (remote.notes || "")) return true;
+          if ((local.paymentType || "Unpaid") !== (remote.paymentType || "Unpaid")) return true;
+          if ((local.paymentStatus || "Pending") !== (remote.paymentStatus || "Pending")) return true;
+          if ((local.status || "New") !== (remote.status || "New")) return true;
+          return false;
+        });
+
+        if (needsPush.length > 0) {
+          console.info(`[store] pushing ${needsPush.length} local students to cloud (one-time reconciliation)`);
+          try {
+            await upsertStudents(needsPush);
+            toast.success(`Synced ${needsPush.length} students to cloud`);
+            // re-fetch after push so all devices see the canonical set
+            const refreshed = await fetchAllStudents();
+            if (!cancelled && refreshed.length > 0) applyStudents(refreshed);
+          } catch (e) {
+            console.error("[store] reconciliation push failed", e);
+          }
+        } else if (remoteStudents.length > 0) {
+          applyStudents(remoteStudents);
+        }
       } catch (e) {
         console.warn("[store] students load failed", e);
       }
+
+
 
       const archivesSrc = remoteArchives.length > 0 ? remoteArchives : storage.getArchives();
       setArchives(archivesSrc);
