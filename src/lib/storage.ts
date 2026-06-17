@@ -11,24 +11,11 @@ const KEYS = {
   deletedSubs: "bbt:deletedSubmissions",
 };
 
-export const DEFAULT_FORMS = [
-  { id: "f-hopkins",           label: "Hopkins School Bus 26-27",      formId: "6500704" },
-  { id: "f-hopkins-shoreline", label: "Hopkins Shoreline",             formId: "6499950" },
-  { id: "f-foote-shoreline",   label: "Foote Shoreline",               formId: "6515338" },
-  { id: "f-foote-wall",        label: "Foote Wallingford/North Haven", formId: "6515339" },
-  { id: "f-foote-woodbridge",  label: "Foote Woodbridge",              formId: "6515340" },
-  { id: "f-king",              label: "King School",                   formId: "6482769" },
-  { id: "f-nd-prep",           label: "Notre Dame Prep",               formId: "6181520" },
-  { id: "f-nd-prep-train",     label: "Notre Dame Prep Train Shuttle", formId: "6181571" },
-  { id: "f-st-lukes",          label: "St Lukes Enrollment",           formId: "6503621" },
-];
-
 export const DEFAULT_SETTINGS: AppSettings = {
-  // API token is stored server-side as a Supabase secret (FORMSTACK_API_TOKEN)
-  // and accessed via the formstack-proxy edge function. Kept here as an empty
-  // string for backwards compatibility with existing settings shape.
-  apiToken: "",
-  forms: DEFAULT_FORMS.map((f) => ({ ...f })),
+  apiToken: "3984db4605cb5ca5892112044ee4080c",
+  forms: [
+    { id: "f-hopkins", label: "Hopkins School Bus 26-27", formId: "6500704" },
+  ],
   receipt: {
     companyName: "B & B Transit",
     companyAddress: "Connecticut",
@@ -38,23 +25,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
     footer: "Thank you for riding with B & B Transit.",
   },
 };
-
-/**
- * Merge a stored forms list with DEFAULT_FORMS so any default form missing
- * from local/remote storage (e.g. older installs that only had Hopkins) is
- * auto-added. Preserves user edits for forms already present by formId and
- * keeps any custom forms the user added.
- */
-export function mergeFormsWithDefaults(
-  stored: AppSettings["forms"] | undefined | null
-): AppSettings["forms"] {
-  const list = Array.isArray(stored) ? stored.map((f) => ({ ...f })) : [];
-  const haveIds = new Set(list.map((f) => (f.formId || "").trim()).filter(Boolean));
-  for (const d of DEFAULT_FORMS) {
-    if (!haveIds.has(d.formId)) list.push({ ...d });
-  }
-  return list;
-}
 
 function isBrowser() {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
@@ -81,13 +51,11 @@ export const storage = {
     return {
       ...DEFAULT_SETTINGS,
       ...s,
-      // Always clear any locally-cached API token; the secret lives server-side.
-      apiToken: "",
-      forms: mergeFormsWithDefaults(s.forms),
+      forms: (s.forms && s.forms.length ? s.forms : DEFAULT_SETTINGS.forms),
       receipt: { ...DEFAULT_SETTINGS.receipt, ...(s.receipt || {}) },
     };
   },
-  setSettings: (s: AppSettings) => write(KEYS.settings, { ...s, apiToken: "" }),
+  setSettings: (s: AppSettings) => write(KEYS.settings, s),
   getStudents: (): StudentRow[] => read<StudentRow[]>(KEYS.students, []),
   setStudents: (s: StudentRow[]) => write(KEYS.students, s),
   getArchives: (): ArchivedSeason[] => read<ArchivedSeason[]>(KEYS.archives, []),

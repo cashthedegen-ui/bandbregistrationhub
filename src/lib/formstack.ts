@@ -1,25 +1,17 @@
 import type { StudentRow } from "./types";
 
-// All Formstack calls route through the Supabase Edge Function "formstack-proxy",
-// which holds the FORMSTACK_API_TOKEN secret server-side. No token ever lives
-// in frontend code.
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
-const PROXY = `${SUPABASE_URL}/functions/v1/formstack-proxy`;
+const PROXY = "/api/formstack";
 
-async function proxy(url: string, _token?: string) {
+async function proxy(url: string, token: string) {
   const res = await fetch(`${PROXY}?url=${encodeURIComponent(url)}`, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-    },
+    headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`Formstack ${res.status}`);
   return res.json();
 }
 
-export async function fetchForms(_token?: string): Promise<any[]> {
-  const data = await proxy("https://www.formstack.com/api/v2/form.json");
+export async function fetchForms(token: string): Promise<any[]> {
+  const data = await proxy("https://www.formstack.com/api/v2/form.json", token);
   return data?.forms || [];
 }
 

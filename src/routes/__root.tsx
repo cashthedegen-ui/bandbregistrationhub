@@ -108,33 +108,13 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function AppBoot() {
-  const { ready, students, settings, syncing, syncAll } = useStore();
+  const { ready } = useStore();
   const [minDone, setMinDone] = useState(false);
-  const [initialSyncDone, setInitialSyncDone] = useState(false);
-  const [triedSync, setTriedSync] = useState(false);
-
   useEffect(() => {
     const t = setTimeout(() => setMinDone(true), 1400);
     return () => clearTimeout(t);
   }, []);
-
-  // If hydrated with no local data, kick off a background sync once
-  useEffect(() => {
-    if (!ready || triedSync) return;
-    if (students.length > 0) {
-      setInitialSyncDone(true);
-      return;
-    }
-    if (!settings.forms?.some((f) => f.formId?.trim())) {
-      // Nothing we can sync; proceed without blocking
-      setInitialSyncDone(true);
-      return;
-    }
-    setTriedSync(true);
-    syncAll().finally(() => setInitialSyncDone(true));
-  }, [ready, students.length, settings, triedSync, syncAll]);
-
-  const visible = !ready || !minDone || !initialSyncDone || syncing;
+  const visible = !ready || !minDone;
   return (
     <>
       <Outlet />

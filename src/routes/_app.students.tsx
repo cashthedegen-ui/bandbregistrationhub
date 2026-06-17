@@ -61,7 +61,7 @@ function StatusBadge({ status }: { status: Status }) {
 }
 
 function StudentsPage() {
-  const { students, updateStudent, deleteStudent, dupGroups, settings } = useStore();
+  const { students, updateStudent, deleteStudent, setStudents, dupGroups, settings } = useStore();
   const [q, setQ] = useState("");
   const [school, setSchool] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
@@ -442,7 +442,7 @@ function StudentsPage() {
                     <div className="flex gap-2 mt-3">
                       <Button size="sm" className="bg-primary text-primary-foreground" onClick={() => { updateStudent(r.id, { duplicateFlag: false }); toast.success("Kept"); }}>Keep</Button>
                       <Button size="sm" variant="destructive" onClick={() => {
-                        deleteStudent(r.id);
+                        setStudents(students.filter((x) => x.id !== r.id));
                         toast.success("Removed");
                       }}>Remove</Button>
 

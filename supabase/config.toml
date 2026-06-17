@@ -1,4 +1,1 @@
 project_id = "xlicjscwgisvisugoiuv"
-
-[functions.formstack-proxy]
-verify_jwt = false

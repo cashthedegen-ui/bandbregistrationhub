@@ -33,7 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [syncAll]);
 
-  const connected = !isDemo;
+  const connected = !!settings.apiToken && !isDemo;
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
