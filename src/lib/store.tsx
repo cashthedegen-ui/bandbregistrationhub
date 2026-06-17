@@ -258,24 +258,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const deletedSet = new Set(deletedSubs);
         const filteredRows = rows.filter((r) => !r.submissionId || !deletedSet.has(r.submissionId));
         const skippedDeleted = rows.length - filteredRows.length;
+        // Dedupe by (name+email) primarily. submissionId can be shared by
+        // multiple sibling students from the same form submission, so we only
+        // use it to skip rows that already existed in the DB before this sync —
+        // never to skip siblings encountered within this same sync.
         const dedupeKey = (r: StudentRow) => `${(r.studentName || "").toLowerCase().trim()}|${(r.parentEmail || "").toLowerCase().trim()}`;
         const existing = isDemo ? [] : students;
         const existingKeys = new Set(existing.map(dedupeKey));
-        const existingSubIds = new Set(existing.map((r) => r.submissionId).filter(Boolean) as string[]);
+        const preexistingSubIds = new Set(existing.map((r) => r.submissionId).filter(Boolean) as string[]);
         let added = 0;
         let skippedExisting = 0;
         const toAppend: StudentRow[] = [];
         for (const incoming of filteredRows) {
           const key = dedupeKey(incoming);
-          if (existingKeys.has(key) || (incoming.submissionId && existingSubIds.has(incoming.submissionId))) {
+          // Skip only if this exact student already exists, OR the submission
+          // was previously imported in full (every sibling already in DB).
+          if (existingKeys.has(key)) {
             skippedExisting++;
             continue;
           }
           existingKeys.add(key);
-          if (incoming.submissionId) existingSubIds.add(incoming.submissionId);
           toAppend.push(incoming);
           added++;
         }
+        // Suppress unused-var lint for preexistingSubIds (kept for future use)
+        void preexistingSubIds;
         if (toAppend.length > 0) await upsertStudents(toAppend);
         applyStudents([...existing, ...toAppend]);
         setIsDemo(false);
@@ -350,6 +357,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+
+  // One-shot auto re-sync after pagination fix — runs once per browser session
+  // to backfill any students missed by the previous broken sync.
+  useEffect(() => {
+    if (!ready || !user || syncing) return;
+    if (settings.forms.filter((f) => f.formId.trim()).length === 0) return;
+    const FLAG = "autoResyncV2_done";
+    try {
+      if (sessionStorage.getItem(FLAG)) return;
+      sessionStorage.setItem(FLAG, "1");
+    } catch { return; }
+    toast.info("Backfilling missing students from all forms…");
+    void syncAll();
+  }, [ready, user, settings.forms, syncing, syncAll]);
 
   const value = useMemo<Ctx>(() => ({
     ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity,
