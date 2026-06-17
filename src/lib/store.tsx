@@ -187,6 +187,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setStudentsState(flagged);
     setDupGroups(groups);
     storage.setStudents(flagged);
+    void saveShared("students", flagged);
   }, []);
 
   const setStudents = useCallback((rows: StudentRow[]) => {
@@ -206,6 +207,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return merged;
       });
       storage.setStudents(next);
+      void saveShared("students", next);
       return next;
     });
   }, []);
@@ -215,10 +217,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const target = prev.find((r) => r.id === id);
       const next = prev.filter((r) => r.id !== id);
       storage.setStudents(next);
+      void saveShared("students", next);
       if (target?.submissionId) {
         const deleted = storage.getDeletedSubmissions();
         if (!deleted.includes(target.submissionId)) {
-          storage.setDeletedSubmissions([...deleted, target.submissionId]);
+          const nextDeleted = [...deleted, target.submissionId];
+          storage.setDeletedSubmissions(nextDeleted);
+          void saveShared("deletedSubmissions", nextDeleted);
         }
       }
       return next;
@@ -228,6 +233,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateSettings = useCallback((s: AppSettings) => {
     setSettings(s);
     storage.setSettings(s);
+    void saveShared("settings", { ...s, apiToken: "" });
   }, []);
 
   const syncAll = useCallback(async () => {
@@ -278,10 +284,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const now = new Date().toISOString();
         setLastSync(now);
         storage.setLastSync(now);
+        void saveShared("lastSync", now);
         const evt: SyncEvent = { id: `sync-${Date.now()}`, ts: now, total: rows.length, added, updated: skippedExisting };
         setSyncHistory((prev) => {
           const next = [evt, ...prev].slice(0, 20);
           storage.setSyncHistory(next);
+          void saveShared("syncHistory", next);
           return next;
         });
         pushActivity(`Synced ${rows.length} submissions: ${added} new, ${skippedExisting} already existed${skippedDeleted ? `, ${skippedDeleted} previously deleted` : ""}`);
@@ -304,6 +312,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const next = [a, ...archives];
     setArchives(next);
     storage.setArchives(next);
+    void saveShared("archives", next);
     pushActivity(`Archived season "${label}" with ${students.length} students`);
     toast.success(`Archived "${label}"`);
   }, [students, archives, pushActivity]);
@@ -319,6 +328,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const next = archives.filter((a) => a.id !== id);
     setArchives(next);
     storage.setArchives(next);
+    void saveShared("archives", next);
   }, [archives]);
 
   const loadDemo = useCallback(() => {
@@ -334,6 +344,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const next = { ...prev };
       if (!capacity || capacity <= 0) delete next[k]; else next[k] = capacity;
       storage.setStopCapacities(next);
+      void saveShared("stopCapacities", next);
       return next;
     });
   }, []);
