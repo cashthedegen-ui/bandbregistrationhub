@@ -442,7 +442,7 @@ function StudentsPage() {
                     <div className="flex gap-2 mt-3">
                       <Button size="sm" className="bg-primary text-primary-foreground" onClick={() => { updateStudent(r.id, { duplicateFlag: false }); toast.success("Kept"); }}>Keep</Button>
                       <Button size="sm" variant="destructive" onClick={() => {
-                        setStudents(students.filter((x) => x.id !== r.id));
+                        deleteStudent(r.id);
                         toast.success("Removed");
                       }}>Remove</Button>
 
