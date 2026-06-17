@@ -73,18 +73,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [syncHistory, setSyncHistory] = useState<SyncEvent[]>([]);
 
 
-  // hydrate on mount (client-only)
+  // hydrate on mount (client-only) — never auto-load demo; real data only
   useEffect(() => {
     const s = storage.getSettings();
     setSettings(s);
     const stored = storage.getStudents();
-    if (stored.length === 0) {
-      const demo = buildDemoStudents().map(ensureDefaults);
-      const { rows, groups } = detectDuplicates(demo);
-      setStudentsState(rows);
-      setDupGroups(groups);
-      setIsDemo(true);
-    } else {
+    if (stored.length > 0) {
       const { rows, groups } = detectDuplicates(stored.map(ensureDefaults));
       setStudentsState(rows);
       setDupGroups(groups);
