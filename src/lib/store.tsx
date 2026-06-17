@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { storage, stopKey } from "./storage";
+import { storage, stopKey, mergeFormsWithDefaults } from "./storage";
 import type { AppSettings, ArchivedSeason, StudentRow, SyncEvent } from "./types";
 import { buildDemoStudents } from "./demo-data";
 import { detectDuplicates, type DuplicateGroup } from "./duplicates";
@@ -114,16 +114,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setLastSync(lastSyncSrc);
       if (lastSyncSrc) storage.setLastSync(lastSyncSrc);
 
-      if (remoteSettings) {
+      {
+        const base = remoteSettings ?? {};
         const merged: AppSettings = {
           ...localSettings,
-          ...remoteSettings,
+          ...base,
           apiToken: "",
-          forms: remoteSettings.forms && remoteSettings.forms.length ? remoteSettings.forms : localSettings.forms,
-          receipt: { ...localSettings.receipt, ...(remoteSettings.receipt || {}) },
+          forms: mergeFormsWithDefaults(
+            (base.forms && base.forms.length ? base.forms : localSettings.forms)
+          ),
+          receipt: { ...localSettings.receipt, ...(base.receipt || {}) },
         };
         setSettings(merged);
         storage.setSettings(merged);
+        // Persist the backfilled forms list to shared state so every user
+        // (including production) immediately sees all 9 forms.
+        const storedForms = remoteSettings?.forms ?? [];
+        if (storedForms.length !== merged.forms.length) {
+          void saveShared("settings", merged);
+        }
       }
 
       setReady(true);
@@ -161,7 +170,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               ...prev,
               ...rs,
               apiToken: "",
-              forms: rs.forms && rs.forms.length ? rs.forms : prev.forms,
+              forms: mergeFormsWithDefaults(rs.forms && rs.forms.length ? rs.forms : prev.forms),
               receipt: { ...prev.receipt, ...(rs.receipt || {}) },
             };
             storage.setSettings(merged);
