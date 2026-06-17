@@ -4,6 +4,7 @@ import type { AppSettings, ArchivedSeason, StudentRow, SyncEvent } from "./types
 import { buildDemoStudents } from "./demo-data";
 import { detectDuplicates, type DuplicateGroup } from "./duplicates";
 import { fetchAllSubmissions } from "./formstack";
+import { loadShared, saveShared, subscribeShared } from "./shared-state";
 import { toast } from "sonner";
 
 interface Activity { id: string; ts: string; text: string; }
