@@ -95,13 +95,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setReady(false);
     (async () => {
       try {
-        const [remoteStudents, remoteArchives, remoteCaps, remoteHistory, remoteLastSync, remoteSettings] = await Promise.all([
+        const [remoteStudents, remoteArchives, remoteCaps, remoteHistory, remoteLastSync, remoteSettings, remoteDeleted] = await Promise.all([
           fetchAllStudents(),
           loadShared<ArchivedSeason[]>("archives", []),
           loadShared<Record<string, number>>("stopCapacities", {}),
           loadShared<SyncEvent[]>("syncHistory", []),
           loadShared<string | null>("lastSync", null),
           loadShared<Partial<AppSettings> | null>("settings", null),
+          loadShared<string[]>("deletedSubmissions", []),
         ]);
         if (cancelled) return;
 
@@ -110,6 +111,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setStopCapacities(remoteCaps);
         setSyncHistory(remoteHistory);
         setLastSync(remoteLastSync);
+        setDeletedSubs(remoteDeleted);
 
         const base = remoteSettings ?? {};
         const merged: AppSettings = {
