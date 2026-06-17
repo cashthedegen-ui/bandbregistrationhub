@@ -255,8 +255,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (rows.length === 0) {
         toast.warning("No submissions returned. Check your form IDs.");
       } else {
-        const deletedSubs = new Set(storage.getDeletedSubmissions());
-        const filteredRows = rows.filter((r) => !r.submissionId || !deletedSubs.has(r.submissionId));
+        const deletedSet = new Set(deletedSubs);
+        const filteredRows = rows.filter((r) => !r.submissionId || !deletedSet.has(r.submissionId));
         const skippedDeleted = rows.length - filteredRows.length;
         const dedupeKey = (r: StudentRow) => `${(r.studentName || "").toLowerCase().trim()}|${(r.parentEmail || "").toLowerCase().trim()}`;
         const existing = isDemo ? [] : students;
