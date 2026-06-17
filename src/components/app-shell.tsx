@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Users, Route as RouteIcon, BarChart3, Archive, Settings as SettingsIcon, RefreshCw, Bus, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 const nav: { to: string; label: string; icon: any; exact?: boolean }[] = [
