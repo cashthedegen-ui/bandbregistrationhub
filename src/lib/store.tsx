@@ -170,7 +170,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               ...prev,
               ...rs,
               apiToken: "",
-              forms: rs.forms && rs.forms.length ? rs.forms : prev.forms,
+              forms: mergeFormsWithDefaults(rs.forms && rs.forms.length ? rs.forms : prev.forms),
               receipt: { ...prev.receipt, ...(rs.receipt || {}) },
             };
             storage.setSettings(merged);
