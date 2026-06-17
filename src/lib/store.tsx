@@ -1,9 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { storage, stopKey } from "./storage";
+import { storage, stopKey, mergeFormsWithDefaults } from "./storage";
 import type { AppSettings, ArchivedSeason, StudentRow, SyncEvent } from "./types";
 import { buildDemoStudents } from "./demo-data";
 import { detectDuplicates, type DuplicateGroup } from "./duplicates";
 import { fetchAllSubmissions } from "./formstack";
+import { loadShared, saveShared, subscribeShared } from "./shared-state";
+import {
+  fetchAllStudents,
+  upsertStudent,
+  upsertStudents,
+  deleteStudentRow,
+  deleteAllStudents,
+  subscribeStudents,
+} from "./students-repo";
 import { toast } from "sonner";
 
 interface Activity { id: string; ts: string; text: string; }
@@ -47,7 +56,6 @@ interface Ctx {
   updateSettings: (s: AppSettings) => void;
   updateStudent: (id: string, patch: Partial<StudentRow>) => void;
   deleteStudent: (id: string) => void;
-  setStudents: (rows: StudentRow[]) => void;
   syncAll: () => Promise<void>;
   archiveSeason: (label: string) => void;
   restoreSeason: (id: string) => void;
