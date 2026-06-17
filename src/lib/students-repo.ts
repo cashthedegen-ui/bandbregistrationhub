@@ -15,7 +15,7 @@ export async function fetchAllStudents(): Promise<StudentRow[]> {
       .range(from, from + pageSize - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
-    for (const r of data) all.push(r.data as StudentRow);
+    for (const r of data) all.push(r.data as unknown as StudentRow);
     if (data.length < pageSize) break;
     from += pageSize;
   }
