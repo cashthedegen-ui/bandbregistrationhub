@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { storage, stopKey, mergeFormsWithDefaults } from "./storage";
+import { storage, stopKey, mergeFormsWithDefaults, DEFAULT_SETTINGS } from "./storage";
 import type { AppSettings, ArchivedSeason, StudentRow, SyncEvent } from "./types";
 import { buildDemoStudents } from "./demo-data";
 import { detectDuplicates, type DuplicateGroup } from "./duplicates";
@@ -72,6 +72,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [activity, setActivity] = useState<Activity[]>([]);
   const [stopCapacities, setStopCapacities] = useState<Record<string, number>>({});
   const [syncHistory, setSyncHistory] = useState<SyncEvent[]>([]);
+  const [deletedSubs, setDeletedSubs] = useState<string[]>([]);
 
   const applyStudents = useCallback((rows: StudentRow[]) => {
     const { rows: flagged, groups } = detectDuplicates(rows.map(ensureDefaults));
@@ -93,92 +94,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setReady(false);
     (async () => {
-      const localSettings = storage.getSettings();
-      if (!cancelled) setSettings(localSettings);
-
-      const [remoteArchives, remoteCaps, remoteHistory, remoteLastSync, remoteSettings] = await Promise.all([
-        loadShared<ArchivedSeason[]>("archives", []),
-        loadShared<Record<string, number>>("stopCapacities", {}),
-        loadShared<SyncEvent[]>("syncHistory", []),
-        loadShared<string | null>("lastSync", null),
-        loadShared<Partial<AppSettings> | null>("settings", null),
-      ]);
-      if (cancelled) return;
-
-      const cached = storage.getStudents();
-      if (cached.length > 0) applyStudents(cached);
-
       try {
-        const remoteStudents = await fetchAllStudents();
+        const [remoteStudents, remoteArchives, remoteCaps, remoteHistory, remoteLastSync, remoteSettings, remoteDeleted] = await Promise.all([
+          fetchAllStudents(),
+          loadShared<ArchivedSeason[]>("archives", []),
+          loadShared<Record<string, number>>("stopCapacities", {}),
+          loadShared<SyncEvent[]>("syncHistory", []),
+          loadShared<string | null>("lastSync", null),
+          loadShared<Partial<AppSettings> | null>("settings", null),
+          loadShared<string[]>("deletedSubmissions", []),
+        ]);
         if (cancelled) return;
-        const remoteById = new Map(remoteStudents.map((r) => [r.id, r]));
-        const editedField = (r: StudentRow) =>
-          (r.paymentType && r.paymentType !== "Unpaid") ||
-          (r.amountPaid ?? 0) > 0 ||
-          (r.familyPaid ?? 0) > 0 ||
-          (r.schoolOwes ?? 0) > 0 ||
-          (r.notes && r.notes.trim() !== "") ||
-          r.paymentStatus === "Received" ||
-          r.status === "Confirmed" ||
-          r.status === "Reviewed";
-        const needsPush = cached.filter((local) => {
-          const remote = remoteById.get(local.id);
-          if (!remote) return true;
-          if (editedField(local) && !editedField(remote)) return true;
-          if ((local.amountPaid ?? 0) !== (remote.amountPaid ?? 0)) return true;
-          if ((local.familyPaid ?? 0) !== (remote.familyPaid ?? 0)) return true;
-          if ((local.schoolOwes ?? 0) !== (remote.schoolOwes ?? 0)) return true;
-          if ((local.notes || "") !== (remote.notes || "")) return true;
-          if ((local.paymentType || "Unpaid") !== (remote.paymentType || "Unpaid")) return true;
-          if ((local.paymentStatus || "Pending") !== (remote.paymentStatus || "Pending")) return true;
-          if ((local.status || "New") !== (remote.status || "New")) return true;
-          return false;
-        });
 
-        if (needsPush.length > 0) {
-          try {
-            await upsertStudents(needsPush);
-            const refreshed = await fetchAllStudents();
-            if (!cancelled && refreshed.length > 0) applyStudents(refreshed);
-          } catch (e) {
-            console.error("[store] reconciliation push failed", e);
-          }
-        } else if (remoteStudents.length > 0) {
-          applyStudents(remoteStudents);
-        }
+        applyStudents(remoteStudents);
+        setArchives(remoteArchives);
+        setStopCapacities(remoteCaps);
+        setSyncHistory(remoteHistory);
+        setLastSync(remoteLastSync);
+        setDeletedSubs(remoteDeleted);
+
+        const base = remoteSettings ?? {};
+        const merged: AppSettings = {
+          ...DEFAULT_SETTINGS,
+          ...base,
+          apiToken: "",
+          forms: mergeFormsWithDefaults(base.forms && base.forms.length ? base.forms : undefined),
+          receipt: { ...DEFAULT_SETTINGS.receipt, ...(base.receipt || {}) },
+        };
+        setSettings(merged);
       } catch (e) {
-        console.warn("[store] students load failed", e);
+        console.error("[store] cloud load failed", e);
+        toast.error("Couldn't load data from the cloud. Check your connection and refresh.");
+      } finally {
+        if (!cancelled) setReady(true);
       }
-
-      const archivesSrc = remoteArchives.length > 0 ? remoteArchives : storage.getArchives();
-      setArchives(archivesSrc);
-      storage.setArchives(archivesSrc);
-
-      const capsSrc = Object.keys(remoteCaps).length > 0 ? remoteCaps : storage.getStopCapacities();
-      setStopCapacities(capsSrc);
-      storage.setStopCapacities(capsSrc);
-
-      const historySrc = remoteHistory.length > 0 ? remoteHistory : storage.getSyncHistory();
-      setSyncHistory(historySrc);
-      storage.setSyncHistory(historySrc);
-
-      const lastSyncSrc = remoteLastSync ?? storage.getLastSync();
-      setLastSync(lastSyncSrc);
-      if (lastSyncSrc) storage.setLastSync(lastSyncSrc);
-
-      const base = remoteSettings ?? {};
-      const merged: AppSettings = {
-        ...localSettings,
-        ...base,
-        apiToken: "",
-        forms: mergeFormsWithDefaults(base.forms && base.forms.length ? base.forms : localSettings.forms),
-        receipt: { ...localSettings.receipt, ...(base.receipt || {}) },
-      };
-      setSettings(merged);
-      storage.setSettings(merged);
-      if ((remoteSettings?.forms ?? []).length !== merged.forms.length) void saveShared("settings", merged);
-
-      setReady(true);
     })();
 
     const unsubStudents = subscribeStudents({
@@ -205,35 +154,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     const unsubShared = subscribeShared((key, value) => {
       if (key === "archives") {
-        const a = (value as ArchivedSeason[] | undefined) ?? [];
-        setArchives(a);
-        storage.setArchives(a);
+        setArchives((value as ArchivedSeason[] | undefined) ?? []);
       } else if (key === "stopCapacities") {
-        const c = (value as Record<string, number> | undefined) ?? {};
-        setStopCapacities(c);
-        storage.setStopCapacities(c);
+        setStopCapacities((value as Record<string, number> | undefined) ?? {});
       } else if (key === "syncHistory") {
-        const h = (value as SyncEvent[] | undefined) ?? [];
-        setSyncHistory(h);
-        storage.setSyncHistory(h);
+        setSyncHistory((value as SyncEvent[] | undefined) ?? []);
       } else if (key === "lastSync") {
-        const ls = (value as string | null | undefined) ?? null;
-        setLastSync(ls);
-        if (ls) storage.setLastSync(ls);
+        setLastSync((value as string | null | undefined) ?? null);
+      } else if (key === "deletedSubmissions") {
+        setDeletedSubs((value as string[] | undefined) ?? []);
       } else if (key === "settings") {
         const rs = value as Partial<AppSettings> | undefined;
         if (rs) {
-          setSettings((prev) => {
-            const merged: AppSettings = {
-              ...prev,
-              ...rs,
-              apiToken: "",
-              forms: mergeFormsWithDefaults(rs.forms && rs.forms.length ? rs.forms : prev.forms),
-              receipt: { ...prev.receipt, ...(rs.receipt || {}) },
-            };
-            storage.setSettings(merged);
-            return merged;
-          });
+          setSettings((prev) => ({
+            ...prev,
+            ...rs,
+            apiToken: "",
+            forms: mergeFormsWithDefaults(rs.forms && rs.forms.length ? rs.forms : prev.forms),
+            receipt: { ...prev.receipt, ...(rs.receipt || {}) },
+          }));
         }
       }
     });
@@ -283,16 +222,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         toast.error("Failed to delete. Check your connection.");
       });
       if (target?.submissionId) {
-        const deleted = storage.getDeletedSubmissions();
-        if (!deleted.includes(target.submissionId)) {
-          const nextDeleted = [...deleted, target.submissionId];
-          storage.setDeletedSubmissions(nextDeleted);
+        if (!deletedSubs.includes(target.submissionId)) {
+          const nextDeleted = [...deletedSubs, target.submissionId];
+          setDeletedSubs(nextDeleted);
           void saveShared("deletedSubmissions", nextDeleted);
         }
       }
       return next;
     });
-  }, []);
+  }, [deletedSubs]);
 
   const updateSettings = useCallback((s: AppSettings) => {
     setSettings(s);
@@ -317,8 +255,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (rows.length === 0) {
         toast.warning("No submissions returned. Check your form IDs.");
       } else {
-        const deletedSubs = new Set(storage.getDeletedSubmissions());
-        const filteredRows = rows.filter((r) => !r.submissionId || !deletedSubs.has(r.submissionId));
+        const deletedSet = new Set(deletedSubs);
+        const filteredRows = rows.filter((r) => !r.submissionId || !deletedSet.has(r.submissionId));
         const skippedDeleted = rows.length - filteredRows.length;
         const dedupeKey = (r: StudentRow) => `${(r.studentName || "").toLowerCase().trim()}|${(r.parentEmail || "").toLowerCase().trim()}`;
         const existing = isDemo ? [] : students;
@@ -360,7 +298,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } finally {
       setSyncing(false);
     }
-  }, [settings, students, isDemo, applyStudents, pushActivity]);
+  }, [settings, students, isDemo, deletedSubs, applyStudents, pushActivity]);
 
   const archiveSeason = useCallback((label: string) => {
     const a: ArchivedSeason = { id: `arc-${Date.now()}`, label, createdAt: new Date().toISOString(), students };
@@ -378,7 +316,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         await deleteAllStudents();
-        await upsertStudents(a.students);
+        await upsertStudents(a.students, { force: true });
         applyStudents(a.students);
         toast.success(`Restored "${a.label}"`);
       } catch (e) {

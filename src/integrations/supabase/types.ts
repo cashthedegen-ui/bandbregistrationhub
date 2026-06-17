@@ -35,6 +35,27 @@ export type Database = {
         }
         Relationships: []
       }
+      forms_config: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       students: {
         Row: {
           data: Json
@@ -53,6 +74,36 @@ export type Database = {
           id?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      sync_history: {
+        Row: {
+          added: number
+          created_by: string | null
+          data: Json | null
+          id: string
+          total: number
+          ts: string
+          updated: number
+        }
+        Insert: {
+          added?: number
+          created_by?: string | null
+          data?: Json | null
+          id: string
+          total?: number
+          ts?: string
+          updated?: number
+        }
+        Update: {
+          added?: number
+          created_by?: string | null
+          data?: Json | null
+          id?: string
+          total?: number
+          ts?: string
+          updated?: number
         }
         Relationships: []
       }
