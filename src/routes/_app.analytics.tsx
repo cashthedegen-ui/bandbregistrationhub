@@ -138,6 +138,17 @@ function Analytics() {
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="border-t-2 border-border">
+                <tr>
+                  <td className="py-2 font-semibold">Total</td>
+                  <td className="py-2 text-right tabular-nums font-semibold">{formatNumber(paymentBySchool.reduce((a, b) => a + b.total, 0))}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold text-emerald-300">{formatNumber(paymentBySchool.reduce((a, b) => a + b.selfPay, 0))}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold text-sky-300">{formatNumber(paymentBySchool.reduce((a, b) => a + b.aid, 0))}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold text-yellow-300">{formatNumber(paymentBySchool.reduce((a, b) => a + b.unpaid, 0))}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold text-emerald-300">{formatCurrency(grandCashIn)}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold text-sky-300">{formatCurrency(grandSchoolOwed)}</td>
+                </tr>
+              </tfoot>
             </table>
           )}
         </CardContent>
