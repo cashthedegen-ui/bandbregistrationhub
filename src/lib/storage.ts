@@ -12,7 +12,10 @@ const KEYS = {
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  apiToken: "3984db4605cb5ca5892112044ee4080c",
+  // API token is stored server-side as a Supabase secret (FORMSTACK_API_TOKEN)
+  // and accessed via the formstack-proxy edge function. Kept here as an empty
+  // string for backwards compatibility with existing settings shape.
+  apiToken: "",
   forms: [
     { id: "f-hopkins", label: "Hopkins School Bus 26-27", formId: "6500704" },
   ],
