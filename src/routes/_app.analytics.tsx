@@ -104,10 +104,8 @@ function Analytics() {
               <span>Unpaid: <span className="text-yellow-300 font-semibold">{formatNumber(totals.unpaid)}</span></span>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <MiniStat label="Cash In Hand" value={formatCurrency(grandCashIn)} tone="emerald" />
-            <MiniStat label="Self Pay $" value={formatCurrency(grandSelfPay)} tone="emerald" />
-            <MiniStat label="Family (Aid) $" value={formatCurrency(grandFamilyAid)} tone="emerald" />
             <MiniStat label="Financial Aid $" value={formatCurrency(grandSchoolOwed)} tone="sky" />
           </div>
           {paymentBySchool.length === 0 ? (
