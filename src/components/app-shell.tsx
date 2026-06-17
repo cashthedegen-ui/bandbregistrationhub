@@ -33,8 +33,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [syncAll]);
 
-  const connected = !!settings.apiToken && !isDemo;
-
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
       <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-border bg-sidebar">
@@ -77,26 +75,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Bus className="h-5 w-5 text-primary" />
             <span className="text-sm font-semibold">B & B</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
-                connected
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                  : isDemo
-                    ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-destructive/30 bg-destructive/10 text-destructive",
-              )}
-            >
-              {connected ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-              {connected ? "Connected" : isDemo ? "Demo mode" : "Not connected"}
+          {lastSync && (
+            <span className="hidden sm:inline text-[11px] text-muted-foreground">
+              Last sync {new Date(lastSync).toLocaleString()}
             </span>
-            {lastSync && (
-              <span className="hidden sm:inline text-[11px] text-muted-foreground">
-                Last sync {new Date(lastSync).toLocaleString()}
-              </span>
-            )}
-          </div>
+          )}
           <div className="ml-auto flex items-center gap-2">
             {syncing && (
               <span className="text-[11px] text-muted-foreground">
