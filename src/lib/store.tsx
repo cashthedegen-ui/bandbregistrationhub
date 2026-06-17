@@ -222,10 +222,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         toast.error("Failed to delete. Check your connection.");
       });
       if (target?.submissionId) {
-        const deleted = storage.getDeletedSubmissions();
-        if (!deleted.includes(target.submissionId)) {
-          const nextDeleted = [...deleted, target.submissionId];
-          storage.setDeletedSubmissions(nextDeleted);
+        if (!deletedSubs.includes(target.submissionId)) {
+          const nextDeleted = [...deletedSubs, target.submissionId];
+          setDeletedSubs(nextDeleted);
           void saveShared("deletedSubmissions", nextDeleted);
         }
       }
