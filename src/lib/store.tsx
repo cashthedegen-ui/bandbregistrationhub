@@ -5,6 +5,14 @@ import { buildDemoStudents } from "./demo-data";
 import { detectDuplicates, type DuplicateGroup } from "./duplicates";
 import { fetchAllSubmissions } from "./formstack";
 import { loadShared, saveShared, subscribeShared } from "./shared-state";
+import {
+  fetchAllStudents,
+  upsertStudent,
+  upsertStudents,
+  deleteStudentRow,
+  deleteAllStudents,
+  subscribeStudents,
+} from "./students-repo";
 import { toast } from "sonner";
 
 interface Activity { id: string; ts: string; text: string; }
@@ -48,7 +56,6 @@ interface Ctx {
   updateSettings: (s: AppSettings) => void;
   updateStudent: (id: string, patch: Partial<StudentRow>) => void;
   deleteStudent: (id: string) => void;
-  setStudents: (rows: StudentRow[]) => void;
   syncAll: () => Promise<void>;
   archiveSeason: (label: string) => void;
   restoreSeason: (id: string) => void;
@@ -73,16 +80,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [stopCapacities, setStopCapacities] = useState<Record<string, number>>({});
   const [syncHistory, setSyncHistory] = useState<SyncEvent[]>([]);
 
+  // Recompute duplicate groups whenever the student list changes,
+  // so per-row realtime updates keep duplicate flags fresh.
+  const applyStudents = useCallback((rows: StudentRow[]) => {
+    const { rows: flagged, groups } = detectDuplicates(rows.map(ensureDefaults));
+    setStudentsState(flagged);
+    setDupGroups(groups);
+    storage.setStudents(flagged);
+    return flagged;
+  }, []);
 
-  // hydrate on mount — pull shared state from Supabase first, fall back to local cache
+
+  // hydrate on mount — pull from Supabase first, fall back to local cache
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const localSettings = storage.getSettings();
       if (!cancelled) setSettings(localSettings);
 
-      const [remoteStudents, remoteArchives, remoteCaps, remoteHistory, remoteLastSync, remoteSettings] = await Promise.all([
-        loadShared<StudentRow[]>("students", []),
+      const [remoteArchives, remoteCaps, remoteHistory, remoteLastSync, remoteSettings] = await Promise.all([
         loadShared<ArchivedSeason[]>("archives", []),
         loadShared<Record<string, number>>("stopCapacities", {}),
         loadShared<SyncEvent[]>("syncHistory", []),
@@ -91,13 +107,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ]);
       if (cancelled) return;
 
-      const studentsSrc = remoteStudents.length > 0 ? remoteStudents : storage.getStudents();
-      if (studentsSrc.length > 0) {
-        const { rows, groups } = detectDuplicates(studentsSrc.map(ensureDefaults));
-        setStudentsState(rows);
-        setDupGroups(groups);
-        storage.setStudents(rows);
+      // Students: load from dedicated table (per-row), with local fallback while remote loads
+      const cached = storage.getStudents();
+      if (cached.length > 0) applyStudents(cached);
+
+      try {
+        const remoteStudents = await fetchAllStudents();
+        if (cancelled) return;
+        if (remoteStudents.length > 0) applyStudents(remoteStudents);
+      } catch (e) {
+        console.warn("[store] students load failed", e);
       }
+
       const archivesSrc = remoteArchives.length > 0 ? remoteArchives : storage.getArchives();
       setArchives(archivesSrc);
       storage.setArchives(archivesSrc);
@@ -127,8 +148,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         };
         setSettings(merged);
         storage.setSettings(merged);
-        // Persist the backfilled forms list to shared state so every user
-        // (including production) immediately sees all 9 forms.
         const storedForms = remoteSettings?.forms ?? [];
         if (storedForms.length !== merged.forms.length) {
           void saveShared("settings", merged);
@@ -138,15 +157,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setReady(true);
     })();
 
-    // Realtime: react to changes pushed by other users
-    const unsub = subscribeShared((key, value) => {
-      if (key === "students") {
-        const rows = (value as StudentRow[] | undefined) ?? [];
-        const { rows: flagged, groups } = detectDuplicates(rows.map(ensureDefaults));
-        setStudentsState(flagged);
-        setDupGroups(groups);
-        storage.setStudents(flagged);
-      } else if (key === "archives") {
+    // Realtime: per-row student changes
+    const unsubStudents = subscribeStudents({
+      onUpsert: (row) => {
+        setStudentsState((prev) => {
+          const idx = prev.findIndex((r) => r.id === row.id);
+          const next = idx >= 0
+            ? prev.map((r, i) => (i === idx ? ensureDefaults(row) : r))
+            : [...prev, ensureDefaults(row)];
+          const { rows: flagged, groups } = detectDuplicates(next);
+          setDupGroups(groups);
+          storage.setStudents(flagged);
+          return flagged;
+        });
+      },
+      onDelete: (id) => {
+        setStudentsState((prev) => {
+          const next = prev.filter((r) => r.id !== id);
+          const { rows: flagged, groups } = detectDuplicates(next);
+          setDupGroups(groups);
+          storage.setStudents(flagged);
+          return flagged;
+        });
+      },
+    });
+
+    // Realtime: other shared state (archives, settings, etc.)
+    const unsubShared = subscribeShared((key, value) => {
+      if (key === "archives") {
         const a = (value as ArchivedSeason[] | undefined) ?? [];
         setArchives(a);
         storage.setArchives(a);
@@ -182,30 +220,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
-      unsub();
+      unsubStudents();
+      unsubShared();
     };
-  }, []);
+  }, [applyStudents]);
 
 
   const pushActivity = useCallback((text: string) => {
     setActivity((prev) => [{ id: `${Date.now()}-${Math.random()}`, ts: new Date().toISOString(), text }, ...prev].slice(0, 30));
   }, []);
 
-  const persistStudents = useCallback((rows: StudentRow[]) => {
-    const { rows: flagged, groups } = detectDuplicates(rows);
-    setStudentsState(flagged);
-    setDupGroups(groups);
-    storage.setStudents(flagged);
-    void saveShared("students", flagged);
-  }, []);
-
-  const setStudents = useCallback((rows: StudentRow[]) => {
-    setIsDemo(false);
-    persistStudents(rows);
-  }, [persistStudents]);
-
   const updateStudent = useCallback((id: string, patch: Partial<StudentRow>) => {
     setStudentsState((prev) => {
+      let updated: StudentRow | null = null;
       const next = prev.map((r) => {
         if (r.id !== id) return r;
         const merged = { ...r, ...patch } as StudentRow;
@@ -213,10 +240,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           merged.paid = patch.paymentType !== "Unpaid";
           if (patch.paymentType === "Unpaid") merged.amountPaid = 0;
         }
+        updated = merged;
         return merged;
       });
       storage.setStudents(next);
-      void saveShared("students", next);
+      if (updated) {
+        upsertStudent(updated).catch((e) => {
+          console.error("[store] save student failed", e);
+          toast.error("Failed to save change. Check your connection.");
+        });
+      }
       return next;
     });
   }, []);
@@ -226,7 +259,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const target = prev.find((r) => r.id === id);
       const next = prev.filter((r) => r.id !== id);
       storage.setStudents(next);
-      void saveShared("students", next);
+      deleteStudentRow(id).catch((e) => {
+        console.error("[store] delete student failed", e);
+        toast.error("Failed to delete. Check your connection.");
+      });
       if (target?.submissionId) {
         const deleted = storage.getDeletedSubmissions();
         if (!deleted.includes(target.submissionId)) {
@@ -249,7 +285,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setSyncing(true);
     setSyncProgress({ done: 0, total: 0, label: "Discovering forms…" });
     try {
-      // Use configured forms; skip entries with no formId.
       const cfgs = settings.forms
         .filter((f) => f.formId.trim())
         .map((f) => ({ schoolLabel: f.label || `Form ${f.formId}`, formId: f.formId.trim() }));
@@ -287,8 +322,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           toAppend.push(incoming);
           added++;
         }
+        // Only the new students get written — existing rows (with payment edits) are untouched.
+        if (toAppend.length > 0) {
+          try {
+            await upsertStudents(toAppend);
+          } catch (e) {
+            console.error("[store] bulk insert failed", e);
+            toast.error("Some new students failed to save. Try again.");
+          }
+        }
         const merged = [...existing, ...toAppend];
-        persistStudents(merged);
+        applyStudents(merged);
         setIsDemo(false);
         const now = new Date().toISOString();
         setLastSync(now);
@@ -309,7 +353,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } finally {
       setSyncing(false);
     }
-  }, [settings, students, isDemo, persistStudents, pushActivity]);
+  }, [settings, students, isDemo, applyStudents, pushActivity]);
 
   const archiveSeason = useCallback((label: string) => {
     const a: ArchivedSeason = {
@@ -329,9 +373,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const restoreSeason = useCallback((id: string) => {
     const a = archives.find((x) => x.id === id);
     if (!a) return;
-    persistStudents(a.students);
-    toast.success(`Restored "${a.label}"`);
-  }, [archives, persistStudents]);
+    (async () => {
+      try {
+        await deleteAllStudents();
+        await upsertStudents(a.students);
+        applyStudents(a.students);
+        toast.success(`Restored "${a.label}"`);
+      } catch (e) {
+        console.error("[store] restore failed", e);
+        toast.error("Restore failed. Try again.");
+      }
+    })();
+  }, [archives, applyStudents]);
 
   const deleteArchive = useCallback((id: string) => {
     const next = archives.filter((a) => a.id !== id);
@@ -342,10 +395,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const loadDemo = useCallback(() => {
     const demo = buildDemoStudents();
-    persistStudents(demo);
+    applyStudents(demo);
     setIsDemo(true);
-    toast.info("Demo data loaded");
-  }, [persistStudents]);
+    toast.info("Demo data loaded (not saved to cloud)");
+  }, [applyStudents]);
 
   const setStopCapacity = useCallback((schoolName: string, stopAddress: string, capacity: number) => {
     setStopCapacities((prev) => {
@@ -361,9 +414,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Ctx>(() => ({
     ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity,
     stopCapacities, syncHistory,
-    updateSettings, updateStudent, deleteStudent, setStudents, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo,
+    updateSettings, updateStudent, deleteStudent, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo,
     setStopCapacity,
-  }), [ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity, stopCapacities, syncHistory, updateSettings, updateStudent, deleteStudent, setStudents, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo, setStopCapacity]);
+  }), [ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity, stopCapacities, syncHistory, updateSettings, updateStudent, deleteStudent, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo, setStopCapacity]);
 
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
