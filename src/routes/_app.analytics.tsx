@@ -78,6 +78,7 @@ function Analytics() {
   const grandFamilyAid = paymentBySchool.reduce((a, b) => a + b.aidFamilyPaid, 0);
   const grandCashIn = grandSelfPay + grandFamilyAid;
   const grandSchoolOwed = paymentBySchool.reduce((a, b) => a + b.aidSchoolOwed, 0);
+  const grandTotalRevenue = grandCashIn + grandSchoolOwed;
   const totals = paymentBySchool.reduce(
     (a, b) => ({ selfPay: a.selfPay + b.selfPay, aid: a.aid + b.aid, unpaid: a.unpaid + b.unpaid }),
     { selfPay: 0, aid: 0, unpaid: 0 },
