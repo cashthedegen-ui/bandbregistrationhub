@@ -2,16 +2,16 @@ import type { StudentRow } from "./types";
 
 const PROXY = "/api/formstack";
 
-async function proxy(url: string, token: string) {
+async function proxy(url: string, _token?: string) {
   const res = await fetch(`${PROXY}?url=${encodeURIComponent(url)}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Accept: "application/json" },
   });
   if (!res.ok) throw new Error(`Formstack ${res.status}`);
   return res.json();
 }
 
-export async function fetchForms(token: string): Promise<any[]> {
-  const data = await proxy("https://www.formstack.com/api/v2/form.json", token);
+export async function fetchForms(_token?: string): Promise<any[]> {
+  const data = await proxy("https://www.formstack.com/api/v2/form.json");
   return data?.forms || [];
 }
 

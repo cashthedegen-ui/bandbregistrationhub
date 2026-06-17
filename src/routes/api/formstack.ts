@@ -19,10 +19,30 @@ export const Route = createFileRoute("/api/formstack")({
             headers: { "Content-Type": "application/json", ...CORS },
           });
         }
-        const auth = request.headers.get("authorization") || "";
-        const token = auth.replace(/^Bearer\s+/i, "").trim();
+        const token = process.env.FORMSTACK_API_TOKEN || process.env.formstack_api_token || "";
+        if (!token) {
+          return new Response(JSON.stringify({ error: "Formstack token is not configured" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...CORS },
+          });
+        }
+        let decoded: URL;
         try {
-          const r = await fetch(decodeURIComponent(target), {
+          decoded = new URL(decodeURIComponent(target));
+        } catch {
+          return new Response(JSON.stringify({ error: "Invalid url" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...CORS },
+          });
+        }
+        if (!/(^|\.)formstack\.com$/i.test(decoded.hostname)) {
+          return new Response(JSON.stringify({ error: "Disallowed host" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...CORS },
+          });
+        }
+        try {
+          const r = await fetch(decoded.toString(), {
             headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
           });
           const text = await r.text();
