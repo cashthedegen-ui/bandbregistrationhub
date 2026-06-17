@@ -83,7 +83,7 @@ export const storage = {
       ...s,
       // Always clear any locally-cached API token; the secret lives server-side.
       apiToken: "",
-      forms: (s.forms && s.forms.length ? s.forms : DEFAULT_SETTINGS.forms),
+      forms: mergeFormsWithDefaults(s.forms),
       receipt: { ...DEFAULT_SETTINGS.receipt, ...(s.receipt || {}) },
     };
   },
