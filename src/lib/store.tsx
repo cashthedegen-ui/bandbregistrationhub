@@ -324,7 +324,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         await deleteAllStudents();
-        await upsertStudents(a.students);
+        await upsertStudents(a.students, { force: true });
         applyStudents(a.students);
         toast.success(`Restored "${a.label}"`);
       } catch (e) {
