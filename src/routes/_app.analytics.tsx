@@ -78,6 +78,7 @@ function Analytics() {
   const grandFamilyAid = paymentBySchool.reduce((a, b) => a + b.aidFamilyPaid, 0);
   const grandCashIn = grandSelfPay + grandFamilyAid;
   const grandSchoolOwed = paymentBySchool.reduce((a, b) => a + b.aidSchoolOwed, 0);
+  const grandTotalRevenue = grandCashIn + grandSchoolOwed;
   const totals = paymentBySchool.reduce(
     (a, b) => ({ selfPay: a.selfPay + b.selfPay, aid: a.aid + b.aid, unpaid: a.unpaid + b.unpaid }),
     { selfPay: 0, aid: 0, unpaid: 0 },
@@ -104,9 +105,10 @@ function Analytics() {
               <span>Unpaid: <span className="text-yellow-300 font-semibold">{formatNumber(totals.unpaid)}</span></span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
             <MiniStat label="Cash In Hand" value={formatCurrency(grandCashIn)} tone="emerald" />
             <MiniStat label="Financial Aid $" value={formatCurrency(grandSchoolOwed)} tone="sky" />
+            <MiniStat label="Total Revenue" value={formatCurrency(grandTotalRevenue)} tone="white" />
           </div>
           {paymentBySchool.length === 0 ? (
             <div className="text-sm text-muted-foreground">No students yet.</div>
@@ -136,6 +138,17 @@ function Analytics() {
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="border-t-2 border-border">
+                <tr>
+                  <td className="py-2 font-semibold">Total</td>
+                  <td className="py-2 text-right tabular-nums font-semibold">{formatNumber(paymentBySchool.reduce((a, b) => a + b.total, 0))}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold text-emerald-300">{formatNumber(paymentBySchool.reduce((a, b) => a + b.selfPay, 0))}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold text-sky-300">{formatNumber(paymentBySchool.reduce((a, b) => a + b.aid, 0))}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold text-yellow-300">{formatNumber(paymentBySchool.reduce((a, b) => a + b.unpaid, 0))}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold text-emerald-300">{formatCurrency(grandCashIn)}</td>
+                  <td className="py-2 text-right tabular-nums font-semibold text-sky-300">{formatCurrency(grandSchoolOwed)}</td>
+                </tr>
+              </tfoot>
             </table>
           )}
         </CardContent>
@@ -232,8 +245,8 @@ function Stat({ label, value }: { label: string; value: any }) {
     </Card>
   );
 }
-function MiniStat({ label, value, tone }: { label: string; value: string; tone: "emerald" | "sky" | "yellow" }) {
-  const c = tone === "emerald" ? "text-emerald-300" : tone === "sky" ? "text-sky-300" : "text-yellow-300";
+function MiniStat({ label, value, tone }: { label: string; value: string; tone: "emerald" | "sky" | "yellow" | "white" }) {
+  const c = tone === "emerald" ? "text-emerald-300" : tone === "sky" ? "text-sky-300" : tone === "white" ? "text-white" : "text-yellow-300";
   return (
     <div className="rounded-md border border-border bg-background/50 p-3">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
