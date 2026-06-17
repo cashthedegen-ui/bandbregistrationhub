@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { fetchForms } from "@/lib/formstack";
 import { toast } from "sonner";
-import { Eye, EyeOff, Plus, Trash2, LogOut } from "lucide-react";
+import { Plus, Trash2, LogOut, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — B & B Transit" }] }),
@@ -21,7 +21,6 @@ function SettingsPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [local, setLocal] = useState(settings);
-  const [show, setShow] = useState(false);
   const [testing, setTesting] = useState(false);
 
   const save = () => { updateSettings(local); toast.success("Settings saved"); };
@@ -29,7 +28,7 @@ function SettingsPage() {
   const test = async () => {
     setTesting(true);
     try {
-      const forms = await fetchForms(local.apiToken);
+      const forms = await fetchForms();
       toast.success(`Connected — ${forms.length} forms visible`);
     } catch (e: any) {
       toast.error(`Failed: ${e?.message || e}`);
@@ -49,18 +48,10 @@ function SettingsPage() {
         <Card className="bg-card border-border">
           <CardContent className="p-5 space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">API Connection</h2>
-            <div>
-              <Label className="text-xs">Formstack API Token</Label>
-              <div className="relative">
-                <Input
-                  type={show ? "text" : "password"}
-                  value={local.apiToken}
-                  onChange={(e) => setLocal({ ...local, apiToken: e.target.value })}
-                  className="bg-background pr-9"
-                />
-                <button onClick={() => setShow(!show)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+            <div className="flex items-start gap-3 rounded-md border border-border bg-background/50 p-3">
+              <ShieldCheck className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div className="text-xs text-muted-foreground leading-relaxed">
+                The Formstack API token is stored securely as a backend secret and is never stored in the browser or source code.
               </div>
             </div>
             <Button variant="secondary" onClick={test} disabled={testing}>
