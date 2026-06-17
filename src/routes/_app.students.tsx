@@ -61,7 +61,7 @@ function StatusBadge({ status }: { status: Status }) {
 }
 
 function StudentsPage() {
-  const { students, updateStudent, deleteStudent, setStudents, dupGroups, settings } = useStore();
+  const { students, updateStudent, deleteStudent, dupGroups, settings } = useStore();
   const [q, setQ] = useState("");
   const [school, setSchool] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
