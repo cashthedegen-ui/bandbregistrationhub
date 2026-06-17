@@ -74,7 +74,9 @@ function Analytics() {
     }
     return Array.from(m, ([school, v]) => ({ school, ...v })).sort((a, b) => b.total - a.total);
   }, [students]);
-  const grandCashIn = paymentBySchool.reduce((a, b) => a + b.selfPayCollected, 0);
+  const grandSelfPay = paymentBySchool.reduce((a, b) => a + b.selfPayCollected, 0);
+  const grandFamilyAid = paymentBySchool.reduce((a, b) => a + b.aidFamilyPaid, 0);
+  const grandCashIn = grandSelfPay + grandFamilyAid;
   const grandSchoolOwed = paymentBySchool.reduce((a, b) => a + b.aidSchoolOwed, 0);
   const totals = paymentBySchool.reduce(
     (a, b) => ({ selfPay: a.selfPay + b.selfPay, aid: a.aid + b.aid, unpaid: a.unpaid + b.unpaid }),
@@ -104,6 +106,8 @@ function Analytics() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <MiniStat label="Cash In Hand" value={formatCurrency(grandCashIn)} tone="emerald" />
+            <MiniStat label="Self Pay $" value={formatCurrency(grandSelfPay)} tone="emerald" />
+            <MiniStat label="Family (Aid) $" value={formatCurrency(grandFamilyAid)} tone="emerald" />
             <MiniStat label="Financial Aid $" value={formatCurrency(grandSchoolOwed)} tone="sky" />
           </div>
           {paymentBySchool.length === 0 ? (
@@ -118,6 +122,7 @@ function Analytics() {
                   <th className="text-right py-2">Aid</th>
                   <th className="text-right py-2">Unpaid</th>
                   <th className="text-right py-2">Self Pay $</th>
+                  <th className="text-right py-2">Family (Aid) $</th>
                   <th className="text-right py-2">Financial Aid $</th>
                 </tr>
               </thead>
@@ -130,6 +135,7 @@ function Analytics() {
                     <td className="py-2 text-right tabular-nums text-sky-300">{formatNumber(r.aid)}</td>
                     <td className="py-2 text-right tabular-nums text-yellow-300">{formatNumber(r.unpaid)}</td>
                     <td className="py-2 text-right tabular-nums text-emerald-300">{formatCurrency(r.selfPayCollected)}</td>
+                    <td className="py-2 text-right tabular-nums text-emerald-300">{formatCurrency(r.aidFamilyPaid)}</td>
                     <td className="py-2 text-right tabular-nums text-sky-300">{formatCurrency(r.aidSchoolOwed)}</td>
                   </tr>
                 ))}
