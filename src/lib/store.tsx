@@ -74,21 +74,107 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [syncHistory, setSyncHistory] = useState<SyncEvent[]>([]);
 
 
-  // hydrate on mount (client-only) — never auto-load demo; real data only
+  // hydrate on mount — pull shared state from Supabase first, fall back to local cache
   useEffect(() => {
-    const s = storage.getSettings();
-    setSettings(s);
-    const stored = storage.getStudents();
-    if (stored.length > 0) {
-      const { rows, groups } = detectDuplicates(stored.map(ensureDefaults));
-      setStudentsState(rows);
-      setDupGroups(groups);
-    }
-    setArchives(storage.getArchives());
-    setLastSync(storage.getLastSync());
-    setStopCapacities(storage.getStopCapacities());
-    setSyncHistory(storage.getSyncHistory());
-    setReady(true);
+    let cancelled = false;
+    (async () => {
+      const localSettings = storage.getSettings();
+      if (!cancelled) setSettings(localSettings);
+
+      const [remoteStudents, remoteArchives, remoteCaps, remoteHistory, remoteLastSync, remoteSettings] = await Promise.all([
+        loadShared<StudentRow[]>("students", []),
+        loadShared<ArchivedSeason[]>("archives", []),
+        loadShared<Record<string, number>>("stopCapacities", {}),
+        loadShared<SyncEvent[]>("syncHistory", []),
+        loadShared<string | null>("lastSync", null),
+        loadShared<Partial<AppSettings> | null>("settings", null),
+      ]);
+      if (cancelled) return;
+
+      const studentsSrc = remoteStudents.length > 0 ? remoteStudents : storage.getStudents();
+      if (studentsSrc.length > 0) {
+        const { rows, groups } = detectDuplicates(studentsSrc.map(ensureDefaults));
+        setStudentsState(rows);
+        setDupGroups(groups);
+        storage.setStudents(rows);
+      }
+      const archivesSrc = remoteArchives.length > 0 ? remoteArchives : storage.getArchives();
+      setArchives(archivesSrc);
+      storage.setArchives(archivesSrc);
+
+      const capsSrc = Object.keys(remoteCaps).length > 0 ? remoteCaps : storage.getStopCapacities();
+      setStopCapacities(capsSrc);
+      storage.setStopCapacities(capsSrc);
+
+      const historySrc = remoteHistory.length > 0 ? remoteHistory : storage.getSyncHistory();
+      setSyncHistory(historySrc);
+      storage.setSyncHistory(historySrc);
+
+      const lastSyncSrc = remoteLastSync ?? storage.getLastSync();
+      setLastSync(lastSyncSrc);
+      if (lastSyncSrc) storage.setLastSync(lastSyncSrc);
+
+      if (remoteSettings) {
+        const merged: AppSettings = {
+          ...localSettings,
+          ...remoteSettings,
+          apiToken: "",
+          forms: remoteSettings.forms && remoteSettings.forms.length ? remoteSettings.forms : localSettings.forms,
+          receipt: { ...localSettings.receipt, ...(remoteSettings.receipt || {}) },
+        };
+        setSettings(merged);
+        storage.setSettings(merged);
+      }
+
+      setReady(true);
+    })();
+
+    // Realtime: react to changes pushed by other users
+    const unsub = subscribeShared((key, value) => {
+      if (key === "students") {
+        const rows = (value as StudentRow[] | undefined) ?? [];
+        const { rows: flagged, groups } = detectDuplicates(rows.map(ensureDefaults));
+        setStudentsState(flagged);
+        setDupGroups(groups);
+        storage.setStudents(flagged);
+      } else if (key === "archives") {
+        const a = (value as ArchivedSeason[] | undefined) ?? [];
+        setArchives(a);
+        storage.setArchives(a);
+      } else if (key === "stopCapacities") {
+        const c = (value as Record<string, number> | undefined) ?? {};
+        setStopCapacities(c);
+        storage.setStopCapacities(c);
+      } else if (key === "syncHistory") {
+        const h = (value as SyncEvent[] | undefined) ?? [];
+        setSyncHistory(h);
+        storage.setSyncHistory(h);
+      } else if (key === "lastSync") {
+        const ls = (value as string | null | undefined) ?? null;
+        setLastSync(ls);
+        if (ls) storage.setLastSync(ls);
+      } else if (key === "settings") {
+        const rs = value as Partial<AppSettings> | undefined;
+        if (rs) {
+          setSettings((prev) => {
+            const merged: AppSettings = {
+              ...prev,
+              ...rs,
+              apiToken: "",
+              forms: rs.forms && rs.forms.length ? rs.forms : prev.forms,
+              receipt: { ...prev.receipt, ...(rs.receipt || {}) },
+            };
+            storage.setSettings(merged);
+            return merged;
+          });
+        }
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, []);
 
 
