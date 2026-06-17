@@ -72,6 +72,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [activity, setActivity] = useState<Activity[]>([]);
   const [stopCapacities, setStopCapacities] = useState<Record<string, number>>({});
   const [syncHistory, setSyncHistory] = useState<SyncEvent[]>([]);
+  const [deletedSubs, setDeletedSubs] = useState<string[]>([]);
 
   const applyStudents = useCallback((rows: StudentRow[]) => {
     const { rows: flagged, groups } = detectDuplicates(rows.map(ensureDefaults));
