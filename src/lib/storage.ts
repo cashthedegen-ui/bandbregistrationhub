@@ -54,11 +54,13 @@ export const storage = {
     return {
       ...DEFAULT_SETTINGS,
       ...s,
+      // Always clear any locally-cached API token; the secret lives server-side.
+      apiToken: "",
       forms: (s.forms && s.forms.length ? s.forms : DEFAULT_SETTINGS.forms),
       receipt: { ...DEFAULT_SETTINGS.receipt, ...(s.receipt || {}) },
     };
   },
-  setSettings: (s: AppSettings) => write(KEYS.settings, s),
+  setSettings: (s: AppSettings) => write(KEYS.settings, { ...s, apiToken: "" }),
   getStudents: (): StudentRow[] => read<StudentRow[]>(KEYS.students, []),
   setStudents: (s: StudentRow[]) => write(KEYS.students, s),
   getArchives: (): ArchivedSeason[] => read<ArchivedSeason[]>(KEYS.archives, []),
