@@ -230,7 +230,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       return next;
     });
-  }, []);
+  }, [deletedSubs]);
 
   const updateSettings = useCallback((s: AppSettings) => {
     setSettings(s);
