@@ -258,6 +258,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         console.error("[store] delete student failed", e);
         toast.error("Failed to delete. Check your connection.");
       });
+      if (target) {
+        void logAudit({
+          action: "deleted student",
+          entityType: "student",
+          entityId: target.id,
+          entityName: target.studentName,
+          details: { school: target.schoolName, submissionId: target.submissionId },
+        });
+      }
       if (target?.submissionId) {
         if (!deletedSubs.includes(target.submissionId)) {
           const nextDeleted = [...deletedSubs, target.submissionId];
@@ -273,6 +282,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setSettings(s);
     storage.setSettings(s);
     void saveShared("settings", { ...s, apiToken: "" });
+    void logAudit({
+      action: "updated settings",
+      entityType: "settings",
+      entityName: `${s.forms.length} forms configured`,
+    });
   }, []);
 
   const syncAll = useCallback(async () => {
