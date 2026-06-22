@@ -14,11 +14,12 @@ import { Card } from "@/components/ui/card";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { AlertTriangle, BadgeCheck, CheckCheck, Copy, Download, FileText, Filter, Pencil, Search, StickyNote, Trash2, X } from "lucide-react";
+import { AlertTriangle, BadgeCheck, CheckCheck, Copy, Download, FileText, Filter, MailCheck, Pencil, Search, StickyNote, Trash2, X } from "lucide-react";
 import type { PaymentStatus, PaymentType, Status, StudentRow } from "@/lib/types";
 import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
+import { ConfirmationLetterModal } from "@/components/confirmation-letter-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
