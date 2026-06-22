@@ -7,6 +7,7 @@ import { fetchAllSubmissions } from "./formstack";
 import { loadShared, saveShared, subscribeShared } from "./shared-state";
 import { fetchAllStudents, upsertStudent, upsertStudents, deleteStudentRow, deleteAllStudents, subscribeStudents } from "./students-repo";
 import { useAuth } from "./auth";
+import { logAudit } from "./audit-log";
 import { toast } from "sonner";
 
 interface Activity { id: string; ts: string; text: string; }
@@ -191,8 +192,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateStudent = useCallback((id: string, patch: Partial<StudentRow>) => {
     setStudentsState((prev) => {
       let updated: StudentRow | null = null;
+      let prevRow: StudentRow | null = null;
       const next = prev.map((r) => {
         if (r.id !== id) return r;
+        prevRow = r;
         const merged = { ...r, ...patch } as StudentRow;
         if (patch.paymentType !== undefined) {
           merged.paid = patch.paymentType !== "Unpaid";
@@ -203,10 +206,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
       storage.setStudents(next);
       if (updated) {
-        upsertStudent(updated).catch((e) => {
+        const u = updated as StudentRow;
+        const p = prevRow as StudentRow | null;
+        upsertStudent(u).catch((e) => {
           console.error("[store] save student failed", e);
           toast.error("Failed to save change. Check your connection.");
         });
+        // Build a human summary of what changed for the audit log
+        const fieldLabels: Record<string, string> = {
+          status: "status", paymentStatus: "payment status", paymentType: "payment type",
+          amountPaid: "amount paid", rtAmount: "RT amount", owAmount: "OW amount",
+          familyPaid: "family paid", schoolOwes: "school owes",
+          schoolPaidReceived: "school paid received", schoolPaidAmount: "school paid amount",
+          checkNumber: "check #", notes: "notes", financialAidNotes: "aid notes",
+          stopAddress: "stop", stopAddress2: "stop 2",
+          parentName: "parent name", parentPhone: "parent phone", parentEmail: "parent email",
+          parentAddress: "parent address", studentName: "student name",
+          grade: "grade", schoolName: "school",
+        };
+        const changes: string[] = [];
+        const details: Record<string, unknown> = {};
+        for (const k of Object.keys(patch) as (keyof StudentRow)[]) {
+          const label = fieldLabels[k as string] ?? (k as string);
+          const before = p ? (p as any)[k] : undefined;
+          const after = (u as any)[k];
+          if (before === after) continue;
+          details[k as string] = { before, after };
+          if (k === "status") changes.push(`marked as ${String(after)}`);
+          else changes.push(`${label} → ${after === "" || after == null ? "(empty)" : String(after)}`);
+        }
+        if (changes.length > 0) {
+          void logAudit({
+            action: changes.join(", "),
+            entityType: "student",
+            entityId: u.id,
+            entityName: u.studentName,
+            details,
+          });
+        }
       }
       return next;
     });
