@@ -466,6 +466,10 @@ function StudentsPage() {
           )}
         </SheetContent>
       </Sheet>
+      {confirmLetterRow && (
+        <ConfirmationLetterModal row={confirmLetterRow} onClose={() => setConfirmLetterRow(null)} />
+      )}
+
 
       {receiptOpen && (
         <ReceiptModal
