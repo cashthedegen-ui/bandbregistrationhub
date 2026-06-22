@@ -349,6 +349,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return next;
         });
         pushActivity(`Synced ${rows.length} submissions: ${added} new, ${skippedExisting} already existed${skippedDeleted ? `, ${skippedDeleted} previously deleted` : ""}`);
+        void logAudit({
+          action: `synced ${rows.length} submissions (${added} new, ${skippedExisting} already existed)`,
+          entityType: "sync",
+          entityName: `${cfgs.length} form(s)`,
+          details: { total: rows.length, added, skippedExisting, skippedDeleted },
+        });
         toast.success(`${added} new added${skippedDeleted ? ` · ${skippedDeleted} skipped (deleted)` : ""}`);
       }
     } catch (e: any) {
@@ -365,6 +371,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     storage.setArchives(next);
     void saveShared("archives", next);
     pushActivity(`Archived season "${label}" with ${students.length} students`);
+    void logAudit({ action: `archived season "${label}"`, entityType: "archive", entityName: label, details: { count: students.length } });
     toast.success(`Archived "${label}"`);
   }, [students, archives, pushActivity]);
 
@@ -376,6 +383,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         await deleteAllStudents();
         await upsertStudents(a.students, { force: true });
         applyStudents(a.students);
+        void logAudit({ action: `restored season "${a.label}"`, entityType: "archive", entityId: a.id, entityName: a.label, details: { count: a.students.length } });
         toast.success(`Restored "${a.label}"`);
       } catch (e) {
         console.error("[store] restore failed", e);
@@ -385,10 +393,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [archives, applyStudents]);
 
   const deleteArchive = useCallback((id: string) => {
+    const target = archives.find((a) => a.id === id);
     const next = archives.filter((a) => a.id !== id);
     setArchives(next);
     storage.setArchives(next);
     void saveShared("archives", next);
+    if (target) void logAudit({ action: `deleted archive "${target.label}"`, entityType: "archive", entityId: target.id, entityName: target.label });
   }, [archives]);
 
   const loadDemo = useCallback(() => {
