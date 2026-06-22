@@ -165,7 +165,7 @@ export function buildConfirmationLetter(row: StudentRow, settings: ReceiptSettin
 
   // ===== Parent =====
   section("Parent / guardian");
-  row2(["Name", row.parentName], ["Phone", row.parentPhone]);
+  row2(["Name", row.parentName], ["Phone", formatPhone(row.parentPhone)]);
 
   // ===== Notice box =====
   y += 10;
@@ -187,16 +187,28 @@ export function buildConfirmationLetter(row: StudentRow, settings: ReceiptSettin
   // ===== Footer =====
   const fy = H - 64;
   doc.setDrawColor(230, 230, 230);
-  doc.line(M, fy - 18, W - M, fy - 18);
+  doc.line(M, fy - 22, W - M, fy - 22);
+
+  // Left: brand + contact (two lines)
   doc.setTextColor(20, 20, 20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text("B and B Transportation", M, fy);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(110, 110, 110);
+  doc.setFontSize(9);
+  doc.text("(203) 393-9750  ·  David@BandBTrans.com", M, fy + 14);
+
+  // Right: issued date, clearly right-aligned on its own line
+  doc.setTextColor(130, 130, 130);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.text("ISSUED", W - M, fy, { align: "right" });
+  doc.setTextColor(20, 20, 20);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text("203-393-9750 — David@BandBTrans.com", M, fy + 16);
-  doc.text(`Issued ${new Date().toLocaleDateString()}`, W - M, fy + 16, { align: "right" });
+  doc.text(new Date().toLocaleDateString(), W - M, fy + 14, { align: "right" });
+
 
   return doc;
 }
