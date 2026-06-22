@@ -14,11 +14,12 @@ import { Card } from "@/components/ui/card";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { AlertTriangle, BadgeCheck, CheckCheck, Copy, Download, FileText, Filter, Pencil, Search, StickyNote, Trash2, X } from "lucide-react";
+import { AlertTriangle, BadgeCheck, CheckCheck, Copy, Download, FileText, Filter, MailCheck, Pencil, Search, StickyNote, Trash2, X } from "lucide-react";
 import type { PaymentStatus, PaymentType, Status, StudentRow } from "@/lib/types";
 import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
+import { ConfirmationLetterModal } from "@/components/confirmation-letter-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -76,6 +77,7 @@ function StudentsPage() {
   const [editRow, setEditRow] = useState<StudentRow | null>(null);
   const [editDraft, setEditDraft] = useState<StudentRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<StudentRow | null>(null);
+  const [confirmLetterRow, setConfirmLetterRow] = useState<StudentRow | null>(null);
 
 
   const schools = useMemo(() => Array.from(new Set(students.map((s) => s.schoolName))).filter(Boolean), [students]);
@@ -370,6 +372,11 @@ function StudentsPage() {
                         <Button size="icon" variant="ghost" onClick={() => downloadReceipt(r, settings.receipt)} title="PDF receipt">
                           <FileText className="h-4 w-4" />
                         </Button>
+                        {r.status === "Confirmed" && (
+                          <Button size="icon" variant="ghost" onClick={() => setConfirmLetterRow(r)} title="Confirmation letter">
+                            <MailCheck className="h-4 w-4 text-emerald-400" />
+                          </Button>
+                        )}
                         <Button size="icon" variant="ghost" onClick={() => setDeleteRow(r)} title="Delete student">
                           <Trash2 className="h-4 w-4 text-red-400" />
                         </Button>
@@ -406,11 +413,16 @@ function StudentsPage() {
                 <Field label="Parent Address" value={openRow.parentAddress} />
                 {openRow.notes && <Field label="Notes" value={openRow.notes} />}
                 <Field label="Submitted" value={new Date(openRow.submissionDate).toLocaleString()} />
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-wrap gap-2 pt-2">
                   <Button onClick={() => downloadReceipt(openRow, settings.receipt)} className="bg-primary text-primary-foreground hover:bg-primary/90">
                     <FileText className="h-4 w-4 mr-2" /> PDF Receipt
                   </Button>
                   <Button variant="secondary" onClick={() => setReceiptOpen([openRow])}>Customize</Button>
+                  {openRow.status === "Confirmed" && (
+                    <Button variant="secondary" onClick={() => setConfirmLetterRow(openRow)}>
+                      <MailCheck className="h-4 w-4 mr-2" /> Confirmation Letter
+                    </Button>
+                  )}
                 </div>
               </div>
             </>
@@ -454,6 +466,10 @@ function StudentsPage() {
           )}
         </SheetContent>
       </Sheet>
+      {confirmLetterRow && (
+        <ConfirmationLetterModal row={confirmLetterRow} onClose={() => setConfirmLetterRow(null)} />
+      )}
+
 
       {receiptOpen && (
         <ReceiptModal
