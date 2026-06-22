@@ -197,7 +197,7 @@ export function buildConfirmationLetter(row: StudentRow, settings: ReceiptSettin
   doc.setFont("helvetica", "normal");
   doc.setTextColor(110, 110, 110);
   doc.setFontSize(9);
-  doc.text("(203) 393-9750  ·  David@BandBTrans.com", M, fy + 14);
+  doc.text("(203) 393-9750  ·  info@bandbtrans.com", M, fy + 14);
 
   // Right: issued date, clearly right-aligned on its own line
   doc.setTextColor(130, 130, 130);
@@ -230,7 +230,7 @@ export function emailConfirmationLetter(row: StudentRow, settings: ReceiptSettin
       `Grade: ${row.grade}\n` +
       `Bus stop: ${row.stopAddress}\n\n` +
       `Your confirmation letter PDF has been downloaded — please attach it to this email before sending.\n\n` +
-      `Questions? 203-393-9750 — David@BandBTrans.com\n\n` +
+      `Questions? 203-393-9750 — info@bandbtrans.com\n\n` +
       `— B and B Transportation`,
   );
   const to = encodeURIComponent(row.parentEmail || "");
