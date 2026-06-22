@@ -77,6 +77,7 @@ function StudentsPage() {
   const [editRow, setEditRow] = useState<StudentRow | null>(null);
   const [editDraft, setEditDraft] = useState<StudentRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<StudentRow | null>(null);
+  const [confirmLetterRow, setConfirmLetterRow] = useState<StudentRow | null>(null);
 
 
   const schools = useMemo(() => Array.from(new Set(students.map((s) => s.schoolName))).filter(Boolean), [students]);
