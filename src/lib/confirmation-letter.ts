@@ -9,17 +9,25 @@ export function confirmationNumber(row: StudentRow): string {
   return `BB-26-${n.toString().padStart(4, "0")}`;
 }
 
+const money = (n: number) =>
+  `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const pickupTime = (row: StudentRow, key: "morningPickup" | "afternoonDismissal"): string => {
+  const v = (row as unknown as Record<string, unknown>)[key];
+  if (typeof v === "string" && v.trim()) return v.trim();
+  return "TBD — see driver schedule";
+};
+
 export function buildConfirmationLetter(row: StudentRow, settings: ReceiptSettings): jsPDF {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
-  const M = 48;
+  const M = 64;
 
-  // White background (default)
   doc.setTextColor(20, 20, 20);
 
   // ===== Header =====
-  let y = 56;
+  let y = 64;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.text("B and B Transportation", M, y);
@@ -36,26 +44,26 @@ export function buildConfirmationLetter(row: StudentRow, settings: ReceiptSettin
   doc.setFontSize(13);
   doc.text(confirmationNumber(row), W - M, y + 16, { align: "right" });
 
-  y += 40;
+  y += 44;
   doc.setDrawColor(230, 230, 230);
   doc.line(M, y, W - M, y);
 
   // ===== Title =====
-  y += 36;
+  y += 40;
   doc.setTextColor(20, 20, 20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.text("Bus registration confirmed", M, y);
-  y += 20;
+  y += 22;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(110, 110, 110);
   doc.text(`${settings.schoolYear} school year`, M, y);
 
   // ===== Two-column cards =====
-  y += 24;
-  const cardH = 88;
-  const gap = 12;
+  y += 28;
+  const cardH = 92;
+  const gap = 14;
   const cardW = (W - M * 2 - gap) / 2;
 
   const drawCard = (x: number, label: string, primary: string, secondary: string, accent?: string) => {
@@ -63,18 +71,18 @@ export function buildConfirmationLetter(row: StudentRow, settings: ReceiptSettin
     doc.setFillColor(252, 252, 252);
     doc.roundedRect(x, y, cardW, cardH, 8, 8, "FD");
     doc.setTextColor(130, 130, 130);
-    doc.setFont("helvetica", "normal");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
-    doc.text(label.toUpperCase(), x + 14, y + 20);
+    doc.text(label.toUpperCase(), x + 16, y + 22);
     if (accent === "green") doc.setTextColor(22, 163, 74);
     else doc.setTextColor(20, 20, 20);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
-    doc.text(primary, x + 14, y + 44, { maxWidth: cardW - 28 });
+    doc.text(primary, x + 16, y + 48, { maxWidth: cardW - 32 });
     doc.setTextColor(110, 110, 110);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(secondary, x + 14, y + 64, { maxWidth: cardW - 28 });
+    doc.setFontSize(11);
+    doc.text(secondary, x + 16, y + 70, { maxWidth: cardW - 32 });
   };
 
   drawCard(
@@ -85,46 +93,49 @@ export function buildConfirmationLetter(row: StudentRow, settings: ReceiptSettin
   );
   drawCard(M + cardW + gap, "Status", "Confirmed", "Payment received in full", "green");
 
-  y += cardH + 28;
+  y += cardH + 36;
 
   // ===== Section helper =====
   const section = (title: string) => {
     doc.setDrawColor(235, 235, 235);
     doc.line(M, y, W - M, y);
-    y += 18;
+    y += 22;
     doc.setTextColor(130, 130, 130);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text(title.toUpperCase(), M, y);
-    y += 14;
+    y += 18;
     doc.setTextColor(20, 20, 20);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
   };
 
+  const labeled = (label: string, value: string, x: number, maxW: number) => {
+    doc.setTextColor(130, 130, 130);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text(label.toUpperCase(), x, y);
+    doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text(value || "—", x, y + 16, { maxWidth: maxW });
+  };
+
   const row2 = (left: [string, string], right: [string, string]) => {
     const colW = (W - M * 2) / 2;
-    doc.setTextColor(130, 130, 130);
-    doc.setFontSize(9);
-    doc.text(left[0], M, y);
-    doc.text(right[0], M + colW, y);
-    doc.setTextColor(20, 20, 20);
-    doc.setFontSize(11);
-    doc.text(left[1] || "—", M, y + 14, { maxWidth: colW - 10 });
-    doc.text(right[1] || "—", M + colW, y + 14, { maxWidth: colW - 10 });
-    y += 32;
+    labeled(left[0], left[1], M, colW - 12);
+    labeled(right[0], right[1], M + colW, colW - 12);
+    y += 36;
   };
 
   // ===== Pickup & drop-off =====
   section("Pickup & drop-off");
-  doc.setTextColor(130, 130, 130);
-  doc.setFontSize(9);
-  doc.text("📍 Bus stop", M, y);
-  doc.setTextColor(20, 20, 20);
-  doc.setFontSize(11);
-  doc.text(row.stopAddress || "—", M, y + 14, { maxWidth: W - M * 2 });
-  y += 32;
-  row2(["🕒 Morning pickup", "TBD — see driver schedule"], ["🕒 Afternoon dismissal", "TBD — see driver schedule"]);
+  labeled("Bus stop", row.stopAddress || "—", M, W - M * 2);
+  y += 36;
+  row2(
+    ["Morning pickup", pickupTime(row, "morningPickup")],
+    ["Afternoon dismissal", pickupTime(row, "afternoonDismissal")],
+  );
 
   // ===== Payment =====
   section("Payment");
@@ -133,49 +144,50 @@ export function buildConfirmationLetter(row: StudentRow, settings: ReceiptSettin
     return row.amountPaid ?? 0;
   })();
   doc.setTextColor(130, 130, 130);
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.text("Amount paid", M, y);
+  doc.text("AMOUNT PAID", M, y);
   doc.setTextColor(20, 20, 20);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text(`$${amt.toFixed(2)}`, M, y + 18);
+  doc.setFontSize(18);
+  doc.text(money(amt), M, y + 22);
   doc.setFont("helvetica", "normal");
-  y += 36;
+  y += 44;
 
   // ===== Parent =====
   section("Parent / guardian");
   row2(["Name", row.parentName], ["Phone", row.parentPhone]);
 
   // ===== Notice box =====
-  y += 6;
-  const noticeH = 64;
+  y += 10;
+  const noticeH = 76;
   doc.setFillColor(245, 245, 247);
   doc.setDrawColor(230, 230, 230);
   doc.roundedRect(M, y, W - M * 2, noticeH, 8, 8, "FD");
   doc.setTextColor(60, 60, 60);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.text(
     "Please arrive at the bus stop 5 minutes before pickup. Bus assignments are final for the school year and seats cannot be transferred. Questions can be directed to our office below.",
-    M + 14,
-    y + 20,
-    { maxWidth: W - M * 2 - 28, lineHeightFactor: 1.4 },
+    M + 16,
+    y + 24,
+    { maxWidth: W - M * 2 - 32, lineHeightFactor: 1.5 },
   );
-  y += noticeH + 24;
+  y += noticeH + 28;
 
   // ===== Footer =====
-  const fy = H - 60;
+  const fy = H - 64;
   doc.setDrawColor(230, 230, 230);
-  doc.line(M, fy - 16, W - M, fy - 16);
+  doc.line(M, fy - 18, W - M, fy - 18);
   doc.setTextColor(20, 20, 20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text("B and B Transportation", M, fy);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(110, 110, 110);
-  doc.setFontSize(9);
-  doc.text("203-393-9750 — David@BandBTrans.com", M, fy + 14);
-  doc.text(`Issued ${new Date().toLocaleDateString()}`, W - M, fy + 14, { align: "right" });
+  doc.setFontSize(10);
+  doc.text("203-393-9750 — David@BandBTrans.com", M, fy + 16);
+  doc.text(`Issued ${new Date().toLocaleDateString()}`, W - M, fy + 16, { align: "right" });
 
   return doc;
 }
