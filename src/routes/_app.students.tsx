@@ -372,6 +372,11 @@ function StudentsPage() {
                         <Button size="icon" variant="ghost" onClick={() => downloadReceipt(r, settings.receipt)} title="PDF receipt">
                           <FileText className="h-4 w-4" />
                         </Button>
+                        {r.status === "Confirmed" && (
+                          <Button size="icon" variant="ghost" onClick={() => setConfirmLetterRow(r)} title="Confirmation letter">
+                            <MailCheck className="h-4 w-4 text-emerald-400" />
+                          </Button>
+                        )}
                         <Button size="icon" variant="ghost" onClick={() => setDeleteRow(r)} title="Delete student">
                           <Trash2 className="h-4 w-4 text-red-400" />
                         </Button>
