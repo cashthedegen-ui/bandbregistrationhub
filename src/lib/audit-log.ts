@@ -42,7 +42,7 @@ export async function logAudit(input: {
       entity_type: input.entityType ?? null,
       entity_id: input.entityId ?? null,
       entity_name: input.entityName ?? null,
-      details: input.details ?? null,
+      details: (input.details ?? null) as any,
     });
     if (error) throw error;
   } catch (e) {
