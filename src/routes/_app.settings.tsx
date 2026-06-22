@@ -149,6 +149,38 @@ function SettingsPage() {
         </Card>
 
         <Card className="bg-card border-border lg:col-span-2">
+          <CardContent className="p-5 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Data & Audit</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-md border border-border bg-background/50 p-4 flex items-start gap-3">
+                <FileClock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-foreground">Audit Log</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Every status change, payment update, manual edit, deletion, sync, and settings change — with timestamp and user.
+                  </p>
+                  <Link to="/audit"><Button size="sm" variant="secondary" className="mt-3">View audit log</Button></Link>
+                </div>
+              </div>
+              <div className="rounded-md border border-border bg-background/50 p-4 flex items-start gap-3">
+                <Download className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-foreground">Full Data Backup</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    One-click download of everything — students, payments, settings, forms config, and the full audit log — as a dated JSON file.
+                  </p>
+                  <Button size="sm" variant="secondary" className="mt-3" onClick={runBackup} disabled={backingUp}>
+                    {backingUp ? "Preparing…" : "Download Full Backup"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+
+
+        <Card className="bg-card border-border lg:col-span-2">
           <CardContent className="p-5 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Account</h2>
