@@ -230,7 +230,7 @@ export function emailConfirmationLetter(row: StudentRow, settings: ReceiptSettin
       `Grade: ${row.grade}\n` +
       `Bus stop: ${row.stopAddress}\n\n` +
       `Your confirmation letter PDF has been downloaded — please attach it to this email before sending.\n\n` +
-      `Questions? 203-393-9750 — David@BandBTrans.com\n\n` +
+      `Questions? 203-393-9750 — info@bandbtrans.com\n\n` +
       `— B and B Transportation`,
   );
   const to = encodeURIComponent(row.parentEmail || "");
