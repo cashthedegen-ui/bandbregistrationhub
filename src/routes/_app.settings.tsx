@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { fetchForms } from "@/lib/formstack";
+import { downloadFullBackup } from "@/lib/backup";
 import { toast } from "sonner";
-import { Plus, Trash2, LogOut, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, LogOut, ShieldCheck, FileClock, Download } from "lucide-react";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — B & B Transit" }] }),
@@ -22,8 +23,19 @@ function SettingsPage() {
   const navigate = useNavigate();
   const [local, setLocal] = useState(settings);
   const [testing, setTesting] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
 
   const save = () => { updateSettings(local); toast.success("Settings saved"); };
+
+  const runBackup = async () => {
+    setBackingUp(true);
+    try {
+      const { filename, size } = await downloadFullBackup();
+      toast.success(`Downloaded ${filename} (${(size / 1024).toFixed(1)} KB)`);
+    } catch (e: any) {
+      toast.error(`Backup failed: ${e?.message || e}`);
+    } finally { setBackingUp(false); }
+  };
 
   const test = async () => {
     setTesting(true);
