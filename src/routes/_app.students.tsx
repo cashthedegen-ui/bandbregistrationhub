@@ -413,11 +413,16 @@ function StudentsPage() {
                 <Field label="Parent Address" value={openRow.parentAddress} />
                 {openRow.notes && <Field label="Notes" value={openRow.notes} />}
                 <Field label="Submitted" value={new Date(openRow.submissionDate).toLocaleString()} />
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-wrap gap-2 pt-2">
                   <Button onClick={() => downloadReceipt(openRow, settings.receipt)} className="bg-primary text-primary-foreground hover:bg-primary/90">
                     <FileText className="h-4 w-4 mr-2" /> PDF Receipt
                   </Button>
                   <Button variant="secondary" onClick={() => setReceiptOpen([openRow])}>Customize</Button>
+                  {openRow.status === "Confirmed" && (
+                    <Button variant="secondary" onClick={() => setConfirmLetterRow(openRow)}>
+                      <MailCheck className="h-4 w-4 mr-2" /> Confirmation Letter
+                    </Button>
+                  )}
                 </div>
               </div>
             </>
