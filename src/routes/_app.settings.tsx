@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { fetchForms } from "@/lib/formstack";
+import { downloadFullBackup } from "@/lib/backup";
 import { toast } from "sonner";
-import { Plus, Trash2, LogOut, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, LogOut, ShieldCheck, FileClock, Download } from "lucide-react";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — B & B Transit" }] }),
@@ -22,8 +23,19 @@ function SettingsPage() {
   const navigate = useNavigate();
   const [local, setLocal] = useState(settings);
   const [testing, setTesting] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
 
   const save = () => { updateSettings(local); toast.success("Settings saved"); };
+
+  const runBackup = async () => {
+    setBackingUp(true);
+    try {
+      const { filename, size } = await downloadFullBackup();
+      toast.success(`Downloaded ${filename} (${(size / 1024).toFixed(1)} KB)`);
+    } catch (e: any) {
+      toast.error(`Backup failed: ${e?.message || e}`);
+    } finally { setBackingUp(false); }
+  };
 
   const test = async () => {
     setTesting(true);
@@ -135,6 +147,38 @@ function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="bg-card border-border lg:col-span-2">
+          <CardContent className="p-5 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Data & Audit</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-md border border-border bg-background/50 p-4 flex items-start gap-3">
+                <FileClock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-foreground">Audit Log</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Every status change, payment update, manual edit, deletion, sync, and settings change — with timestamp and user.
+                  </p>
+                  <Link to="/audit"><Button size="sm" variant="secondary" className="mt-3">View audit log</Button></Link>
+                </div>
+              </div>
+              <div className="rounded-md border border-border bg-background/50 p-4 flex items-start gap-3">
+                <Download className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-foreground">Full Data Backup</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    One-click download of everything — students, payments, settings, forms config, and the full audit log — as a dated JSON file.
+                  </p>
+                  <Button size="sm" variant="secondary" className="mt-3" onClick={runBackup} disabled={backingUp}>
+                    {backingUp ? "Preparing…" : "Download Full Backup"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+
 
         <Card className="bg-card border-border lg:col-span-2">
           <CardContent className="p-5 flex flex-wrap items-center justify-between gap-3">

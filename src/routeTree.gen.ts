@@ -17,6 +17,7 @@ import { Route as ApiFormstackRouteImport } from './routes/api/formstack'
 import { Route as AppStudentsRouteImport } from './routes/_app.students'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppRoutesRouteImport } from './routes/_app.routes'
+import { Route as AppAuditRouteImport } from './routes/_app.audit'
 import { Route as AppArchiveRouteImport } from './routes/_app.archive'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
 
@@ -59,6 +60,11 @@ const AppRoutesRoute = AppRoutesRouteImport.update({
   path: '/routes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppArchiveRoute = AppArchiveRouteImport.update({
   id: '/archive',
   path: '/archive',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/trust': typeof TrustRoute
   '/analytics': typeof AppAnalyticsRoute
   '/archive': typeof AppArchiveRoute
+  '/audit': typeof AppAuditRoute
   '/routes': typeof AppRoutesRoute
   '/settings': typeof AppSettingsRoute
   '/students': typeof AppStudentsRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/trust': typeof TrustRoute
   '/analytics': typeof AppAnalyticsRoute
   '/archive': typeof AppArchiveRoute
+  '/audit': typeof AppAuditRoute
   '/routes': typeof AppRoutesRoute
   '/settings': typeof AppSettingsRoute
   '/students': typeof AppStudentsRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   '/trust': typeof TrustRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/archive': typeof AppArchiveRoute
+  '/_app/audit': typeof AppAuditRoute
   '/_app/routes': typeof AppRoutesRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/students': typeof AppStudentsRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/trust'
     | '/analytics'
     | '/archive'
+    | '/audit'
     | '/routes'
     | '/settings'
     | '/students'
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
     | '/trust'
     | '/analytics'
     | '/archive'
+    | '/audit'
     | '/routes'
     | '/settings'
     | '/students'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/trust'
     | '/_app/analytics'
     | '/_app/archive'
+    | '/_app/audit'
     | '/_app/routes'
     | '/_app/settings'
     | '/_app/students'
@@ -207,6 +219,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRoutesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/audit': {
+      id: '/_app/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/archive': {
       id: '/_app/archive'
       path: '/archive'
@@ -227,6 +246,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppArchiveRoute: typeof AppArchiveRoute
+  AppAuditRoute: typeof AppAuditRoute
   AppRoutesRoute: typeof AppRoutesRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppStudentsRoute: typeof AppStudentsRoute
@@ -236,6 +256,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppArchiveRoute: AppArchiveRoute,
+  AppAuditRoute: AppAuditRoute,
   AppRoutesRoute: AppRoutesRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppStudentsRoute: AppStudentsRoute,

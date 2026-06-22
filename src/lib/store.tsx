@@ -7,6 +7,7 @@ import { fetchAllSubmissions } from "./formstack";
 import { loadShared, saveShared, subscribeShared } from "./shared-state";
 import { fetchAllStudents, upsertStudent, upsertStudents, deleteStudentRow, deleteAllStudents, subscribeStudents } from "./students-repo";
 import { useAuth } from "./auth";
+import { logAudit } from "./audit-log";
 import { toast } from "sonner";
 
 interface Activity { id: string; ts: string; text: string; }
@@ -191,8 +192,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateStudent = useCallback((id: string, patch: Partial<StudentRow>) => {
     setStudentsState((prev) => {
       let updated: StudentRow | null = null;
+      let prevRow: StudentRow | null = null;
       const next = prev.map((r) => {
         if (r.id !== id) return r;
+        prevRow = r;
         const merged = { ...r, ...patch } as StudentRow;
         if (patch.paymentType !== undefined) {
           merged.paid = patch.paymentType !== "Unpaid";
@@ -203,10 +206,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
       storage.setStudents(next);
       if (updated) {
-        upsertStudent(updated).catch((e) => {
+        const u = updated as StudentRow;
+        const p = prevRow as StudentRow | null;
+        upsertStudent(u).catch((e) => {
           console.error("[store] save student failed", e);
           toast.error("Failed to save change. Check your connection.");
         });
+        // Build a human summary of what changed for the audit log
+        const fieldLabels: Record<string, string> = {
+          status: "status", paymentStatus: "payment status", paymentType: "payment type",
+          amountPaid: "amount paid", rtAmount: "RT amount", owAmount: "OW amount",
+          familyPaid: "family paid", schoolOwes: "school owes",
+          schoolPaidReceived: "school paid received", schoolPaidAmount: "school paid amount",
+          checkNumber: "check #", notes: "notes", financialAidNotes: "aid notes",
+          stopAddress: "stop", stopAddress2: "stop 2",
+          parentName: "parent name", parentPhone: "parent phone", parentEmail: "parent email",
+          parentAddress: "parent address", studentName: "student name",
+          grade: "grade", schoolName: "school",
+        };
+        const changes: string[] = [];
+        const details: Record<string, unknown> = {};
+        for (const k of Object.keys(patch) as (keyof StudentRow)[]) {
+          const label = fieldLabels[k as string] ?? (k as string);
+          const before = p ? (p as any)[k] : undefined;
+          const after = (u as any)[k];
+          if (before === after) continue;
+          details[k as string] = { before, after };
+          if (k === "status") changes.push(`marked as ${String(after)}`);
+          else changes.push(`${label} → ${after === "" || after == null ? "(empty)" : String(after)}`);
+        }
+        if (changes.length > 0) {
+          void logAudit({
+            action: changes.join(", "),
+            entityType: "student",
+            entityId: u.id,
+            entityName: u.studentName,
+            details,
+          });
+        }
       }
       return next;
     });
@@ -221,6 +258,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         console.error("[store] delete student failed", e);
         toast.error("Failed to delete. Check your connection.");
       });
+      if (target) {
+        void logAudit({
+          action: "deleted student",
+          entityType: "student",
+          entityId: target.id,
+          entityName: target.studentName,
+          details: { school: target.schoolName, submissionId: target.submissionId },
+        });
+      }
       if (target?.submissionId) {
         if (!deletedSubs.includes(target.submissionId)) {
           const nextDeleted = [...deletedSubs, target.submissionId];
@@ -236,6 +282,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setSettings(s);
     storage.setSettings(s);
     void saveShared("settings", { ...s, apiToken: "" });
+    void logAudit({
+      action: "updated settings",
+      entityType: "settings",
+      entityName: `${s.forms.length} forms configured`,
+    });
   }, []);
 
   const syncAll = useCallback(async () => {
@@ -298,6 +349,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return next;
         });
         pushActivity(`Synced ${rows.length} submissions: ${added} new, ${skippedExisting} already existed${skippedDeleted ? `, ${skippedDeleted} previously deleted` : ""}`);
+        void logAudit({
+          action: `synced ${rows.length} submissions (${added} new, ${skippedExisting} already existed)`,
+          entityType: "sync",
+          entityName: `${cfgs.length} form(s)`,
+          details: { total: rows.length, added, skippedExisting, skippedDeleted },
+        });
         toast.success(`${added} new added${skippedDeleted ? ` · ${skippedDeleted} skipped (deleted)` : ""}`);
       }
     } catch (e: any) {
@@ -314,6 +371,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     storage.setArchives(next);
     void saveShared("archives", next);
     pushActivity(`Archived season "${label}" with ${students.length} students`);
+    void logAudit({ action: `archived season "${label}"`, entityType: "archive", entityName: label, details: { count: students.length } });
     toast.success(`Archived "${label}"`);
   }, [students, archives, pushActivity]);
 
@@ -325,6 +383,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         await deleteAllStudents();
         await upsertStudents(a.students, { force: true });
         applyStudents(a.students);
+        void logAudit({ action: `restored season "${a.label}"`, entityType: "archive", entityId: a.id, entityName: a.label, details: { count: a.students.length } });
         toast.success(`Restored "${a.label}"`);
       } catch (e) {
         console.error("[store] restore failed", e);
@@ -334,10 +393,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [archives, applyStudents]);
 
   const deleteArchive = useCallback((id: string) => {
+    const target = archives.find((a) => a.id === id);
     const next = archives.filter((a) => a.id !== id);
     setArchives(next);
     storage.setArchives(next);
     void saveShared("archives", next);
+    if (target) void logAudit({ action: `deleted archive "${target.label}"`, entityType: "archive", entityId: target.id, entityName: target.label });
   }, [archives]);
 
   const loadDemo = useCallback(() => {
