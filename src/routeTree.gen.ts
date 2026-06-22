@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrustRouteImport } from './routes/trust'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
@@ -19,6 +20,11 @@ import { Route as AppRoutesRouteImport } from './routes/_app.routes'
 import { Route as AppArchiveRouteImport } from './routes/_app.archive'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
 
+const TrustRoute = TrustRouteImport.update({
+  id: '/trust',
+  path: '/trust',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -67,6 +73,7 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/auth': typeof AuthRoute
+  '/trust': typeof TrustRoute
   '/analytics': typeof AppAnalyticsRoute
   '/archive': typeof AppArchiveRoute
   '/routes': typeof AppRoutesRoute
@@ -76,6 +83,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/trust': typeof TrustRoute
   '/analytics': typeof AppAnalyticsRoute
   '/archive': typeof AppArchiveRoute
   '/routes': typeof AppRoutesRoute
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/trust': typeof TrustRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/archive': typeof AppArchiveRoute
   '/_app/routes': typeof AppRoutesRoute
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/trust'
     | '/analytics'
     | '/archive'
     | '/routes'
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/trust'
     | '/analytics'
     | '/archive'
     | '/routes'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/auth'
+    | '/trust'
     | '/_app/analytics'
     | '/_app/archive'
     | '/_app/routes'
@@ -133,11 +145,19 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
+  TrustRoute: typeof TrustRoute
   ApiFormstackRoute: typeof ApiFormstackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trust': {
+      id: '/trust'
+      path: '/trust'
+      fullPath: '/trust'
+      preLoaderRoute: typeof TrustRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -227,6 +247,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
+  TrustRoute: TrustRoute,
   ApiFormstackRoute: ApiFormstackRoute,
 }
 export const routeTree = rootRouteImport
