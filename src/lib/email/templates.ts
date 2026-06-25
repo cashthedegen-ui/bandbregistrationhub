@@ -58,3 +58,38 @@ export function testEmailTemplate(recipient: string) {
     }),
   };
 }
+
+export function runSheetEmailTemplate(opts: {
+  schoolName: string;
+  routeName: string;
+  date: string;
+  session: string;
+  driverName: string;
+  busNumber: string;
+  riderCount: number;
+  intro?: string;
+}) {
+  const dateLabel = opts.date
+    ? new Date(`${opts.date}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+    : "—";
+  return {
+    subject: `Run Sheet — ${opts.schoolName} · ${opts.routeName} · ${dateLabel} (${opts.session})`,
+    html: shell({
+      preheader: `Run sheet for ${opts.routeName} on ${dateLabel}.`,
+      bodyHtml: `
+        <h1 style="font-size:20px;margin:0 0 12px;">Daily Run Sheet</h1>
+        ${opts.intro ? `<p style="margin:0 0 16px;">${opts.intro.replace(/</g, "&lt;")}</p>` : ""}
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 16px;border:1px solid #e7e5e4;border-radius:8px;width:100%;">
+          <tr><td style="padding:10px 14px;font-size:13px;color:#57534e;width:40%;">School</td><td style="padding:10px 14px;font-size:13px;font-weight:600;">${opts.schoolName}</td></tr>
+          <tr><td style="padding:10px 14px;font-size:13px;color:#57534e;border-top:1px solid #e7e5e4;">Route</td><td style="padding:10px 14px;font-size:13px;font-weight:600;border-top:1px solid #e7e5e4;">${opts.routeName}</td></tr>
+          <tr><td style="padding:10px 14px;font-size:13px;color:#57534e;border-top:1px solid #e7e5e4;">Date</td><td style="padding:10px 14px;font-size:13px;font-weight:600;border-top:1px solid #e7e5e4;">${dateLabel}</td></tr>
+          <tr><td style="padding:10px 14px;font-size:13px;color:#57534e;border-top:1px solid #e7e5e4;">Session</td><td style="padding:10px 14px;font-size:13px;font-weight:600;border-top:1px solid #e7e5e4;">${opts.session}</td></tr>
+          <tr><td style="padding:10px 14px;font-size:13px;color:#57534e;border-top:1px solid #e7e5e4;">Driver</td><td style="padding:10px 14px;font-size:13px;font-weight:600;border-top:1px solid #e7e5e4;">${opts.driverName || "—"}</td></tr>
+          <tr><td style="padding:10px 14px;font-size:13px;color:#57534e;border-top:1px solid #e7e5e4;">Bus #</td><td style="padding:10px 14px;font-size:13px;font-weight:600;border-top:1px solid #e7e5e4;">${opts.busNumber || "—"}</td></tr>
+          <tr><td style="padding:10px 14px;font-size:13px;color:#57534e;border-top:1px solid #e7e5e4;">Riders</td><td style="padding:10px 14px;font-size:13px;font-weight:600;border-top:1px solid #e7e5e4;">${opts.riderCount}</td></tr>
+        </table>
+        <p style="margin:0;color:#57534e;font-size:13px;">The full run sheet is attached as a PDF.</p>
+      `,
+    }),
+  };
+}

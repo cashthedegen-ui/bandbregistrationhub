@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import {
-  LayoutDashboard, Users, Route as RouteIcon, BarChart3, Archive, Settings as SettingsIcon, RefreshCw, Bus, CheckCircle2, AlertCircle,
+  LayoutDashboard, Users, Route as RouteIcon, BarChart3, Archive, Settings as SettingsIcon, RefreshCw, Bus, CheckCircle2, AlertCircle, ClipboardList,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ const nav: { to: string; label: string; icon: any; exact?: boolean }[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/students", label: "Students", icon: Users },
   { to: "/routes", label: "Routes", icon: RouteIcon },
+  { to: "/run-sheets", label: "Run Sheets", icon: ClipboardList },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/archive", label: "Archive", icon: Archive },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
