@@ -737,6 +737,7 @@ function HistorySection({ history, templates, onRefresh }: { history: EmailHisto
                 <TableHead>Template</TableHead>
                 <TableHead>Recipient</TableHead>
                 <TableHead>Subject</TableHead>
+                <TableHead>Sent by</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -747,6 +748,7 @@ function HistorySection({ history, templates, onRefresh }: { history: EmailHisto
                   <TableCell className="text-xs">{h.template_key || "—"}</TableCell>
                   <TableCell className="text-xs">{h.recipient}</TableCell>
                   <TableCell className="text-xs max-w-[300px] truncate" title={h.subject}>{h.subject}</TableCell>
+                  <TableCell className="text-xs">{h.sent_by_name || h.sent_by_email || "—"}</TableCell>
                   <TableCell>
                     {h.status === "sent" ? (
                       <Badge className="bg-green-600 hover:bg-green-600"><CheckCircle2 className="h-3 w-3 mr-1" /> Sent</Badge>
@@ -757,7 +759,7 @@ function HistorySection({ history, templates, onRefresh }: { history: EmailHisto
                 </TableRow>
               ))}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">No emails match these filters.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">No emails match these filters.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
