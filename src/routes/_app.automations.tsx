@@ -415,12 +415,20 @@ function SendDialog({
     const s = students.find((x) => x.id === studentId);
     if (!s) return;
     if (s.parentEmail) setTo(s.parentEmail);
+    const total = s.rtAmount ?? s.owAmount ?? 0;
+    const paid = s.amountPaid ?? 0;
+    const balance = Math.max(0, total - paid);
     const vars = {
       studentName: s.studentName,
       parentName: s.parentName,
       schoolName: s.schoolName,
       grade: s.grade,
-      amountPaid: s.amountPaid ?? 0,
+      schoolYear: "",
+      paymentDate: new Date().toLocaleDateString(),
+      amountPaid: paid.toFixed(2),
+      balanceDue: balance.toFixed(2),
+      paymentStatus: s.paymentStatus,
+      checkLine: s.checkNumber ? `<tr><td style="color:#57534e;">Check #</td><td><strong>${s.checkNumber}</strong></td></tr>` : "",
       stopAddress: s.stopAddress,
     };
     setCustomVars(JSON.stringify(vars, null, 2));
