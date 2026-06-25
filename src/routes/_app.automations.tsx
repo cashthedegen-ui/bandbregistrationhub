@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,9 +28,10 @@ import { sendAutomationEmail } from "@/lib/email/automation.functions";
 import { useStore } from "@/lib/store";
 import { logAudit } from "@/lib/audit-log";
 import { toast } from "sonner";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, formatCurrency } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Mail, Send, Save, Eye, Loader2, Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle, Search,
+  Mail, Send, Save, Eye, Loader2, Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle, Search, Users, School as SchoolIcon,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/automations")({
@@ -47,7 +48,7 @@ function parseList(s: string): string[] {
 }
 
 function AutomationsPage() {
-  const { students } = useStore();
+  const { students, settings } = useStore();
 
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [configs, setConfigs] = useState<AutomationConfig[]>([]);
@@ -90,7 +91,7 @@ function AutomationsPage() {
     <div>
       <PageHeader
         title="Automations"
-        subtitle="Central control for parent, driver, and school email automations"
+        subtitle="Parent and school communication, with optional driver tools"
         actions={
           <Button variant="outline" size="sm" onClick={() => void reloadAll()} disabled={loading}>
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
@@ -113,10 +114,10 @@ function AutomationsPage() {
 
       <Tabs defaultValue="parent">
         <TabsList className="mb-4">
-          <TabsTrigger value="parent">Parent</TabsTrigger>
-          <TabsTrigger value="runsheet">Run Sheets</TabsTrigger>
-          <TabsTrigger value="school">School Contacts</TabsTrigger>
-          <TabsTrigger value="history">Email History</TabsTrigger>
+          <TabsTrigger value="parent">Parent communication</TabsTrigger>
+          <TabsTrigger value="school">School contacts</TabsTrigger>
+          <TabsTrigger value="history">Email history</TabsTrigger>
+          <TabsTrigger value="driver">Driver (optional)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="parent" className="space-y-4">
@@ -137,33 +138,22 @@ function AutomationsPage() {
                 onSent={() => void reloadAll()}
                 kind="parent"
                 students={students}
+                schoolYear={settings.receipt?.schoolYear ?? ""}
+                extraAction={
+                  key === "payment_reminder" ? (
+                    <BulkPaymentReminderButton
+                      template={t}
+                      subject={t.subject}
+                      bodyHtml={t.body_html}
+                      students={students}
+                      schoolYear={settings.receipt?.schoolYear ?? ""}
+                      onSent={() => void reloadAll()}
+                    />
+                  ) : null
+                }
               />
             );
           })}
-        </TabsContent>
-
-        <TabsContent value="runsheet" className="space-y-4">
-          {templateMap[RUN_SHEET_KEY] && (
-            <AutomationCard
-              template={templateMap[RUN_SHEET_KEY]}
-              config={configMap[RUN_SHEET_KEY]}
-              onSavedTemplate={(updated) => setTemplates((arr) => arr.map((x) => x.key === updated.key ? updated : x))}
-              onSavedConfig={(updated) => setConfigs((arr) => {
-                const exists = arr.some((x) => x.key === updated.key);
-                return exists ? arr.map((x) => x.key === updated.key ? updated : x) : [...arr, updated];
-              })}
-              onSent={() => void reloadAll()}
-              kind="runsheet"
-              students={students}
-            />
-          )}
-          <Card>
-            <CardContent className="p-4 text-sm text-muted-foreground">
-              For the full PDF-attached run sheet workflow (build PDF, preview, multi-recipient send), use the dedicated
-              {" "}<a href="/run-sheets" className="text-primary underline">Run Sheets</a> page.
-              The automation here lets you configure scheduling preferences and edit the driver-facing email template.
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="school" className="space-y-4">
@@ -184,12 +174,48 @@ function AutomationsPage() {
               kind="school"
               students={students}
               contacts={contacts}
+              schoolYear={settings.receipt?.schoolYear ?? ""}
+              extraAction={
+                <BulkSchoolUpdateButton
+                  template={templateMap[SCHOOL_KEY]}
+                  subject={templateMap[SCHOOL_KEY].subject}
+                  bodyHtml={templateMap[SCHOOL_KEY].body_html}
+                  contacts={contacts}
+                  students={students}
+                  onSent={() => void reloadAll()}
+                />
+              }
             />
           )}
         </TabsContent>
 
         <TabsContent value="history">
           <HistorySection history={history} templates={templates} onRefresh={reloadAll} />
+        </TabsContent>
+
+        <TabsContent value="driver" className="space-y-4">
+          <Card>
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              Driver email is optional. Use the dedicated <a href="/run-sheets" className="text-primary underline">Run Sheets</a> page
+              for the full run-sheet workflow (build PDF, preview, multi-recipient send). The template and schedule below are
+              available for ad-hoc driver notifications.
+            </CardContent>
+          </Card>
+          {templateMap[RUN_SHEET_KEY] && (
+            <AutomationCard
+              template={templateMap[RUN_SHEET_KEY]}
+              config={configMap[RUN_SHEET_KEY]}
+              onSavedTemplate={(updated) => setTemplates((arr) => arr.map((x) => x.key === updated.key ? updated : x))}
+              onSavedConfig={(updated) => setConfigs((arr) => {
+                const exists = arr.some((x) => x.key === updated.key);
+                return exists ? arr.map((x) => x.key === updated.key ? updated : x) : [...arr, updated];
+              })}
+              onSent={() => void reloadAll()}
+              kind="runsheet"
+              students={students}
+              schoolYear={settings.receipt?.schoolYear ?? ""}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>
@@ -218,9 +244,11 @@ interface AutomationCardProps {
   kind: "parent" | "runsheet" | "school";
   students: ReturnType<typeof useStore>["students"];
   contacts?: SchoolContact[];
+  schoolYear?: string;
+  extraAction?: ReactNode;
 }
 
-function AutomationCard({ template, config, onSavedTemplate, onSavedConfig, onSent, kind, students, contacts }: AutomationCardProps) {
+function AutomationCard({ template, config, onSavedTemplate, onSavedConfig, onSent, kind, students, contacts, schoolYear, extraAction }: AutomationCardProps) {
   const [enabled, setEnabled] = useState(config?.enabled ?? false);
   const [subject, setSubject] = useState(template.subject);
   const [bodyHtml, setBodyHtml] = useState(template.body_html);
@@ -309,6 +337,7 @@ function AutomationCard({ template, config, onSavedTemplate, onSavedConfig, onSe
               <Button size="sm" variant="outline" onClick={() => setSendOpen(true)}>
                 <Send className="h-3.5 w-3.5 mr-1.5" /> Send manually
               </Button>
+              {extraAction}
             </div>
           </div>
 
@@ -386,12 +415,20 @@ function SendDialog({
     const s = students.find((x) => x.id === studentId);
     if (!s) return;
     if (s.parentEmail) setTo(s.parentEmail);
+    const total = s.rtAmount ?? s.owAmount ?? 0;
+    const paid = s.amountPaid ?? 0;
+    const balance = Math.max(0, total - paid);
     const vars = {
       studentName: s.studentName,
       parentName: s.parentName,
       schoolName: s.schoolName,
       grade: s.grade,
-      amountPaid: s.amountPaid ?? 0,
+      schoolYear: "",
+      paymentDate: new Date().toLocaleDateString(),
+      amountPaid: paid.toFixed(2),
+      balanceDue: balance.toFixed(2),
+      paymentStatus: s.paymentStatus,
+      checkLine: s.checkNumber ? `<tr><td style="color:#57534e;">Check #</td><td><strong>${s.checkNumber}</strong></td></tr>` : "",
       stopAddress: s.stopAddress,
     };
     setCustomVars(JSON.stringify(vars, null, 2));
@@ -700,6 +737,7 @@ function HistorySection({ history, templates, onRefresh }: { history: EmailHisto
                 <TableHead>Template</TableHead>
                 <TableHead>Recipient</TableHead>
                 <TableHead>Subject</TableHead>
+                <TableHead>Sent by</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -710,6 +748,7 @@ function HistorySection({ history, templates, onRefresh }: { history: EmailHisto
                   <TableCell className="text-xs">{h.template_key || "—"}</TableCell>
                   <TableCell className="text-xs">{h.recipient}</TableCell>
                   <TableCell className="text-xs max-w-[300px] truncate" title={h.subject}>{h.subject}</TableCell>
+                  <TableCell className="text-xs">{h.sent_by_name || h.sent_by_email || "—"}</TableCell>
                   <TableCell>
                     {h.status === "sent" ? (
                       <Badge className="bg-green-600 hover:bg-green-600"><CheckCircle2 className="h-3 w-3 mr-1" /> Sent</Badge>
@@ -720,12 +759,329 @@ function HistorySection({ history, templates, onRefresh }: { history: EmailHisto
                 </TableRow>
               ))}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">No emails match these filters.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">No emails match these filters.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/* -------------------- Bulk Payment Reminders -------------------- */
+
+type Student = ReturnType<typeof useStore>["students"][number];
+
+function studentBalance(s: Student): number {
+  const total = s.rtAmount ?? s.owAmount ?? 0;
+  const paid = s.amountPaid ?? 0;
+  return Math.max(0, total - paid);
+}
+
+function BulkPaymentReminderButton({
+  template, subject, bodyHtml, students, schoolYear, onSent,
+}: {
+  template: EmailTemplate;
+  subject: string;
+  bodyHtml: string;
+  students: Student[];
+  schoolYear: string;
+  onSent: () => void;
+}) {
+  const send = useServerFn(sendAutomationEmail);
+  const [open, setOpen] = useState(false);
+  const [school, setSchool] = useState<string>("all");
+  const [paymentStatus, setPaymentStatus] = useState<string>("Pending");
+  const [unpaidOnly, setUnpaidOnly] = useState(true);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sending, setSending] = useState(false);
+
+  const schools = useMemo(() => Array.from(new Set(students.map((s) => s.schoolName).filter(Boolean))).sort(), [students]);
+
+  const candidates = useMemo(() => {
+    return students.filter((s) => {
+      if (!s.parentEmail) return false;
+      if (school !== "all" && s.schoolName !== school) return false;
+      if (paymentStatus !== "all" && s.paymentStatus !== paymentStatus) return false;
+      if (unpaidOnly && studentBalance(s) <= 0) return false;
+      return true;
+    });
+  }, [students, school, paymentStatus, unpaidOnly]);
+
+  useEffect(() => {
+    if (!open) return;
+    setSelected(new Set(candidates.map((s) => s.id)));
+  }, [open, candidates]);
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkSend = async () => {
+    const list = candidates.filter((s) => selected.has(s.id));
+    if (list.length === 0) { toast.error("No recipients selected"); return; }
+    if (!confirm(`Send payment reminders to ${list.length} parent(s)?`)) return;
+    setSending(true);
+    let ok = 0, fail = 0;
+    for (const s of list) {
+      const balance = studentBalance(s);
+      const vars = {
+        studentName: s.studentName,
+        parentName: s.parentName,
+        schoolName: s.schoolName,
+        schoolYear,
+        balanceDue: balance.toFixed(2),
+        paymentStatus: s.paymentStatus,
+      };
+      try {
+        await send({
+          data: {
+            templateKey: template.key,
+            to: [s.parentEmail],
+            cc: [], bcc: [],
+            subject, bodyHtml,
+            variables: vars,
+            metadata: { bulk: true, studentId: s.id, school: s.schoolName },
+          },
+        });
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setSending(false);
+    void logAudit({
+      action: `sent bulk payment reminders (${ok} ok / ${fail} failed)`,
+      entityType: "email",
+      entityName: template.name,
+      details: { ok, fail, filter: { school, paymentStatus } },
+    });
+    toast[fail ? "warning" : "success"](`Sent ${ok} reminder${ok === 1 ? "" : "s"}${fail ? `, ${fail} failed` : ""}`);
+    setOpen(false);
+    onSent();
+  };
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <Users className="h-3.5 w-3.5 mr-1.5" /> Bulk send
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Bulk payment reminders</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-xs">School</Label>
+              <Select value={school} onValueChange={setSchool}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All schools</SelectItem>
+                  {schools.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Payment status</Label>
+              <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Overdue">Overdue</SelectItem>
+                  <SelectItem value="Received">Received</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end gap-2">
+              <Checkbox id="unpaid" checked={unpaidOnly} onCheckedChange={(v) => setUnpaidOnly(!!v)} />
+              <Label htmlFor="unpaid" className="text-xs">Only with balance &gt; 0</Label>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {formatNumber(candidates.length)} matching parent{candidates.length === 1 ? "" : "s"} with email — {formatNumber(selected.size)} selected
+          </div>
+          <div className="border rounded max-h-[40vh] overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead>Student</TableHead>
+                  <TableHead>School</TableHead>
+                  <TableHead>Parent email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {candidates.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell><Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggle(s.id)} /></TableCell>
+                    <TableCell className="text-xs">{s.studentName}</TableCell>
+                    <TableCell className="text-xs">{s.schoolName}</TableCell>
+                    <TableCell className="text-xs">{s.parentEmail}</TableCell>
+                    <TableCell className="text-xs">{s.paymentStatus}</TableCell>
+                    <TableCell className="text-xs text-right">{formatCurrency(studentBalance(s))}</TableCell>
+                  </TableRow>
+                ))}
+                {candidates.length === 0 && (
+                  <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">No matching parents.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Reminders stop automatically once a student is marked paid. One email per selected parent.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={sending}>Cancel</Button>
+            <Button onClick={handleBulkSend} disabled={sending || selected.size === 0}>
+              {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+              Send {formatNumber(selected.size)} reminder{selected.size === 1 ? "" : "s"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/* -------------------- Bulk School Updates -------------------- */
+
+function BulkSchoolUpdateButton({
+  template, subject, bodyHtml, contacts, students, onSent,
+}: {
+  template: EmailTemplate;
+  subject: string;
+  bodyHtml: string;
+  contacts: SchoolContact[];
+  students: Student[];
+  onSent: () => void;
+}) {
+  const send = useServerFn(sendAutomationEmail);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sending, setSending] = useState(false);
+
+  const eligible = useMemo(() => contacts.filter((c) => c.email), [contacts]);
+
+  useEffect(() => {
+    if (!open) return;
+    setSelected(new Set(eligible.map((c) => c.id)));
+  }, [open, eligible]);
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkSend = async () => {
+    const list = eligible.filter((c) => selected.has(c.id));
+    if (list.length === 0) { toast.error("No contacts selected"); return; }
+    if (!confirm(`Send school updates to ${list.length} contact(s)?`)) return;
+    setSending(true);
+    let ok = 0, fail = 0;
+    const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    for (const c of list) {
+      const schoolStudents = students.filter((s) => s.schoolName === c.school_name);
+      const vars = {
+        contactName: c.contact_name || "there",
+        schoolName: c.school_name,
+        routeLine: "",
+        totalStudents: schoolStudents.length,
+        amCount: schoolStudents.length,
+        pmCount: schoolStudents.length,
+        newCount: schoolStudents.filter((s) => s.status === "New").length,
+        droppedCount: 0,
+        pendingCount: schoolStudents.filter((s) => s.status === "New").length,
+        notesBlock: c.notes ? `<p><strong>Notes:</strong> ${c.notes}</p>` : "",
+        periodLabel: today,
+      };
+      try {
+        await send({
+          data: {
+            templateKey: template.key,
+            to: [c.email],
+            cc: [], bcc: [],
+            subject, bodyHtml,
+            variables: vars,
+            metadata: { bulk: true, contactId: c.id, school: c.school_name },
+          },
+        });
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setSending(false);
+    void logAudit({
+      action: `sent bulk school updates (${ok} ok / ${fail} failed)`,
+      entityType: "email",
+      entityName: template.name,
+      details: { ok, fail },
+    });
+    toast[fail ? "warning" : "success"](`Sent ${ok} update${ok === 1 ? "" : "s"}${fail ? `, ${fail} failed` : ""}`);
+    setOpen(false);
+    onSent();
+  };
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <SchoolIcon className="h-3.5 w-3.5 mr-1.5" /> Bulk send
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Send updates to school contacts</DialogTitle></DialogHeader>
+          <div className="text-xs text-muted-foreground">
+            {formatNumber(eligible.length)} contact{eligible.length === 1 ? "" : "s"} with email — {formatNumber(selected.size)} selected
+          </div>
+          <div className="border rounded max-h-[40vh] overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead>School</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Students</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {eligible.map((c) => {
+                  const count = students.filter((s) => s.schoolName === c.school_name).length;
+                  return (
+                    <TableRow key={c.id}>
+                      <TableCell><Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggle(c.id)} /></TableCell>
+                      <TableCell className="text-xs font-medium">{c.school_name}</TableCell>
+                      <TableCell className="text-xs">{c.contact_name}</TableCell>
+                      <TableCell className="text-xs">{c.email}</TableCell>
+                      <TableCell className="text-xs text-right">{formatNumber(count)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+                {eligible.length === 0 && (
+                  <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">No school contacts with email yet.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={sending}>Cancel</Button>
+            <Button onClick={handleBulkSend} disabled={sending || selected.size === 0}>
+              {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+              Send {formatNumber(selected.size)} update{selected.size === 1 ? "" : "s"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

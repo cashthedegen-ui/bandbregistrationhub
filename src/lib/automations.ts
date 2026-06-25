@@ -34,6 +34,8 @@ export interface EmailHistoryRow {
   resend_id: string | null;
   metadata: Record<string, unknown> | null;
   sent_at: string;
+  sent_by_email: string | null;
+  sent_by_name: string | null;
 }
 
 export interface AutomationConfig {
