@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
@@ -9,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { fetchForms } from "@/lib/formstack";
 import { downloadFullBackup } from "@/lib/backup";
+import { sendTestEmail } from "@/lib/email/email.functions";
 import { toast } from "sonner";
-import { Plus, Trash2, LogOut, ShieldCheck, FileClock, Download } from "lucide-react";
+import { Plus, Trash2, LogOut, ShieldCheck, FileClock, Download, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — B & B Transit" }] }),
