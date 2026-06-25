@@ -193,6 +193,36 @@ function SettingsPage() {
           </CardContent>
         </Card>
 
+        <Card className="bg-card border-border lg:col-span-2">
+          <CardContent className="p-5 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Email</h2>
+            <div className="flex items-start gap-3 rounded-md border border-border bg-background/50 p-3">
+              <Mail className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div className="text-xs text-muted-foreground leading-relaxed">
+                Emails send from <span className="font-medium text-foreground">B&amp;B Transportation &lt;info@bandbtrans.com&gt;</span> via Resend. The API key is stored securely as a backend secret.
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+              <div>
+                <Label className="text-xs">Send test email to</Label>
+                <Input
+                  type="email"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="bg-background"
+                />
+              </div>
+              <Button
+                variant="secondary"
+                onClick={sendTestEmailNow}
+                disabled={sendingEmail || !testEmail.trim()}
+              >
+                {sendingEmail ? "Sending…" : "Send Test Email"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
 
         <Card className="bg-card border-border lg:col-span-2">
