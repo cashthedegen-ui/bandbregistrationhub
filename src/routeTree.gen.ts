@@ -16,6 +16,7 @@ import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as ApiFormstackRouteImport } from './routes/api/formstack'
 import { Route as AppStudentsRouteImport } from './routes/_app.students'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppRunSheetsRouteImport } from './routes/_app.run-sheets'
 import { Route as AppRoutesRouteImport } from './routes/_app.routes'
 import { Route as AppAuditRouteImport } from './routes/_app.audit'
 import { Route as AppArchiveRouteImport } from './routes/_app.archive'
@@ -55,6 +56,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRunSheetsRoute = AppRunSheetsRouteImport.update({
+  id: '/run-sheets',
+  path: '/run-sheets',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRoutesRoute = AppRoutesRouteImport.update({
   id: '/routes',
   path: '/routes',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/archive': typeof AppArchiveRoute
   '/audit': typeof AppAuditRoute
   '/routes': typeof AppRoutesRoute
+  '/run-sheets': typeof AppRunSheetsRoute
   '/settings': typeof AppSettingsRoute
   '/students': typeof AppStudentsRoute
   '/api/formstack': typeof ApiFormstackRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByTo {
   '/archive': typeof AppArchiveRoute
   '/audit': typeof AppAuditRoute
   '/routes': typeof AppRoutesRoute
+  '/run-sheets': typeof AppRunSheetsRoute
   '/settings': typeof AppSettingsRoute
   '/students': typeof AppStudentsRoute
   '/api/formstack': typeof ApiFormstackRoute
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   '/_app/archive': typeof AppArchiveRoute
   '/_app/audit': typeof AppAuditRoute
   '/_app/routes': typeof AppRoutesRoute
+  '/_app/run-sheets': typeof AppRunSheetsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/students': typeof AppStudentsRoute
   '/api/formstack': typeof ApiFormstackRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/archive'
     | '/audit'
     | '/routes'
+    | '/run-sheets'
     | '/settings'
     | '/students'
     | '/api/formstack'
@@ -135,6 +145,7 @@ export interface FileRouteTypes {
     | '/archive'
     | '/audit'
     | '/routes'
+    | '/run-sheets'
     | '/settings'
     | '/students'
     | '/api/formstack'
@@ -148,6 +159,7 @@ export interface FileRouteTypes {
     | '/_app/archive'
     | '/_app/audit'
     | '/_app/routes'
+    | '/_app/run-sheets'
     | '/_app/settings'
     | '/_app/students'
     | '/api/formstack'
@@ -212,6 +224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/run-sheets': {
+      id: '/_app/run-sheets'
+      path: '/run-sheets'
+      fullPath: '/run-sheets'
+      preLoaderRoute: typeof AppRunSheetsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/routes': {
       id: '/_app/routes'
       path: '/routes'
@@ -248,6 +267,7 @@ interface AppRouteChildren {
   AppArchiveRoute: typeof AppArchiveRoute
   AppAuditRoute: typeof AppAuditRoute
   AppRoutesRoute: typeof AppRoutesRoute
+  AppRunSheetsRoute: typeof AppRunSheetsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppStudentsRoute: typeof AppStudentsRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -258,6 +278,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppArchiveRoute: AppArchiveRoute,
   AppAuditRoute: AppAuditRoute,
   AppRoutesRoute: AppRoutesRoute,
+  AppRunSheetsRoute: AppRunSheetsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppStudentsRoute: AppStudentsRoute,
   AppIndexRoute: AppIndexRoute,

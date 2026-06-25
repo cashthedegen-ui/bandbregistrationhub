@@ -9,6 +9,7 @@ export type SendEmailInput = {
   html: string;
   text?: string;
   replyTo?: string;
+  attachments?: { filename: string; content: string }[];
 };
 
 export type SendEmailResult =
@@ -38,6 +39,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     html: input.html,
     ...(input.text ? { text: input.text } : {}),
     ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+    ...(input.attachments && input.attachments.length ? { attachments: input.attachments } : {}),
   };
 
   try {
