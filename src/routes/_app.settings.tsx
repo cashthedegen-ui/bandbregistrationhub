@@ -26,8 +26,21 @@ function SettingsPage() {
   const [local, setLocal] = useState(settings);
   const [testing, setTesting] = useState(false);
   const [backingUp, setBackingUp] = useState(false);
+  const [testEmail, setTestEmail] = useState(user?.email ?? "");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const sendTest = useServerFn(sendTestEmail);
 
   const save = () => { updateSettings(local); toast.success("Settings saved"); };
+
+  const sendTestEmailNow = async () => {
+    setSendingEmail(true);
+    try {
+      const res = await sendTest({ data: { to: testEmail.trim() } });
+      toast.success(`Test email sent to ${res.to}`);
+    } catch (e: any) {
+      toast.error(`Email failed: ${e?.message || e}`);
+    } finally { setSendingEmail(false); }
+  };
 
   const runBackup = async () => {
     setBackingUp(true);
