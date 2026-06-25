@@ -91,7 +91,7 @@ function AutomationsPage() {
     <div>
       <PageHeader
         title="Automations"
-        subtitle="Central control for parent, driver, and school email automations"
+        subtitle="Parent and school communication, with optional driver tools"
         actions={
           <Button variant="outline" size="sm" onClick={() => void reloadAll()} disabled={loading}>
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
@@ -114,10 +114,10 @@ function AutomationsPage() {
 
       <Tabs defaultValue="parent">
         <TabsList className="mb-4">
-          <TabsTrigger value="parent">Parent</TabsTrigger>
-          <TabsTrigger value="runsheet">Run Sheets</TabsTrigger>
-          <TabsTrigger value="school">School Contacts</TabsTrigger>
-          <TabsTrigger value="history">Email History</TabsTrigger>
+          <TabsTrigger value="parent">Parent communication</TabsTrigger>
+          <TabsTrigger value="school">School contacts</TabsTrigger>
+          <TabsTrigger value="history">Email history</TabsTrigger>
+          <TabsTrigger value="driver">Driver (optional)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="parent" className="space-y-4">
@@ -138,33 +138,22 @@ function AutomationsPage() {
                 onSent={() => void reloadAll()}
                 kind="parent"
                 students={students}
+                schoolYear={settings.receipt?.schoolYear ?? ""}
+                extraAction={
+                  key === "payment_reminder" ? (
+                    <BulkPaymentReminderButton
+                      template={t}
+                      subject={t.subject}
+                      bodyHtml={t.body_html}
+                      students={students}
+                      schoolYear={settings.receipt?.schoolYear ?? ""}
+                      onSent={() => void reloadAll()}
+                    />
+                  ) : null
+                }
               />
             );
           })}
-        </TabsContent>
-
-        <TabsContent value="runsheet" className="space-y-4">
-          {templateMap[RUN_SHEET_KEY] && (
-            <AutomationCard
-              template={templateMap[RUN_SHEET_KEY]}
-              config={configMap[RUN_SHEET_KEY]}
-              onSavedTemplate={(updated) => setTemplates((arr) => arr.map((x) => x.key === updated.key ? updated : x))}
-              onSavedConfig={(updated) => setConfigs((arr) => {
-                const exists = arr.some((x) => x.key === updated.key);
-                return exists ? arr.map((x) => x.key === updated.key ? updated : x) : [...arr, updated];
-              })}
-              onSent={() => void reloadAll()}
-              kind="runsheet"
-              students={students}
-            />
-          )}
-          <Card>
-            <CardContent className="p-4 text-sm text-muted-foreground">
-              For the full PDF-attached run sheet workflow (build PDF, preview, multi-recipient send), use the dedicated
-              {" "}<a href="/run-sheets" className="text-primary underline">Run Sheets</a> page.
-              The automation here lets you configure scheduling preferences and edit the driver-facing email template.
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="school" className="space-y-4">
@@ -185,12 +174,48 @@ function AutomationsPage() {
               kind="school"
               students={students}
               contacts={contacts}
+              schoolYear={settings.receipt?.schoolYear ?? ""}
+              extraAction={
+                <BulkSchoolUpdateButton
+                  template={templateMap[SCHOOL_KEY]}
+                  subject={templateMap[SCHOOL_KEY].subject}
+                  bodyHtml={templateMap[SCHOOL_KEY].body_html}
+                  contacts={contacts}
+                  students={students}
+                  onSent={() => void reloadAll()}
+                />
+              }
             />
           )}
         </TabsContent>
 
         <TabsContent value="history">
           <HistorySection history={history} templates={templates} onRefresh={reloadAll} />
+        </TabsContent>
+
+        <TabsContent value="driver" className="space-y-4">
+          <Card>
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              Driver email is optional. Use the dedicated <a href="/run-sheets" className="text-primary underline">Run Sheets</a> page
+              for the full run-sheet workflow (build PDF, preview, multi-recipient send). The template and schedule below are
+              available for ad-hoc driver notifications.
+            </CardContent>
+          </Card>
+          {templateMap[RUN_SHEET_KEY] && (
+            <AutomationCard
+              template={templateMap[RUN_SHEET_KEY]}
+              config={configMap[RUN_SHEET_KEY]}
+              onSavedTemplate={(updated) => setTemplates((arr) => arr.map((x) => x.key === updated.key ? updated : x))}
+              onSavedConfig={(updated) => setConfigs((arr) => {
+                const exists = arr.some((x) => x.key === updated.key);
+                return exists ? arr.map((x) => x.key === updated.key ? updated : x) : [...arr, updated];
+              })}
+              onSent={() => void reloadAll()}
+              kind="runsheet"
+              students={students}
+              schoolYear={settings.receipt?.schoolYear ?? ""}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>
