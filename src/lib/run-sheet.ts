@@ -8,8 +8,13 @@ export interface RunSheetOptions {
   date: string;             // ISO yyyy-mm-dd
   routeName: string;        // stop address / route label
   session: Session;
-  driverName: string;
+  driverName: string;       // legacy / fallback (single driver)
+  morningDriverName?: string;
+  afternoonDriverName?: string;
+  driverPhone?: string;
+  driverEmail?: string;
   busNumber: string;
+  vehicleNotes?: string;
   morningPickupTime?: string;
   afternoonDropoffTime?: string;
   notes?: string;
