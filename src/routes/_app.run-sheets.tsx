@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -20,7 +21,7 @@ import {
 } from "@/lib/run-sheet";
 import { sendRunSheetEmail } from "@/lib/email/run-sheet.functions";
 import { logAudit } from "@/lib/audit-log";
-import { Eye, Download, Mail, Loader2, Save } from "lucide-react";
+import { Eye, Download, Mail, Loader2, Save, Info } from "lucide-react";
 import { toast } from "sonner";
 import { formatNumber } from "@/lib/utils";
 
@@ -30,34 +31,33 @@ export const Route = createFileRoute("/_app/run-sheets")({
 });
 
 const ALL = "__all__";
-const DRIVER_STORE_KEY = "bb.runsheet.drivers.v1";
+const DRIVER_STORE_KEY = "bb.runsheet.drivers.v2";
 
-interface DriverInfo {
-  morningDriverName: string;
-  afternoonDriverName: string;
-  driverPhone: string;
-  driverEmail: string;
+interface DriverSlot {
+  name: string;
+  phone: string;
+  email: string;
   busNumber: string;
   vehicleNotes: string;
 }
 
-const EMPTY_DRIVER: DriverInfo = {
-  morningDriverName: "",
-  afternoonDriverName: "",
-  driverPhone: "",
-  driverEmail: "",
-  busNumber: "",
-  vehicleNotes: "",
-};
+interface DriverAssignment {
+  sameForBoth: boolean;
+  am: DriverSlot;
+  pm: DriverSlot;
+}
 
-function loadDriverMap(): Record<string, DriverInfo> {
+const EMPTY_SLOT: DriverSlot = { name: "", phone: "", email: "", busNumber: "", vehicleNotes: "" };
+const EMPTY_ASSIGNMENT: DriverAssignment = { sameForBoth: true, am: { ...EMPTY_SLOT }, pm: { ...EMPTY_SLOT } };
+
+function loadDriverMap(): Record<string, DriverAssignment> {
   if (typeof window === "undefined") return {};
   try {
     const raw = window.localStorage.getItem(DRIVER_STORE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch { return {}; }
 }
-function saveDriverMap(map: Record<string, DriverInfo>) {
+function saveDriverMap(map: Record<string, DriverAssignment>) {
   try { window.localStorage.setItem(DRIVER_STORE_KEY, JSON.stringify(map)); } catch {}
 }
 
@@ -74,17 +74,18 @@ function RunSheetsPage() {
   const [route, setRoute] = useState<string>(ALL);
   const [session, setSession] = useState<Session>("Both");
 
-  const [driver, setDriver] = useState<DriverInfo>(EMPTY_DRIVER);
+  const [assignment, setAssignment] = useState<DriverAssignment>(EMPTY_ASSIGNMENT);
   const [amTime, setAmTime] = useState("");
   const [pmTime, setPmTime] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [previewUri, setPreviewUri] = useState<string | null>(null);
-  const [emailOpen, setEmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState("");
   const [emailCc, setEmailCc] = useState("");
   const [emailBcc, setEmailBcc] = useState("");
   const [emailIntro, setEmailIntro] = useState("");
+
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [emailOpen, setEmailOpen] = useState(false);
   const [sending, setSending] = useState(false);
 
   const sendEmail = useServerFn(sendRunSheetEmail);
@@ -110,40 +111,63 @@ function RunSheetsPage() {
     });
   }, [eligible, school, route]);
 
-  // Load saved driver info for selected route
+  // Load saved assignment for selected route/school
   const driverKey = `${school}::${route}`;
   useEffect(() => {
     const map = loadDriverMap();
-    setDriver(map[driverKey] ?? EMPTY_DRIVER);
+    setAssignment(map[driverKey] ?? EMPTY_ASSIGNMENT);
   }, [driverKey]);
 
-  const updateDriver = <K extends keyof DriverInfo>(k: K, v: DriverInfo[K]) =>
-    setDriver((d) => ({ ...d, [k]: v }));
+  const updateSlot = (which: "am" | "pm", k: keyof DriverSlot, v: string) =>
+    setAssignment((a) => ({ ...a, [which]: { ...a[which], [k]: v } }));
 
   const handleSaveDriver = () => {
     const map = loadDriverMap();
-    map[driverKey] = driver;
+    map[driverKey] = assignment;
     saveDriverMap(map);
-    toast.success("Driver info saved for this route.");
+    toast.success("Driver assignment saved for this route.");
   };
 
-  const buildOpts = (): RunSheetOptions => ({
-    schoolName: school === ALL ? "All Schools" : school,
-    date,
-    routeName: route === ALL ? "All Routes" : route,
-    session,
-    driverName: driver.morningDriverName || driver.afternoonDriverName || "",
-    morningDriverName: driver.morningDriverName,
-    afternoonDriverName: driver.afternoonDriverName,
-    driverPhone: driver.driverPhone,
-    driverEmail: driver.driverEmail,
-    busNumber: driver.busNumber,
-    vehicleNotes: driver.vehicleNotes,
-    morningPickupTime: amTime,
-    afternoonDropoffTime: pmTime,
-    notes,
-    students: selectedStudents,
-  });
+  // Which slots are needed for current session
+  const needAm = session !== "Afternoon";
+  const needPm = session !== "Morning";
+  const showSameToggle = session === "Both";
+  const effectivePm: DriverSlot =
+    session === "Both" && assignment.sameForBoth ? assignment.am : assignment.pm;
+
+  const buildOpts = (): RunSheetOptions => {
+    // Primary fields for the PDF header band
+    const primary: DriverSlot =
+      session === "Afternoon" ? effectivePm : assignment.am;
+    // For "Both + separate", append PM driver info into vehicleNotes so it shows on the sheet
+    let vehicleNotes = primary.vehicleNotes;
+    if (session === "Both" && !assignment.sameForBoth) {
+      const pmLine = [
+        assignment.pm.name && `PM Driver: ${assignment.pm.name}`,
+        assignment.pm.phone && `Phone: ${assignment.pm.phone}`,
+        assignment.pm.busNumber && `Bus #${assignment.pm.busNumber}`,
+        assignment.pm.vehicleNotes,
+      ].filter(Boolean).join(" · ");
+      vehicleNotes = [primary.vehicleNotes, pmLine].filter(Boolean).join(" | ");
+    }
+    return {
+      schoolName: school === ALL ? "All Schools" : school,
+      date,
+      routeName: route === ALL ? "All Routes" : route,
+      session,
+      driverName: primary.name || effectivePm.name || "",
+      morningDriverName: needAm ? assignment.am.name : "",
+      afternoonDriverName: needPm ? effectivePm.name : "",
+      driverPhone: primary.phone,
+      driverEmail: primary.email,
+      busNumber: primary.busNumber,
+      vehicleNotes,
+      morningPickupTime: amTime,
+      afternoonDropoffTime: pmTime,
+      notes,
+      students: selectedStudents,
+    };
+  };
 
   const guard = () => {
     if (selectedStudents.length === 0) {
@@ -163,6 +187,10 @@ function RunSheetsPage() {
   };
   const handleOpenEmail = () => {
     if (!guard()) return;
+    if (parseRecipients(emailTo).length === 0) {
+      toast.warning("Add at least one address in the Send to field first.");
+      return;
+    }
     setEmailOpen(true);
   };
 
@@ -170,7 +198,7 @@ function RunSheetsPage() {
     const to = parseRecipients(emailTo);
     const cc = parseRecipients(emailCc);
     const bcc = parseRecipients(emailBcc);
-    if (to.length === 0) { toast.error("Add at least one recipient in the To field."); return; }
+    if (to.length === 0) { toast.error("Add at least one recipient in the Send to field."); return; }
     setSending(true);
     try {
       const opts = buildOpts();
@@ -256,18 +284,18 @@ function RunSheetsPage() {
                   <Select value={session} onValueChange={(v) => setSession(v as Session)}>
                     <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Morning">Morning</SelectItem>
-                      <SelectItem value="Afternoon">Afternoon</SelectItem>
-                      <SelectItem value="Both">Both</SelectItem>
+                      <SelectItem value="Morning">Morning only</SelectItem>
+                      <SelectItem value="Afternoon">Afternoon only</SelectItem>
+                      <SelectItem value="Both">Both (AM + PM)</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
-                {session !== "Afternoon" && (
+                {needAm && (
                   <Field label="Morning pickup time">
                     <Input type="time" value={amTime} onChange={(e) => setAmTime(e.target.value)} className="bg-background" />
                   </Field>
                 )}
-                {session !== "Morning" && (
+                {needPm && (
                   <Field label="Afternoon dropoff time">
                     <Input type="time" value={pmTime} onChange={(e) => setPmTime(e.target.value)} className="bg-background" />
                   </Field>
@@ -275,37 +303,54 @@ function RunSheetsPage() {
               </div>
             </div>
 
-            {/* Driver info */}
+            {/* Driver Assignment */}
             <div className="pt-4 border-t border-border">
-              <div className="flex items-center justify-between">
-                <SectionLabel>Driver &amp; vehicle</SectionLabel>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <SectionLabel>Driver Assignment</SectionLabel>
                 <Button size="sm" variant="secondary" onClick={handleSaveDriver}>
-                  <Save className="h-3.5 w-3.5 mr-1.5" /> Save Driver Info
+                  <Save className="h-3.5 w-3.5 mr-1.5" /> Save Driver Assignment
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Saved per route &amp; school. Edit anytime — student addresses from Formstack are not affected.
+                Saved per route &amp; school. Edit anytime — student pickup/dropoff addresses come from Formstack
+                and are <strong>not</strong> overwritten by driver edits.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                <Field label="Morning driver">
-                  <Input value={driver.morningDriverName} onChange={(e) => updateDriver("morningDriverName", e.target.value)} placeholder="e.g. Maria Lopez" className="bg-background" />
-                </Field>
-                <Field label="Afternoon driver">
-                  <Input value={driver.afternoonDriverName} onChange={(e) => updateDriver("afternoonDriverName", e.target.value)} placeholder="e.g. James Carter" className="bg-background" />
-                </Field>
-                <Field label="Driver phone">
-                  <Input value={driver.driverPhone} onChange={(e) => updateDriver("driverPhone", e.target.value)} placeholder="(203) 555-0199" className="bg-background" />
-                </Field>
-                <Field label="Driver email">
-                  <Input type="email" value={driver.driverEmail} onChange={(e) => updateDriver("driverEmail", e.target.value)} placeholder="driver@example.com" className="bg-background" />
-                </Field>
-                <Field label="Bus number">
-                  <Input value={driver.busNumber} onChange={(e) => updateDriver("busNumber", e.target.value)} placeholder="e.g. 26" className="bg-background" />
-                </Field>
-                <Field label="Vehicle notes">
-                  <Input value={driver.vehicleNotes} onChange={(e) => updateDriver("vehicleNotes", e.target.value)} placeholder="Lift-equipped, spare radio, etc." className="bg-background" />
-                </Field>
-              </div>
+
+              {showSameToggle && (
+                <div className="mt-3 flex items-center gap-3 rounded-md border border-border bg-background/40 px-3 py-2">
+                  <Switch
+                    id="same-driver"
+                    checked={assignment.sameForBoth}
+                    onCheckedChange={(v) => setAssignment((a) => ({ ...a, sameForBoth: v }))}
+                  />
+                  <Label htmlFor="same-driver" className="text-sm cursor-pointer">
+                    Same driver for AM and PM
+                  </Label>
+                </div>
+              )}
+
+              {/* Slot rendering */}
+              {(() => {
+                // Morning only
+                if (session === "Morning") {
+                  return <DriverSection title="Morning Driver" slot={assignment.am} onChange={(k, v) => updateSlot("am", k, v)} />;
+                }
+                // Afternoon only
+                if (session === "Afternoon") {
+                  return <DriverSection title="Afternoon Driver" slot={assignment.pm} onChange={(k, v) => updateSlot("pm", k, v)} />;
+                }
+                // Both + same
+                if (assignment.sameForBoth) {
+                  return <DriverSection title="Driver (AM + PM)" slot={assignment.am} onChange={(k, v) => updateSlot("am", k, v)} />;
+                }
+                // Both + separate
+                return (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3">
+                    <DriverSection title="Morning Driver" slot={assignment.am} onChange={(k, v) => updateSlot("am", k, v)} />
+                    <DriverSection title="Afternoon Driver" slot={assignment.pm} onChange={(k, v) => updateSlot("pm", k, v)} />
+                  </div>
+                );
+              })()}
             </div>
 
             <Field label="Driver notes / special instructions">
@@ -318,18 +363,44 @@ function RunSheetsPage() {
               />
             </Field>
 
+            {/* Email recipients */}
+            <div className="pt-4 border-t border-border">
+              <SectionLabel>Email Recipients</SectionLabel>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Fill in before sending. Separate multiple addresses with commas. Nothing is sent automatically.
+              </p>
+              <div className="grid grid-cols-1 gap-3 mt-3">
+                <Field label="Send to">
+                  <Input
+                    value={emailTo}
+                    onChange={(e) => setEmailTo(e.target.value)}
+                    placeholder="driver@example.com, dispatch@bandbtrans.com"
+                    className="bg-background"
+                  />
+                </Field>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Field label="CC">
+                    <Input value={emailCc} onChange={(e) => setEmailCc(e.target.value)} placeholder="optional" className="bg-background" />
+                  </Field>
+                  <Field label="BCC">
+                    <Input value={emailBcc} onChange={(e) => setEmailBcc(e.target.value)} placeholder="optional" className="bg-background" />
+                  </Field>
+                </div>
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
               <Button onClick={handleSaveDriver} variant="outline">
-                <Save className="h-4 w-4 mr-2" /> Save Driver Info
+                <Save className="h-4 w-4 mr-2" /> Save Driver Assignment
               </Button>
               <Button onClick={handlePreview} variant="secondary">
                 <Eye className="h-4 w-4 mr-2" /> Preview Run Sheet
               </Button>
               <Button onClick={handleDownload}>
-                <Download className="h-4 w-4 mr-2" /> Download PDF
+                <Download className="h-4 w-4 mr-2" /> Download Run Sheet PDF
               </Button>
               <Button onClick={handleOpenEmail} variant="secondary">
-                <Mail className="h-4 w-4 mr-2" /> Send Run Sheet Email
+                <Mail className="h-4 w-4 mr-2" /> Email Run Sheet
               </Button>
             </div>
           </CardContent>
@@ -342,16 +413,31 @@ function RunSheetsPage() {
             <div className="text-xs text-muted-foreground mt-1">
               Confirmed &amp; paid students at the selected school/route.
             </div>
-            <ul className="mt-4 max-h-72 overflow-auto divide-y divide-border text-xs">
-              {selectedStudents.slice(0, 50).map((s) => (
-                <li key={s.id} className="py-1.5">
-                  <div className="font-medium truncate">{s.studentName}</div>
-                  <div className="text-muted-foreground truncate">{s.stopAddress || "—"}</div>
-                  {s.parentName && (
-                    <div className="text-muted-foreground truncate">{s.parentName} · {s.parentPhone || "—"}</div>
-                  )}
-                </li>
-              ))}
+            <div className="mt-3 flex items-start gap-2 rounded-md border border-border bg-background/40 px-2.5 py-2 text-[11px] text-muted-foreground">
+              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>Pickup &amp; dropoff addresses are pulled from each student&apos;s Formstack submission. Driver edits never overwrite them.</span>
+            </div>
+            <ul className="mt-3 max-h-[28rem] overflow-auto divide-y divide-border text-xs">
+              {selectedStudents.slice(0, 50).map((s) => {
+                const pickup = s.stopAddress || s.address || "—";
+                const dropoff = (s as any).dropoffAddress || s.schoolName || "—";
+                const note = s.notes || (s as any).specialInstructions || "";
+                return (
+                  <li key={s.id} className="py-2 space-y-1">
+                    <div className="font-medium truncate">{s.studentName}</div>
+                    {s.parentName && (
+                      <div className="text-muted-foreground truncate">
+                        {s.parentName}{s.parentPhone ? ` · ${s.parentPhone}` : ""}
+                      </div>
+                    )}
+                    <div className="text-muted-foreground"><span className="text-foreground/70">Pickup:</span> {pickup}</div>
+                    <div className="text-muted-foreground"><span className="text-foreground/70">Dropoff:</span> {dropoff}</div>
+                    {note && (
+                      <div className="text-amber-400/90"><span className="text-foreground/70">Notes:</span> {note}</div>
+                    )}
+                  </li>
+                );
+              })}
               {selectedStudents.length > 50 && (
                 <li className="py-2 text-muted-foreground">+ {selectedStudents.length - 50} more…</li>
               )}
@@ -380,60 +466,62 @@ function RunSheetsPage() {
               <PreviewRow label="Route / Stop" value={route === ALL ? "All Routes" : route} />
               <PreviewRow label="Date" value={date || "—"} />
               <PreviewRow label="Session" value={session} />
-              <PreviewRow label="Morning driver" value={driver.morningDriverName || "—"} />
-              <PreviewRow label="Afternoon driver" value={driver.afternoonDriverName || "—"} />
-              <PreviewRow label="Driver phone" value={driver.driverPhone || "—"} />
-              <PreviewRow label="Driver email" value={driver.driverEmail || "—"} />
-              <PreviewRow label="Bus #" value={driver.busNumber || "—"} />
-              <PreviewRow label="Vehicle notes" value={driver.vehicleNotes || "—"} />
+              {needAm && (
+                <>
+                  <PreviewRow label="AM Driver" value={assignment.am.name || "—"} />
+                  <PreviewRow label="AM Phone" value={assignment.am.phone || "—"} />
+                  <PreviewRow label="AM Bus #" value={assignment.am.busNumber || "—"} />
+                </>
+              )}
+              {needPm && (
+                <>
+                  <PreviewRow label="PM Driver" value={effectivePm.name || "—"} />
+                  <PreviewRow label="PM Phone" value={effectivePm.phone || "—"} />
+                  <PreviewRow label="PM Bus #" value={effectivePm.busNumber || "—"} />
+                </>
+              )}
               <PreviewRow label="Riders" value={String(selectedStudents.length)} />
               <PreviewRow label="To" value={parseRecipients(emailTo).join(", ") || "—"} />
               <PreviewRow label="CC" value={parseRecipients(emailCc).join(", ") || "—"} />
               <PreviewRow label="BCC" value={parseRecipients(emailBcc).join(", ") || "—"} />
+              <div className="pt-2">
+                <div className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Students</div>
+                <ul className="space-y-2">
+                  {selectedStudents.slice(0, 25).map((s) => (
+                    <li key={s.id} className="rounded border border-border p-2">
+                      <div className="font-medium">{s.studentName}</div>
+                      <div className="text-xs text-muted-foreground">Pickup: {s.stopAddress || s.address || "—"}</div>
+                      <div className="text-xs text-muted-foreground">Dropoff: {(s as any).dropoffAddress || s.schoolName || "—"}</div>
+                    </li>
+                  ))}
+                  {selectedStudents.length > 25 && (
+                    <li className="text-xs text-muted-foreground">+ {selectedStudents.length - 25} more on the PDF…</li>
+                  )}
+                </ul>
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="secondary" onClick={() => setPreviewUri(null)}>Close</Button>
-            <Button onClick={handleDownload}><Download className="h-4 w-4 mr-2" />Download PDF</Button>
-            <Button onClick={() => { setPreviewUri(null); setEmailOpen(true); }} variant="default">
-              <Mail className="h-4 w-4 mr-2" /> Send Email…
+            <Button onClick={handleDownload}><Download className="h-4 w-4 mr-2" />Download Run Sheet PDF</Button>
+            <Button onClick={() => { setPreviewUri(null); handleOpenEmail(); }} variant="default">
+              <Mail className="h-4 w-4 mr-2" /> Email Run Sheet
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Email dialog */}
+      {/* Email confirmation dialog */}
       <Dialog open={emailOpen} onOpenChange={(o) => !sending && setEmailOpen(o)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Send Run Sheet Email</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <Field label="To (one or more, comma-separated)">
-              <Input
-                value={emailTo}
-                onChange={(e) => setEmailTo(e.target.value)}
-                placeholder="driver@example.com, dispatch@bandbtrans.com"
-                className="bg-background"
-              />
-            </Field>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label="CC">
-                <Input
-                  value={emailCc}
-                  onChange={(e) => setEmailCc(e.target.value)}
-                  placeholder="optional"
-                  className="bg-background"
-                />
-              </Field>
-              <Field label="BCC">
-                <Input
-                  value={emailBcc}
-                  onChange={(e) => setEmailBcc(e.target.value)}
-                  placeholder="optional"
-                  className="bg-background"
-                />
-              </Field>
+          <div className="space-y-3 text-sm">
+            <div className="rounded border border-border p-3 space-y-1 text-xs">
+              <div><span className="text-muted-foreground">To:</span> {parseRecipients(emailTo).join(", ") || "—"}</div>
+              <div><span className="text-muted-foreground">CC:</span> {parseRecipients(emailCc).join(", ") || "—"}</div>
+              <div><span className="text-muted-foreground">BCC:</span> {parseRecipients(emailBcc).join(", ") || "—"}</div>
             </div>
             <Field label="Message (optional)">
               <Textarea
@@ -459,6 +547,39 @@ function RunSheetsPage() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function DriverSection({
+  title, slot, onChange,
+}: {
+  title: string;
+  slot: DriverSlot;
+  onChange: (k: keyof DriverSlot, v: string) => void;
+}) {
+  return (
+    <div className="mt-3 rounded-md border border-border bg-background/30 p-3">
+      <div className="text-xs font-semibold uppercase tracking-wider text-foreground mb-2">{title}</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Field label="Driver name">
+          <Input value={slot.name} onChange={(e) => onChange("name", e.target.value)} placeholder="e.g. Maria Lopez" className="bg-background" />
+        </Field>
+        <Field label="Driver phone">
+          <Input value={slot.phone} onChange={(e) => onChange("phone", e.target.value)} placeholder="(203) 555-0199" className="bg-background" />
+        </Field>
+        <Field label="Driver email">
+          <Input type="email" value={slot.email} onChange={(e) => onChange("email", e.target.value)} placeholder="driver@example.com" className="bg-background" />
+        </Field>
+        <Field label="Bus number">
+          <Input value={slot.busNumber} onChange={(e) => onChange("busNumber", e.target.value)} placeholder="e.g. 26" className="bg-background" />
+        </Field>
+        <div className="md:col-span-2">
+          <Field label="Vehicle notes">
+            <Input value={slot.vehicleNotes} onChange={(e) => onChange("vehicleNotes", e.target.value)} placeholder="Lift-equipped, spare radio, etc." className="bg-background" />
+          </Field>
+        </div>
+      </div>
+    </div>
   );
 }
 
