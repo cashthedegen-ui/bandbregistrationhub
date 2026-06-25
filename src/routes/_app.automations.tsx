@@ -337,6 +337,7 @@ function AutomationCard({ template, config, onSavedTemplate, onSavedConfig, onSe
               <Button size="sm" variant="outline" onClick={() => setSendOpen(true)}>
                 <Send className="h-3.5 w-3.5 mr-1.5" /> Send manually
               </Button>
+              {extraAction}
             </div>
           </div>
 
