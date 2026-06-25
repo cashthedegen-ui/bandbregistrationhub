@@ -768,3 +768,320 @@ function HistorySection({ history, templates, onRefresh }: { history: EmailHisto
     </Card>
   );
 }
+
+/* -------------------- Bulk Payment Reminders -------------------- */
+
+type Student = ReturnType<typeof useStore>["students"][number];
+
+function studentBalance(s: Student): number {
+  const total = s.rtAmount ?? s.owAmount ?? 0;
+  const paid = s.amountPaid ?? 0;
+  return Math.max(0, total - paid);
+}
+
+function BulkPaymentReminderButton({
+  template, subject, bodyHtml, students, schoolYear, onSent,
+}: {
+  template: EmailTemplate;
+  subject: string;
+  bodyHtml: string;
+  students: Student[];
+  schoolYear: string;
+  onSent: () => void;
+}) {
+  const send = useServerFn(sendAutomationEmail);
+  const [open, setOpen] = useState(false);
+  const [school, setSchool] = useState<string>("all");
+  const [paymentStatus, setPaymentStatus] = useState<string>("Pending");
+  const [unpaidOnly, setUnpaidOnly] = useState(true);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sending, setSending] = useState(false);
+
+  const schools = useMemo(() => Array.from(new Set(students.map((s) => s.schoolName).filter(Boolean))).sort(), [students]);
+
+  const candidates = useMemo(() => {
+    return students.filter((s) => {
+      if (!s.parentEmail) return false;
+      if (school !== "all" && s.schoolName !== school) return false;
+      if (paymentStatus !== "all" && s.paymentStatus !== paymentStatus) return false;
+      if (unpaidOnly && studentBalance(s) <= 0) return false;
+      return true;
+    });
+  }, [students, school, paymentStatus, unpaidOnly]);
+
+  useEffect(() => {
+    if (!open) return;
+    setSelected(new Set(candidates.map((s) => s.id)));
+  }, [open, candidates]);
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkSend = async () => {
+    const list = candidates.filter((s) => selected.has(s.id));
+    if (list.length === 0) { toast.error("No recipients selected"); return; }
+    if (!confirm(`Send payment reminders to ${list.length} parent(s)?`)) return;
+    setSending(true);
+    let ok = 0, fail = 0;
+    for (const s of list) {
+      const balance = studentBalance(s);
+      const vars = {
+        studentName: s.studentName,
+        parentName: s.parentName,
+        schoolName: s.schoolName,
+        schoolYear,
+        balanceDue: balance.toFixed(2),
+        paymentStatus: s.paymentStatus,
+      };
+      try {
+        await send({
+          data: {
+            templateKey: template.key,
+            to: [s.parentEmail],
+            cc: [], bcc: [],
+            subject, bodyHtml,
+            variables: vars,
+            metadata: { bulk: true, studentId: s.id, school: s.schoolName },
+          },
+        });
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setSending(false);
+    void logAudit({
+      action: `sent bulk payment reminders (${ok} ok / ${fail} failed)`,
+      entityType: "email",
+      entityName: template.name,
+      details: { ok, fail, filter: { school, paymentStatus } },
+    });
+    toast[fail ? "warning" : "success"](`Sent ${ok} reminder${ok === 1 ? "" : "s"}${fail ? `, ${fail} failed` : ""}`);
+    setOpen(false);
+    onSent();
+  };
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <Users className="h-3.5 w-3.5 mr-1.5" /> Bulk send
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Bulk payment reminders</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-xs">School</Label>
+              <Select value={school} onValueChange={setSchool}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All schools</SelectItem>
+                  {schools.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Payment status</Label>
+              <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Overdue">Overdue</SelectItem>
+                  <SelectItem value="Received">Received</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end gap-2">
+              <Checkbox id="unpaid" checked={unpaidOnly} onCheckedChange={(v) => setUnpaidOnly(!!v)} />
+              <Label htmlFor="unpaid" className="text-xs">Only with balance &gt; 0</Label>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {formatNumber(candidates.length)} matching parent{candidates.length === 1 ? "" : "s"} with email — {formatNumber(selected.size)} selected
+          </div>
+          <div className="border rounded max-h-[40vh] overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead>Student</TableHead>
+                  <TableHead>School</TableHead>
+                  <TableHead>Parent email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {candidates.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell><Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggle(s.id)} /></TableCell>
+                    <TableCell className="text-xs">{s.studentName}</TableCell>
+                    <TableCell className="text-xs">{s.schoolName}</TableCell>
+                    <TableCell className="text-xs">{s.parentEmail}</TableCell>
+                    <TableCell className="text-xs">{s.paymentStatus}</TableCell>
+                    <TableCell className="text-xs text-right">{formatCurrency(studentBalance(s))}</TableCell>
+                  </TableRow>
+                ))}
+                {candidates.length === 0 && (
+                  <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">No matching parents.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Reminders stop automatically once a student is marked paid. One email per selected parent.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={sending}>Cancel</Button>
+            <Button onClick={handleBulkSend} disabled={sending || selected.size === 0}>
+              {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+              Send {formatNumber(selected.size)} reminder{selected.size === 1 ? "" : "s"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/* -------------------- Bulk School Updates -------------------- */
+
+function BulkSchoolUpdateButton({
+  template, subject, bodyHtml, contacts, students, onSent,
+}: {
+  template: EmailTemplate;
+  subject: string;
+  bodyHtml: string;
+  contacts: SchoolContact[];
+  students: Student[];
+  onSent: () => void;
+}) {
+  const send = useServerFn(sendAutomationEmail);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sending, setSending] = useState(false);
+
+  const eligible = useMemo(() => contacts.filter((c) => c.email), [contacts]);
+
+  useEffect(() => {
+    if (!open) return;
+    setSelected(new Set(eligible.map((c) => c.id)));
+  }, [open, eligible]);
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkSend = async () => {
+    const list = eligible.filter((c) => selected.has(c.id));
+    if (list.length === 0) { toast.error("No contacts selected"); return; }
+    if (!confirm(`Send school updates to ${list.length} contact(s)?`)) return;
+    setSending(true);
+    let ok = 0, fail = 0;
+    const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    for (const c of list) {
+      const schoolStudents = students.filter((s) => s.schoolName === c.school_name);
+      const vars = {
+        contactName: c.contact_name || "there",
+        schoolName: c.school_name,
+        routeLine: "",
+        totalStudents: schoolStudents.length,
+        amCount: schoolStudents.length,
+        pmCount: schoolStudents.length,
+        newCount: schoolStudents.filter((s) => s.status === "New").length,
+        droppedCount: 0,
+        pendingCount: schoolStudents.filter((s) => s.status === "New").length,
+        notesBlock: c.notes ? `<p><strong>Notes:</strong> ${c.notes}</p>` : "",
+        periodLabel: today,
+      };
+      try {
+        await send({
+          data: {
+            templateKey: template.key,
+            to: [c.email],
+            cc: [], bcc: [],
+            subject, bodyHtml,
+            variables: vars,
+            metadata: { bulk: true, contactId: c.id, school: c.school_name },
+          },
+        });
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setSending(false);
+    void logAudit({
+      action: `sent bulk school updates (${ok} ok / ${fail} failed)`,
+      entityType: "email",
+      entityName: template.name,
+      details: { ok, fail },
+    });
+    toast[fail ? "warning" : "success"](`Sent ${ok} update${ok === 1 ? "" : "s"}${fail ? `, ${fail} failed` : ""}`);
+    setOpen(false);
+    onSent();
+  };
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <SchoolIcon className="h-3.5 w-3.5 mr-1.5" /> Bulk send
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Send updates to school contacts</DialogTitle></DialogHeader>
+          <div className="text-xs text-muted-foreground">
+            {formatNumber(eligible.length)} contact{eligible.length === 1 ? "" : "s"} with email — {formatNumber(selected.size)} selected
+          </div>
+          <div className="border rounded max-h-[40vh] overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead>School</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Students</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {eligible.map((c) => {
+                  const count = students.filter((s) => s.schoolName === c.school_name).length;
+                  return (
+                    <TableRow key={c.id}>
+                      <TableCell><Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggle(c.id)} /></TableCell>
+                      <TableCell className="text-xs font-medium">{c.school_name}</TableCell>
+                      <TableCell className="text-xs">{c.contact_name}</TableCell>
+                      <TableCell className="text-xs">{c.email}</TableCell>
+                      <TableCell className="text-xs text-right">{formatNumber(count)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+                {eligible.length === 0 && (
+                  <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">No school contacts with email yet.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={sending}>Cancel</Button>
+            <Button onClick={handleBulkSend} disabled={sending || selected.size === 0}>
+              {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+              Send {formatNumber(selected.size)} update{selected.size === 1 ? "" : "s"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
