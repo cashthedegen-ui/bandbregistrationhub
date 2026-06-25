@@ -18,6 +18,7 @@ import { Route as AppStudentsRouteImport } from './routes/_app.students'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppRunSheetsRouteImport } from './routes/_app.run-sheets'
 import { Route as AppRoutesRouteImport } from './routes/_app.routes'
+import { Route as AppAutomationsRouteImport } from './routes/_app.automations'
 import { Route as AppAuditRouteImport } from './routes/_app.audit'
 import { Route as AppArchiveRouteImport } from './routes/_app.archive'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
@@ -66,6 +67,11 @@ const AppRoutesRoute = AppRoutesRouteImport.update({
   path: '/routes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAutomationsRoute = AppAutomationsRouteImport.update({
+  id: '/automations',
+  path: '/automations',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAuditRoute = AppAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AppAnalyticsRoute
   '/archive': typeof AppArchiveRoute
   '/audit': typeof AppAuditRoute
+  '/automations': typeof AppAutomationsRoute
   '/routes': typeof AppRoutesRoute
   '/run-sheets': typeof AppRunSheetsRoute
   '/settings': typeof AppSettingsRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AppAnalyticsRoute
   '/archive': typeof AppArchiveRoute
   '/audit': typeof AppAuditRoute
+  '/automations': typeof AppAutomationsRoute
   '/routes': typeof AppRoutesRoute
   '/run-sheets': typeof AppRunSheetsRoute
   '/settings': typeof AppSettingsRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/archive': typeof AppArchiveRoute
   '/_app/audit': typeof AppAuditRoute
+  '/_app/automations': typeof AppAutomationsRoute
   '/_app/routes': typeof AppRoutesRoute
   '/_app/run-sheets': typeof AppRunSheetsRoute
   '/_app/settings': typeof AppSettingsRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/archive'
     | '/audit'
+    | '/automations'
     | '/routes'
     | '/run-sheets'
     | '/settings'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/archive'
     | '/audit'
+    | '/automations'
     | '/routes'
     | '/run-sheets'
     | '/settings'
@@ -158,6 +169,7 @@ export interface FileRouteTypes {
     | '/_app/analytics'
     | '/_app/archive'
     | '/_app/audit'
+    | '/_app/automations'
     | '/_app/routes'
     | '/_app/run-sheets'
     | '/_app/settings'
@@ -238,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRoutesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/automations': {
+      id: '/_app/automations'
+      path: '/automations'
+      fullPath: '/automations'
+      preLoaderRoute: typeof AppAutomationsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/audit': {
       id: '/_app/audit'
       path: '/audit'
@@ -266,6 +285,7 @@ interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppArchiveRoute: typeof AppArchiveRoute
   AppAuditRoute: typeof AppAuditRoute
+  AppAutomationsRoute: typeof AppAutomationsRoute
   AppRoutesRoute: typeof AppRoutesRoute
   AppRunSheetsRoute: typeof AppRunSheetsRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -277,6 +297,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppArchiveRoute: AppArchiveRoute,
   AppAuditRoute: AppAuditRoute,
+  AppAutomationsRoute: AppAutomationsRoute,
   AppRoutesRoute: AppRoutesRoute,
   AppRunSheetsRoute: AppRunSheetsRoute,
   AppSettingsRoute: AppSettingsRoute,

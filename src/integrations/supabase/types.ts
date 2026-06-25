@@ -74,6 +74,108 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_configs: {
+        Row: {
+          config: Json
+          created_at: string
+          enabled: boolean
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_history: {
+        Row: {
+          bcc: string | null
+          cc: string | null
+          created_at: string
+          error: string | null
+          id: string
+          metadata: Json
+          recipient: string
+          resend_id: string | null
+          sent_at: string
+          status: string
+          subject: string
+          template_key: string | null
+        }
+        Insert: {
+          bcc?: string | null
+          cc?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          metadata?: Json
+          recipient: string
+          resend_id?: string | null
+          sent_at?: string
+          status?: string
+          subject?: string
+          template_key?: string | null
+        }
+        Update: {
+          bcc?: string | null
+          cc?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          metadata?: Json
+          recipient?: string
+          resend_id?: string | null
+          sent_at?: string
+          status?: string
+          subject?: string
+          template_key?: string | null
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          body_html: string
+          body_text: string
+          created_at: string
+          description: string | null
+          key: string
+          name: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body_html?: string
+          body_text?: string
+          created_at?: string
+          description?: string | null
+          key: string
+          name: string
+          subject?: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          body_text?: string
+          created_at?: string
+          description?: string | null
+          key?: string
+          name?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       forms_config: {
         Row: {
           key: string
@@ -92,6 +194,42 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           value?: Json
+        }
+        Relationships: []
+      }
+      school_contacts: {
+        Row: {
+          contact_name: string
+          created_at: string
+          email: string
+          id: string
+          notes: string
+          phone: string
+          school_name: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          contact_name?: string
+          created_at?: string
+          email?: string
+          id?: string
+          notes?: string
+          phone?: string
+          school_name: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_name?: string
+          created_at?: string
+          email?: string
+          id?: string
+          notes?: string
+          phone?: string
+          school_name?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
