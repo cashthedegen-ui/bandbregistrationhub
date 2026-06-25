@@ -245,7 +245,7 @@ interface AutomationCardProps {
   students: ReturnType<typeof useStore>["students"];
   contacts?: SchoolContact[];
   schoolYear?: string;
-  extraAction?: React.ReactNode;
+  extraAction?: ReactNode;
 }
 
 function AutomationCard({ template, config, onSavedTemplate, onSavedConfig, onSent, kind, students, contacts, schoolYear, extraAction }: AutomationCardProps) {
