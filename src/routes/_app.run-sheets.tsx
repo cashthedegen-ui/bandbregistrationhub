@@ -419,7 +419,7 @@ function RunSheetsPage() {
             </div>
             <ul className="mt-3 max-h-[28rem] overflow-auto divide-y divide-border text-xs">
               {selectedStudents.slice(0, 50).map((s) => {
-                const pickup = s.stopAddress || s.address || "—";
+                const pickup = s.stopAddress || "—";
                 const dropoff = (s as any).dropoffAddress || s.schoolName || "—";
                 const note = s.notes || (s as any).specialInstructions || "";
                 return (
@@ -490,7 +490,7 @@ function RunSheetsPage() {
                   {selectedStudents.slice(0, 25).map((s) => (
                     <li key={s.id} className="rounded border border-border p-2">
                       <div className="font-medium">{s.studentName}</div>
-                      <div className="text-xs text-muted-foreground">Pickup: {s.stopAddress || s.address || "—"}</div>
+                      <div className="text-xs text-muted-foreground">Pickup: {s.stopAddress || "—"}</div>
                       <div className="text-xs text-muted-foreground">Dropoff: {(s as any).dropoffAddress || s.schoolName || "—"}</div>
                     </li>
                   ))}
