@@ -5,6 +5,8 @@ export const EMAIL_FROM = "B&B Transportation <info@bandbtrans.com>";
 
 export type SendEmailInput = {
   to: string | string[];
+  cc?: string | string[];
+  bcc?: string | string[];
   subject: string;
   html: string;
   text?: string;
