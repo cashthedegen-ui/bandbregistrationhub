@@ -68,7 +68,7 @@ export const sendAutomationEmail = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { sendEmail } = await import("./service.server");
-    const { supabase } = context;
+    const { supabase, claims } = context;
 
     // Load template from DB unless full overrides provided
     let subject = data.subject || "";
@@ -99,13 +99,20 @@ export const sendAutomationEmail = createServerFn({ method: "POST" })
       attachments: data.attachments.length ? data.attachments : undefined,
     });
 
-    // Log every attempt to email_history
+    // Capture sender identity from JWT claims for the audit trail
+    const c = (claims ?? {}) as Record<string, unknown>;
+    const meta = (c.user_metadata ?? {}) as Record<string, unknown>;
+    const sentByEmail = (c.email as string) || null;
+    const sentByName = (meta.full_name as string) || (meta.name as string) || null;
+
     const baseLog = {
       template_key: data.templateKey,
       recipient: data.to.join(", "),
       cc: data.cc.length ? data.cc.join(", ") : null,
       bcc: data.bcc.length ? data.bcc.join(", ") : null,
       subject: renderedSubject,
+      sent_by_email: sentByEmail,
+      sent_by_name: sentByName,
       metadata: data.metadata as never,
     };
     if (result.ok) {
