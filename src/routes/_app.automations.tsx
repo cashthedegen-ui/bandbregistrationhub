@@ -48,7 +48,7 @@ function parseList(s: string): string[] {
 }
 
 function AutomationsPage() {
-  const { students } = useStore();
+  const { students, settings } = useStore();
 
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [configs, setConfigs] = useState<AutomationConfig[]>([]);
