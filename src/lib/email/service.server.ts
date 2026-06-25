@@ -5,6 +5,8 @@ export const EMAIL_FROM = "B&B Transportation <info@bandbtrans.com>";
 
 export type SendEmailInput = {
   to: string | string[];
+  cc?: string | string[];
+  bcc?: string | string[];
   subject: string;
   html: string;
   text?: string;
@@ -32,9 +34,14 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     return { ok: false, error: msg };
   }
 
+  const arr = (v?: string | string[]) =>
+    v == null ? undefined : (Array.isArray(v) ? v : [v]).map((s) => s.trim()).filter(Boolean);
+
   const payload = {
     from: EMAIL_FROM,
-    to: Array.isArray(input.to) ? input.to : [input.to],
+    to: arr(input.to) ?? [],
+    ...(arr(input.cc)?.length ? { cc: arr(input.cc) } : {}),
+    ...(arr(input.bcc)?.length ? { bcc: arr(input.bcc) } : {}),
     subject: input.subject,
     html: input.html,
     ...(input.text ? { text: input.text } : {}),
