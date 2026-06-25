@@ -244,9 +244,11 @@ interface AutomationCardProps {
   kind: "parent" | "runsheet" | "school";
   students: ReturnType<typeof useStore>["students"];
   contacts?: SchoolContact[];
+  schoolYear?: string;
+  extraAction?: React.ReactNode;
 }
 
-function AutomationCard({ template, config, onSavedTemplate, onSavedConfig, onSent, kind, students, contacts }: AutomationCardProps) {
+function AutomationCard({ template, config, onSavedTemplate, onSavedConfig, onSent, kind, students, contacts, schoolYear, extraAction }: AutomationCardProps) {
   const [enabled, setEnabled] = useState(config?.enabled ?? false);
   const [subject, setSubject] = useState(template.subject);
   const [bodyHtml, setBodyHtml] = useState(template.body_html);
