@@ -86,15 +86,25 @@ export function buildRunSheet(opts: RunSheetOptions): jsPDF {
   drawInfo("Route / Stop", opts.routeName || "—", M + colW + 8, y, colW);
   drawInfo("Driver", opts.driverName || "—", M + (colW + 8) * 2, y, colW);
   y += 52;
+  const amDriver = opts.morningDriverName || (opts.session !== "Afternoon" ? opts.driverName : "") || "—";
+  const pmDriver = opts.afternoonDriverName || (opts.session !== "Morning" ? opts.driverName : "") || "—";
+  const driverDisplay =
+    opts.session === "Morning" ? amDriver :
+    opts.session === "Afternoon" ? pmDriver :
+    (amDriver === pmDriver ? amDriver : `AM: ${amDriver} / PM: ${pmDriver}`);
+
+  drawInfo("School", opts.schoolName || "—", M, y, colW);
+  drawInfo("Route / Stop", opts.routeName || "—", M + colW + 8, y, colW);
+  drawInfo("Driver", driverDisplay, M + (colW + 8) * 2, y, colW);
+  y += 52;
   drawInfo("Bus #", opts.busNumber || "—", M, y, colW);
   drawInfo("AM Pickup", opts.morningPickupTime || (opts.session === "Afternoon" ? "—" : "TBD"), M + colW + 8, y, colW);
   drawInfo("PM Dropoff", opts.afternoonDropoffTime || (opts.session === "Morning" ? "—" : "TBD"), M + (colW + 8) * 2, y, colW);
+  y += 52;
+  drawInfo("Driver Phone", formatPhone(opts.driverPhone), M, y, colW);
+  drawInfo("Driver Email", opts.driverEmail || "—", M + colW + 8, y, colW);
+  drawInfo("Vehicle Notes", opts.vehicleNotes || "—", M + (colW + 8) * 2, y, colW);
   y += 60;
-
-  // Students table
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text(`Riders (${opts.students.length})`, M, y);
   y += 10;
   doc.setDrawColor(200, 200, 200);
   doc.line(M, y, W - M, y);
