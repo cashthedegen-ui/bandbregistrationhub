@@ -28,9 +28,10 @@ import { sendAutomationEmail } from "@/lib/email/automation.functions";
 import { useStore } from "@/lib/store";
 import { logAudit } from "@/lib/audit-log";
 import { toast } from "sonner";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, formatCurrency } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Mail, Send, Save, Eye, Loader2, Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle, Search,
+  Mail, Send, Save, Eye, Loader2, Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle, Search, Users, School as SchoolIcon,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/automations")({
