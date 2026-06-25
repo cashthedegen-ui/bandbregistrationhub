@@ -109,6 +109,8 @@ export type Database = {
           recipient: string
           resend_id: string | null
           sent_at: string
+          sent_by_email: string | null
+          sent_by_name: string | null
           status: string
           subject: string
           template_key: string | null
@@ -123,6 +125,8 @@ export type Database = {
           recipient: string
           resend_id?: string | null
           sent_at?: string
+          sent_by_email?: string | null
+          sent_by_name?: string | null
           status?: string
           subject?: string
           template_key?: string | null
@@ -137,6 +141,8 @@ export type Database = {
           recipient?: string
           resend_id?: string | null
           sent_at?: string
+          sent_by_email?: string | null
+          sent_by_name?: string | null
           status?: string
           subject?: string
           template_key?: string | null
