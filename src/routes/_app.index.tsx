@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Clock, Copy, DollarSign, FileSpreadsheet, RefreshCw, UserPlus, Users } from "lucide-react";
+import { AlertTriangle, CalendarClock, Clock, Copy, DollarSign, FileSpreadsheet, RefreshCw, TrendingUp, UserPlus, Users, Wallet } from "lucide-react";
 import { exportMaster } from "@/lib/excel";
 import { stopKey } from "@/lib/storage";
-import { formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@/lib/utils";
+import { fetchAllPlans, type PaymentPlan } from "@/lib/payment-plans";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "Dashboard — B & B Transit" }] }),
