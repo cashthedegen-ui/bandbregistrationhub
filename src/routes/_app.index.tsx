@@ -41,6 +41,22 @@ function Dashboard() {
   const alertCount = students.filter((s) => s.alertFlag).length;
   const waitlisted = students.filter((s) => s.status === "Waitlisted").length;
 
+  const [plans, setPlans] = useState<PaymentPlan[]>([]);
+  useEffect(() => { fetchAllPlans().then(setPlans).catch(() => {}); }, []);
+
+  const planKpis = useMemo(() => {
+    const active = plans.filter((p) => p.status !== "Paid Off");
+    const outstanding = active.reduce((s, p) => s + Number(p.remaining_balance), 0);
+    const totalTarget = plans.reduce((s, p) => s + Number(p.total_amount), 0);
+    const totalPaid = plans.reduce((s, p) => s + Number(p.amount_paid), 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const weekOut = new Date(today); weekOut.setDate(weekOut.getDate() + 7);
+    const dueWeek = active.filter((p) => p.next_due_date && new Date(p.next_due_date + "T00:00:00") >= today && new Date(p.next_due_date + "T00:00:00") <= weekOut);
+    const overdue = plans.filter((p) => p.status === "Overdue");
+    const collectionRate = totalTarget > 0 ? (totalPaid / totalTarget) * 100 : 0;
+    return { active: active.length, outstanding, dueWeek: dueWeek.length, overdue: overdue.length, collectionRate, hasAny: plans.length > 0 };
+  }, [plans]);
+
   const pay = useMemo(() => {
     const p = { Pending: 0, Received: 0, Overdue: 0 };
     for (const s of students) p[s.paymentStatus || "Pending"]++;
