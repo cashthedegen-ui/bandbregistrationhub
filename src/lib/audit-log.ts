@@ -32,17 +32,14 @@ export async function logAudit(input: {
   details?: Record<string, unknown>;
 }): Promise<void> {
   try {
-    const { data: userRes } = await supabase.auth.getUser();
-    const u = userRes.user;
-    const { error } = await supabase.from("audit_log").insert({
-      actor_id: u?.id ?? null,
-      actor_email: u?.email ?? null,
-      actor_name: actorNameFromEmail(u?.email),
-      action: input.action,
-      entity_type: input.entityType ?? null,
-      entity_id: input.entityId ?? null,
-      entity_name: input.entityName ?? null,
-      details: (input.details ?? null) as any,
+    // Uses a SECURITY DEFINER RPC so the trusted actor identity (auth.uid(),
+    // email, name) is set server-side and cannot be spoofed by the client.
+    const { error } = await (supabase as any).rpc("log_audit_entry", {
+      _action: input.action,
+      _entity_type: input.entityType ?? null,
+      _entity_id: input.entityId ?? null,
+      _entity_name: input.entityName ?? null,
+      _details: (input.details ?? null) as any,
     });
     if (error) throw error;
   } catch (e) {
