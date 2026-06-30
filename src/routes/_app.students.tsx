@@ -371,6 +371,9 @@ function StudentsPage() {
                         <Button size="icon" variant="ghost" onClick={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }} title={r.notes ? "Notes (saved)" : "Add notes"}>
                           <StickyNote className={`h-4 w-4 ${r.notes ? "text-primary" : ""}`} />
                         </Button>
+                        <Button size="icon" variant="ghost" onClick={() => setPlanAnchor(r)} title="Payment plan">
+                          <Wallet className="h-4 w-4" />
+                        </Button>
                         <Button size="icon" variant="ghost" onClick={() => downloadReceipt(r, settings.receipt)} title="PDF receipt">
                           <FileText className="h-4 w-4" />
                         </Button>
