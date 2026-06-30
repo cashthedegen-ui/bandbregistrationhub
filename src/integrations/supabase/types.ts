@@ -203,6 +203,200 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_installments: {
+        Row: {
+          amount: number
+          amount_paid: number
+          created_at: string
+          due_date: string
+          id: string
+          notes: string
+          paid_at: string | null
+          plan_id: string
+          sequence: number
+          status: string
+          updated_at: string
+          waived: boolean
+        }
+        Insert: {
+          amount?: number
+          amount_paid?: number
+          created_at?: string
+          due_date: string
+          id?: string
+          notes?: string
+          paid_at?: string | null
+          plan_id: string
+          sequence: number
+          status?: string
+          updated_at?: string
+          waived?: boolean
+        }
+        Update: {
+          amount?: number
+          amount_paid?: number
+          created_at?: string
+          due_date?: string
+          id?: string
+          notes?: string
+          paid_at?: string | null
+          plan_id?: string
+          sequence?: number
+          status?: string
+          updated_at?: string
+          waived?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_installments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "payment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_plans: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          created_by: string | null
+          custom_days: number | null
+          down_payment: number
+          family_key: string
+          frequency: string
+          id: string
+          installment_amount: number
+          installment_count: number
+          last_payment_date: string | null
+          next_due_date: string | null
+          notes: string
+          parent_email: string
+          parent_name: string
+          parent_phone: string
+          remaining_balance: number
+          school_name: string
+          start_date: string
+          status: string
+          student_names: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          amount_paid?: number
+          created_at?: string
+          created_by?: string | null
+          custom_days?: number | null
+          down_payment?: number
+          family_key: string
+          frequency?: string
+          id?: string
+          installment_amount?: number
+          installment_count?: number
+          last_payment_date?: string | null
+          next_due_date?: string | null
+          notes?: string
+          parent_email?: string
+          parent_name?: string
+          parent_phone?: string
+          remaining_balance?: number
+          school_name?: string
+          start_date?: string
+          status?: string
+          student_names?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          created_by?: string | null
+          custom_days?: number | null
+          down_payment?: number
+          family_key?: string
+          frequency?: string
+          id?: string
+          installment_amount?: number
+          installment_count?: number
+          last_payment_date?: string | null
+          next_due_date?: string | null
+          notes?: string
+          parent_email?: string
+          parent_name?: string
+          parent_phone?: string
+          remaining_balance?: number
+          school_name?: string
+          start_date?: string
+          status?: string
+          student_names?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_records: {
+        Row: {
+          amount: number
+          confirmation_number: string
+          created_at: string
+          id: string
+          installment_id: string | null
+          kind: string
+          method: string
+          notes: string
+          payment_date: string
+          plan_id: string
+          staff_email: string
+          staff_id: string | null
+          staff_name: string
+        }
+        Insert: {
+          amount: number
+          confirmation_number?: string
+          created_at?: string
+          id?: string
+          installment_id?: string | null
+          kind?: string
+          method?: string
+          notes?: string
+          payment_date?: string
+          plan_id: string
+          staff_email?: string
+          staff_id?: string | null
+          staff_name?: string
+        }
+        Update: {
+          amount?: number
+          confirmation_number?: string
+          created_at?: string
+          id?: string
+          installment_id?: string | null
+          kind?: string
+          method?: string
+          notes?: string
+          payment_date?: string
+          plan_id?: string
+          staff_email?: string
+          staff_id?: string | null
+          staff_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_records_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "payment_installments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_records_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "payment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_contacts: {
         Row: {
           contact_name: string

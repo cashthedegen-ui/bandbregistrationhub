@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Clock, Copy, DollarSign, FileSpreadsheet, RefreshCw, UserPlus, Users } from "lucide-react";
+import { AlertTriangle, CalendarClock, Clock, Copy, DollarSign, FileSpreadsheet, RefreshCw, TrendingUp, UserPlus, Users, Wallet } from "lucide-react";
 import { exportMaster } from "@/lib/excel";
 import { stopKey } from "@/lib/storage";
-import { formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@/lib/utils";
+import { fetchAllPlans, type PaymentPlan } from "@/lib/payment-plans";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "Dashboard — B & B Transit" }] }),
@@ -39,6 +40,22 @@ function Dashboard() {
   const newCount = students.filter((s) => s.status === "New").length;
   const alertCount = students.filter((s) => s.alertFlag).length;
   const waitlisted = students.filter((s) => s.status === "Waitlisted").length;
+
+  const [plans, setPlans] = useState<PaymentPlan[]>([]);
+  useEffect(() => { fetchAllPlans().then(setPlans).catch(() => {}); }, []);
+
+  const planKpis = useMemo(() => {
+    const active = plans.filter((p) => p.status !== "Paid Off");
+    const outstanding = active.reduce((s, p) => s + Number(p.remaining_balance), 0);
+    const totalTarget = plans.reduce((s, p) => s + Number(p.total_amount), 0);
+    const totalPaid = plans.reduce((s, p) => s + Number(p.amount_paid), 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const weekOut = new Date(today); weekOut.setDate(weekOut.getDate() + 7);
+    const dueWeek = active.filter((p) => p.next_due_date && new Date(p.next_due_date + "T00:00:00") >= today && new Date(p.next_due_date + "T00:00:00") <= weekOut);
+    const overdue = plans.filter((p) => p.status === "Overdue");
+    const collectionRate = totalTarget > 0 ? (totalPaid / totalTarget) * 100 : 0;
+    return { active: active.length, outstanding, dueWeek: dueWeek.length, overdue: overdue.length, collectionRate, hasAny: plans.length > 0 };
+  }, [plans]);
 
   const pay = useMemo(() => {
     const p = { Pending: 0, Received: 0, Overdue: 0 };
@@ -79,6 +96,24 @@ function Dashboard() {
         <Kpi label="Duplicates" value={formatNumber(dupGroups.length)} icon={Copy} />
         <Kpi label="Forms Synced" value={formatNumber(formsSynced)} icon={RefreshCw} hint={`${settings.forms.length} configured`} />
       </div>
+
+      {planKpis.hasAny && (
+        <div className="mt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Wallet className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payment Plans</h2>
+            <Link to="/payments" className="ml-auto text-xs text-primary hover:underline">View all →</Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <Kpi label="Active Plans" value={formatNumber(planKpis.active)} icon={Users} />
+            <Kpi label="Outstanding" value={formatCurrency(planKpis.outstanding)} icon={Wallet} />
+            <Kpi label="Due This Week" value={formatNumber(planKpis.dueWeek)} icon={CalendarClock} />
+            <Kpi label="Overdue" value={formatNumber(planKpis.overdue)} icon={AlertTriangle} />
+            <Kpi label="Collection Rate" value={`${planKpis.collectionRate.toFixed(0)}%`} icon={TrendingUp} />
+          </div>
+        </div>
+      )}
+
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
         <Card className="bg-card border-border lg:col-span-1">

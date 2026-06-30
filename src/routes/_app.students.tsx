@@ -14,7 +14,8 @@ import { Card } from "@/components/ui/card";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { AlertTriangle, BadgeCheck, CheckCheck, Copy, Download, FileText, Filter, MailCheck, Pencil, Search, StickyNote, Trash2, X } from "lucide-react";
+import { AlertTriangle, BadgeCheck, CheckCheck, Copy, Download, FileText, Filter, MailCheck, Pencil, Search, StickyNote, Trash2, Wallet, X } from "lucide-react";
+import { PaymentPlanDrawer } from "@/components/payment-plan-drawer";
 import type { PaymentStatus, PaymentType, Status, StudentRow } from "@/lib/types";
 import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
@@ -78,6 +79,7 @@ function StudentsPage() {
   const [editDraft, setEditDraft] = useState<StudentRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<StudentRow | null>(null);
   const [confirmLetterRow, setConfirmLetterRow] = useState<StudentRow | null>(null);
+  const [planAnchor, setPlanAnchor] = useState<StudentRow | null>(null);
 
 
   const schools = useMemo(() => Array.from(new Set(students.map((s) => s.schoolName))).filter(Boolean), [students]);
@@ -368,6 +370,9 @@ function StudentsPage() {
                         </Button>
                         <Button size="icon" variant="ghost" onClick={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }} title={r.notes ? "Notes (saved)" : "Add notes"}>
                           <StickyNote className={`h-4 w-4 ${r.notes ? "text-primary" : ""}`} />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => setPlanAnchor(r)} title="Payment plan">
+                          <Wallet className="h-4 w-4" />
                         </Button>
                         <Button size="icon" variant="ghost" onClick={() => downloadReceipt(r, settings.receipt)} title="PDF receipt">
                           <FileText className="h-4 w-4" />
@@ -693,6 +698,13 @@ function StudentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PaymentPlanDrawer
+        open={!!planAnchor}
+        onOpenChange={(o) => !o && setPlanAnchor(null)}
+        anchor={planAnchor}
+        students={students}
+      />
     </>
   );
 }
