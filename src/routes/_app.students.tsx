@@ -698,6 +698,13 @@ function StudentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PaymentPlanDrawer
+        open={!!planAnchor}
+        onOpenChange={(o) => !o && setPlanAnchor(null)}
+        anchor={planAnchor}
+        students={students}
+      />
     </>
   );
 }
