@@ -97,6 +97,24 @@ function Dashboard() {
         <Kpi label="Forms Synced" value={formatNumber(formsSynced)} icon={RefreshCw} hint={`${settings.forms.length} configured`} />
       </div>
 
+      {planKpis.hasAny && (
+        <div className="mt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Wallet className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payment Plans</h2>
+            <Link to="/payments" className="ml-auto text-xs text-primary hover:underline">View all →</Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <Kpi label="Active Plans" value={formatNumber(planKpis.active)} icon={Users} />
+            <Kpi label="Outstanding" value={formatCurrency(planKpis.outstanding)} icon={Wallet} />
+            <Kpi label="Due This Week" value={formatNumber(planKpis.dueWeek)} icon={CalendarClock} />
+            <Kpi label="Overdue" value={formatNumber(planKpis.overdue)} icon={AlertTriangle} />
+            <Kpi label="Collection Rate" value={`${planKpis.collectionRate.toFixed(0)}%`} icon={TrendingUp} />
+          </div>
+        </div>
+      )}
+
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
         <Card className="bg-card border-border lg:col-span-1">
           <CardContent className="p-5">
