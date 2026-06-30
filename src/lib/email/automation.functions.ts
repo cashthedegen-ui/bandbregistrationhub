@@ -69,6 +69,10 @@ export const sendAutomationEmail = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { sendEmail } = await import("./service.server");
     const { supabase, claims } = context;
+    // email_history writes are admin-restricted at the RLS layer; use the
+    // service-role client so legitimate sends from any signed-in staff member
+    // are still logged without granting them direct write access to the table.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Load template from DB unless full overrides provided
     let subject = data.subject || "";
@@ -116,14 +120,14 @@ export const sendAutomationEmail = createServerFn({ method: "POST" })
       metadata: data.metadata as never,
     };
     if (result.ok) {
-      await supabase.from("email_history").insert({
+      await supabaseAdmin.from("email_history").insert({
         ...baseLog,
         status: "sent",
         resend_id: result.id,
       });
       return { ok: true, id: result.id };
     } else {
-      await supabase.from("email_history").insert({
+      await supabaseAdmin.from("email_history").insert({
         ...baseLog,
         status: "failed",
         error: result.error,
