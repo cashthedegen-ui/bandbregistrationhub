@@ -14,7 +14,8 @@ import { Card } from "@/components/ui/card";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { AlertTriangle, BadgeCheck, CheckCheck, Copy, Download, FileText, Filter, MailCheck, Pencil, Search, StickyNote, Trash2, X } from "lucide-react";
+import { AlertTriangle, BadgeCheck, CheckCheck, Copy, Download, FileText, Filter, MailCheck, Pencil, Search, StickyNote, Trash2, Wallet, X } from "lucide-react";
+import { PaymentPlanDrawer } from "@/components/payment-plan-drawer";
 import type { PaymentStatus, PaymentType, Status, StudentRow } from "@/lib/types";
 import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
