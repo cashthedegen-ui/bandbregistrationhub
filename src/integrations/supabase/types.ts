@@ -436,8 +436,10 @@ export type Database = {
       payment_records: {
         Row: {
           amount: number
+          analytics_excluded: boolean
           confirmation_number: string
           created_at: string
+          excluded_reason: string | null
           id: string
           installment_id: string | null
           kind: string
@@ -445,14 +447,18 @@ export type Database = {
           notes: string
           payment_date: string
           plan_id: string
+          removed_by_staff: string | null
+          removed_from_plan_at: string | null
           staff_email: string
           staff_id: string | null
           staff_name: string
         }
         Insert: {
           amount: number
+          analytics_excluded?: boolean
           confirmation_number?: string
           created_at?: string
+          excluded_reason?: string | null
           id?: string
           installment_id?: string | null
           kind?: string
@@ -460,14 +466,18 @@ export type Database = {
           notes?: string
           payment_date?: string
           plan_id: string
+          removed_by_staff?: string | null
+          removed_from_plan_at?: string | null
           staff_email?: string
           staff_id?: string | null
           staff_name?: string
         }
         Update: {
           amount?: number
+          analytics_excluded?: boolean
           confirmation_number?: string
           created_at?: string
+          excluded_reason?: string | null
           id?: string
           installment_id?: string | null
           kind?: string
@@ -475,6 +485,8 @@ export type Database = {
           notes?: string
           payment_date?: string
           plan_id?: string
+          removed_by_staff?: string | null
+          removed_from_plan_at?: string | null
           staff_email?: string
           staff_id?: string | null
           staff_name?: string
