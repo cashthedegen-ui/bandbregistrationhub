@@ -2,7 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { StudentRow } from "./types";
 
 export type PlanFrequency = "Monthly" | "Biweekly" | "Weekly" | "Custom";
-export type PlanStatus = "Current" | "Upcoming" | "Overdue" | "Paid Off";
+export type PlanStatus = "Current" | "Upcoming" | "Overdue" | "Paid Off" | "Cancelled" | "Removed by Admin";
+export type BillingType = "Paid in Full" | "Payment Plan" | "Financial Aid" | "Unpaid";
 export type InstallmentStatus = "Upcoming" | "Due" | "Paid" | "Overdue" | "Waived";
 export type PaymentMethod = "Cash" | "Check" | "Card" | "ACH" | "Zelle" | "Venmo" | "Other";
 export type PaymentKind = "Payment" | "DownPayment" | "Waive" | "Credit";
