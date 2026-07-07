@@ -98,6 +98,48 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_changes: {
+        Row: {
+          actor_email: string
+          actor_id: string | null
+          actor_name: string
+          created_at: string
+          family_key: string
+          id: string
+          new_type: string
+          parent_name: string
+          plan_id: string | null
+          previous_type: string | null
+          reason: string
+        }
+        Insert: {
+          actor_email?: string
+          actor_id?: string | null
+          actor_name?: string
+          created_at?: string
+          family_key: string
+          id?: string
+          new_type: string
+          parent_name?: string
+          plan_id?: string | null
+          previous_type?: string | null
+          reason?: string
+        }
+        Update: {
+          actor_email?: string
+          actor_id?: string | null
+          actor_name?: string
+          created_at?: string
+          family_key?: string
+          id?: string
+          new_type?: string
+          parent_name?: string
+          plan_id?: string | null
+          previous_type?: string | null
+          reason?: string
+        }
+        Relationships: []
+      }
       email_history: {
         Row: {
           bcc: string | null
@@ -182,6 +224,48 @@ export type Database = {
         }
         Relationships: []
       }
+      family_billing: {
+        Row: {
+          billing_type: string
+          created_at: string
+          family_key: string
+          id: string
+          parent_email: string
+          parent_name: string
+          school_name: string
+          student_names: string
+          updated_at: string
+          updated_by: string | null
+          updated_by_email: string
+        }
+        Insert: {
+          billing_type?: string
+          created_at?: string
+          family_key: string
+          id?: string
+          parent_email?: string
+          parent_name?: string
+          school_name?: string
+          student_names?: string
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string
+        }
+        Update: {
+          billing_type?: string
+          created_at?: string
+          family_key?: string
+          id?: string
+          parent_email?: string
+          parent_name?: string
+          school_name?: string
+          student_names?: string
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string
+        }
+        Relationships: []
+      }
       forms_config: {
         Row: {
           key: string
@@ -259,6 +343,11 @@ export type Database = {
       payment_plans: {
         Row: {
           amount_paid: number
+          billing_type_after: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cancelled_by_email: string | null
+          cancelled_reason: string | null
           created_at: string
           created_by: string | null
           custom_days: number | null
@@ -284,6 +373,11 @@ export type Database = {
         }
         Insert: {
           amount_paid?: number
+          billing_type_after?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_by_email?: string | null
+          cancelled_reason?: string | null
           created_at?: string
           created_by?: string | null
           custom_days?: number | null
@@ -309,6 +403,11 @@ export type Database = {
         }
         Update: {
           amount_paid?: number
+          billing_type_after?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_by_email?: string | null
+          cancelled_reason?: string | null
           created_at?: string
           created_by?: string | null
           custom_days?: number | null

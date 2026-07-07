@@ -11,12 +11,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
-import { CalendarClock, CheckCircle2, CreditCard, FileText, Pencil, Plus, Receipt, Wallet, XCircle } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, CreditCard, FileText, Pencil, Plus, Receipt, ShieldAlert, Wallet, XCircle } from "lucide-react";
 import type { StudentRow } from "@/lib/types";
 import {
   type PaymentPlan, type PaymentInstallment, type PaymentRecord, type PlanFrequency, type PlanStatus,
+  type BillingType, type BillingChange,
   familyKeyOf, familySiblings, fetchPlanByFamily, fetchInstallments, fetchRecords,
   createPaymentPlan, recordPayment, updateInstallment, waiveInstallment, applyCredit, updatePlanNotes,
+  cancelPaymentPlan, fetchBillingChanges,
 } from "@/lib/payment-plans";
 import { logAudit } from "@/lib/audit-log";
 
@@ -25,6 +27,8 @@ const PLAN_BADGE: Record<PlanStatus, string> = {
   Upcoming: "bg-sky-500/15 text-sky-300 border-sky-500/30",
   Overdue: "bg-red-500/15 text-red-300 border-red-500/30",
   "Paid Off": "bg-primary/15 text-primary border-primary/30",
+  Cancelled: "bg-muted text-muted-foreground border-border",
+  "Removed by Admin": "bg-orange-500/15 text-orange-300 border-orange-500/30",
 };
 
 export function PaymentPlanDrawer({
@@ -47,13 +51,16 @@ export function PaymentPlanDrawer({
   const [waiveOpen, setWaiveOpen] = useState<PaymentInstallment | null>(null);
   const [editInst, setEditInst] = useState<PaymentInstallment | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [history, setHistory] = useState<BillingChange[]>([]);
 
   const reload = useCallback(async () => {
     if (!familyKey) return;
     setLoading(true);
     try {
-      const p = await fetchPlanByFamily(familyKey);
+      const [p, hist] = await Promise.all([fetchPlanByFamily(familyKey), fetchBillingChanges(familyKey)]);
       setPlan(p);
+      setHistory(hist);
       if (p) {
         const [ins, rec] = await Promise.all([fetchInstallments(p.id), fetchRecords(p.id)]);
         setInstallments(ins);
@@ -92,17 +99,20 @@ export function PaymentPlanDrawer({
         {loading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
         ) : !plan ? (
-          <div className="mt-6">
+          <div className="mt-6 space-y-4">
             <Card className="bg-background border-border p-6 text-center">
               <CreditCard className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <div className="text-sm font-medium mb-1">No payment plan yet</div>
+              <div className="text-sm font-medium mb-1">No active payment plan</div>
               <div className="text-xs text-muted-foreground mb-4">
-                This family currently uses the existing payment workflow (Paid in Full). Create a Payment Plan to switch to installments.
+                {history.length > 0
+                  ? "This family previously had a payment plan. You can create a new one below."
+                  : "This family currently uses the existing payment workflow (Paid in Full). Create a Payment Plan to switch to installments."}
               </div>
               <Button onClick={() => setCreateOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="h-4 w-4 mr-1.5" /> Create Payment Plan
+                <Plus className="h-4 w-4 mr-1.5" /> Create New Payment Plan
               </Button>
             </Card>
+            {history.length > 0 && <BillingHistoryCard history={history} />}
           </div>
         ) : (
           <div className="mt-4 space-y-4">
@@ -134,6 +144,10 @@ export function PaymentPlanDrawer({
                   await applyCredit(plan.id, amt, note);
                   toast.success("Credit applied"); reload();
                 }}>Apply Credit</Button>
+                <Button size="sm" variant="outline" className="ml-auto border-red-500/30 text-red-300 hover:bg-red-500/10"
+                  onClick={() => setRemoveOpen(true)}>
+                  <ShieldAlert className="h-4 w-4 mr-1.5" /> Remove from Plan
+                </Button>
               </div>
             </Card>
 
@@ -238,6 +252,8 @@ export function PaymentPlanDrawer({
                 await updatePlanNotes(plan.id, notesDraft); toast.success("Notes saved"); reload();
               }}>Save notes</Button>
             </Card>
+
+            {history.length > 0 && <BillingHistoryCard history={history} />}
           </div>
         )}
 
@@ -275,8 +291,140 @@ export function PaymentPlanDrawer({
           installment={waiveOpen}
           onDone={() => { setWaiveOpen(null); reload(); onPlanChanged?.(); }}
         />
+        {/* Remove from plan */}
+        <RemovePlanDialog
+          open={removeOpen}
+          onClose={() => setRemoveOpen(false)}
+          plan={plan}
+          hasRecords={records.some((r) => r.kind !== "Waive" && Number(r.amount) > 0)}
+          totalPaid={records.filter((r) => r.kind !== "Waive").reduce((s, r) => s + Number(r.amount || 0), 0)}
+          onDone={() => { setRemoveOpen(false); reload(); onPlanChanged?.(); }}
+        />
       </SheetContent>
     </Sheet>
+  );
+}
+
+function BillingHistoryCard({ history }: { history: BillingChange[] }) {
+  return (
+    <Card className="bg-background border-border p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <FileText className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-semibold">Billing Change History</h3>
+        <span className="ml-auto text-[11px] text-muted-foreground">Append-only · {history.length} entr{history.length === 1 ? "y" : "ies"}</span>
+      </div>
+      <ul className="space-y-2 text-sm">
+        {history.map((h) => (
+          <li key={h.id} className="flex flex-col border-b border-border pb-2 last:border-0 last:pb-0">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">{new Date(h.created_at).toLocaleString()}</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground">{h.actor_name || h.actor_email || "Staff"}</span>
+            </div>
+            <div className="mt-0.5">
+              <span className="text-muted-foreground">{h.previous_type || "—"}</span>
+              <span className="mx-2 text-muted-foreground">→</span>
+              <span className="font-medium">{h.new_type}</span>
+            </div>
+            {h.reason && <div className="text-xs text-muted-foreground mt-0.5">{h.reason}</div>}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+function RemovePlanDialog({
+  open, onClose, plan, hasRecords, totalPaid, onDone,
+}: {
+  open: boolean; onClose: () => void; plan: PaymentPlan | null;
+  hasRecords: boolean; totalPaid: number; onDone: () => void;
+}) {
+  const [target, setTarget] = useState<BillingType>("Paid in Full");
+  const [reason, setReason] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { if (open) { setTarget("Paid in Full"); setReason(""); setConfirmed(false); } }, [open]);
+  if (!plan) return null;
+
+  const submit = async () => {
+    if (!reason.trim()) return toast.error("Please add a reason / admin note");
+    if (hasRecords && !confirmed) return toast.error("Please confirm — this family has recorded payments");
+    setSaving(true);
+    try {
+      await cancelPaymentPlan({
+        plan_id: plan.id,
+        family_key: plan.family_key,
+        parent_name: plan.parent_name,
+        new_billing_type: target,
+        reason,
+        removal_kind: "Removed by Admin",
+      });
+      await logAudit({
+        action: `removed family from payment plan → ${target}`,
+        entityType: "payment_plan", entityId: plan.id, entityName: plan.parent_name,
+        details: { reason, new_billing_type: target, had_records: hasRecords, total_paid: totalPaid },
+      });
+      toast.success("Family removed from payment plan");
+      onDone();
+    } catch (e: any) {
+      toast.error(`Failed: ${e?.message || e}`);
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="bg-card border-border max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-red-400" />
+            Remove from Payment Plan?
+          </DialogTitle>
+        </DialogHeader>
+        <div className="text-sm text-muted-foreground">
+          Are you sure you want to remove <span className="text-foreground font-medium">{plan.parent_name}</span> from the payment plan?
+          Payment history, installments, and internal notes will be preserved.
+        </div>
+
+        {hasRecords && (
+          <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-200 flex gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div>
+              This family has recorded payments totaling <span className="font-semibold">{formatCurrency(totalPaid)}</span>.
+              Payment history will be preserved. No refund will be issued.
+              <label className="mt-2 flex items-center gap-2 text-yellow-100 cursor-pointer">
+                <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+                I understand — continue with removal
+              </label>
+            </div>
+          </div>
+        )}
+
+        <Field label="Move to billing type">
+          <Select value={target} onValueChange={(v) => setTarget(v as BillingType)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Paid in Full">Paid in Full</SelectItem>
+              <SelectItem value="Financial Aid">Financial Aid</SelectItem>
+              <SelectItem value="Unpaid">Unpaid</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label="Reason / admin note (required)">
+          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} className="min-h-[70px]"
+            placeholder="e.g. Added by mistake · Switched to Financial Aid · Paid in full outside system · Duplicate registration" />
+        </Field>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="destructive" onClick={submit} disabled={saving}>
+            {saving ? "Removing…" : "Remove from Plan"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
