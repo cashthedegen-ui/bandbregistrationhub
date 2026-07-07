@@ -377,3 +377,90 @@ export async function deletePlan(plan_id: string): Promise<void> {
 export async function updatePlanNotes(plan_id: string, notes: string): Promise<void> {
   await supabase.from("payment_plans").update({ notes }).eq("id", plan_id);
 }
+
+// =================== Cancellation & Billing Type ===================
+
+export async function cancelPaymentPlan(input: {
+  plan_id: string;
+  family_key: string;
+  parent_name: string;
+  new_billing_type: BillingType;
+  reason: string;
+  removal_kind: "Cancelled" | "Removed by Admin";
+}): Promise<void> {
+  const { data: userRes } = await supabase.auth.getUser();
+  const u = userRes.user;
+  const prev = await fetchFamilyBilling(input.family_key);
+
+  const { error: upErr } = await supabase.from("payment_plans").update({
+    status: input.removal_kind,
+    cancelled_at: new Date().toISOString(),
+    cancelled_reason: input.reason,
+    cancelled_by: u?.id ?? null,
+    cancelled_by_email: u?.email ?? "",
+    billing_type_after: input.new_billing_type,
+    next_due_date: null,
+  }).eq("id", input.plan_id);
+  if (upErr) throw upErr;
+
+  await upsertFamilyBilling({
+    family_key: input.family_key,
+    parent_name: input.parent_name,
+    billing_type: input.new_billing_type,
+  });
+
+  const { error: aErr } = await supabase.from("billing_changes").insert({
+    family_key: input.family_key,
+    parent_name: input.parent_name,
+    previous_type: prev?.billing_type ?? "Payment Plan",
+    new_type: input.new_billing_type,
+    reason: input.reason,
+    plan_id: input.plan_id,
+    actor_id: u?.id ?? null,
+    actor_email: u?.email ?? "",
+    actor_name: (u?.email || "").split("@")[0] || "Staff",
+  });
+  if (aErr) throw aErr;
+}
+
+export async function fetchFamilyBilling(family_key: string): Promise<FamilyBilling | null> {
+  const { data, error } = await supabase.from("family_billing").select("*").eq("family_key", family_key).maybeSingle();
+  if (error) throw error;
+  return (data as any) ?? null;
+}
+
+export async function fetchAllFamilyBilling(): Promise<FamilyBilling[]> {
+  const { data, error } = await supabase.from("family_billing").select("*");
+  if (error) throw error;
+  return (data as any) ?? [];
+}
+
+export async function upsertFamilyBilling(input: {
+  family_key: string;
+  parent_name?: string;
+  parent_email?: string;
+  school_name?: string;
+  student_names?: string;
+  billing_type: BillingType;
+}): Promise<void> {
+  const { data: userRes } = await supabase.auth.getUser();
+  const email = userRes.user?.email ?? "";
+  const { error } = await supabase.from("family_billing").upsert({
+    family_key: input.family_key,
+    parent_name: input.parent_name ?? "",
+    parent_email: input.parent_email ?? "",
+    school_name: input.school_name ?? "",
+    student_names: input.student_names ?? "",
+    billing_type: input.billing_type,
+    updated_by: userRes.user?.id ?? null,
+    updated_by_email: email,
+  }, { onConflict: "family_key" });
+  if (error) throw error;
+}
+
+export async function fetchBillingChanges(family_key: string): Promise<BillingChange[]> {
+  const { data, error } = await supabase.from("billing_changes").select("*")
+    .eq("family_key", family_key).order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as any) ?? [];
+}
