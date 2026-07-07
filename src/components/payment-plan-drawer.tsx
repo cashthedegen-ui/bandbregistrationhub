@@ -342,15 +342,13 @@ function RemovePlanDialog({
 }) {
   const [target, setTarget] = useState<BillingType>("Paid in Full");
   const [reason, setReason] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (open) { setTarget("Paid in Full"); setReason(""); setConfirmed(false); } }, [open]);
+  useEffect(() => { if (open) { setTarget("Paid in Full"); setReason(""); } }, [open]);
   if (!plan) return null;
 
   const submit = async () => {
     if (!reason.trim()) return toast.error("Please add a reason / admin note");
-    if (hasRecords && !confirmed) return toast.error("Please confirm — this family has recorded payments");
     setSaving(true);
     try {
       await cancelPaymentPlan({
@@ -384,22 +382,9 @@ function RemovePlanDialog({
         </DialogHeader>
         <div className="text-sm text-muted-foreground">
           Are you sure you want to remove <span className="text-foreground font-medium">{plan.parent_name}</span> from the payment plan?
-          Payment history, installments, and internal notes will be preserved.
+          Payment history, installments, and internal notes will be preserved, but any recorded payments on this plan
+          will be excluded from live revenue analytics.
         </div>
-
-        {hasRecords && (
-          <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-200 flex gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-            <div>
-              This family has recorded payments totaling <span className="font-semibold">{formatCurrency(totalPaid)}</span>.
-              Payment history will be preserved. No refund will be issued.
-              <label className="mt-2 flex items-center gap-2 text-yellow-100 cursor-pointer">
-                <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-                I understand — continue with removal
-              </label>
-            </div>
-          </div>
-        )}
 
         <Field label="Move to billing type">
           <Select value={target} onValueChange={(v) => setTarget(v as BillingType)}>
@@ -427,6 +412,7 @@ function RemovePlanDialog({
     </Dialog>
   );
 }
+
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok" | "warn" }) {
   const cls = tone === "warn" ? "text-yellow-300" : tone === "ok" ? "text-emerald-300" : "";
