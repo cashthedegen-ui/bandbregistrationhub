@@ -163,9 +163,21 @@ export async function fetchAllPlans(): Promise<PaymentPlan[]> {
 }
 
 export async function fetchPlanByFamily(family_key: string): Promise<PaymentPlan | null> {
-  const { data, error } = await supabase.from("payment_plans").select("*").eq("family_key", family_key).maybeSingle();
+  const { data, error } = await supabase.from("payment_plans")
+    .select("*").eq("family_key", family_key)
+    .not("status", "in", "(Cancelled,Removed by Admin)")
+    .maybeSingle();
   if (error) throw error;
   return (data as any) ?? null;
+}
+
+export async function fetchCancelledPlansByFamily(family_key: string): Promise<PaymentPlan[]> {
+  const { data, error } = await supabase.from("payment_plans")
+    .select("*").eq("family_key", family_key)
+    .in("status", ["Cancelled", "Removed by Admin"])
+    .order("cancelled_at", { ascending: false });
+  if (error) throw error;
+  return (data as any) ?? [];
 }
 
 export async function fetchInstallments(plan_id: string): Promise<PaymentInstallment[]> {
