@@ -24,7 +24,12 @@ const BADGE: Record<PlanStatus, string> = {
   Upcoming: "bg-sky-500/15 text-sky-300 border-sky-500/30",
   Overdue: "bg-red-500/15 text-red-300 border-red-500/30",
   "Paid Off": "bg-primary/15 text-primary border-primary/30",
+  Cancelled: "bg-muted text-muted-foreground border-border",
+  "Removed by Admin": "bg-orange-500/15 text-orange-300 border-orange-500/30",
 };
+
+const ACTIVE_STATUSES: PlanStatus[] = ["Current", "Upcoming", "Overdue"];
+const INACTIVE_STATUSES: PlanStatus[] = ["Cancelled", "Removed by Admin"];
 
 function PaymentsPage() {
   const { students } = useStore();
