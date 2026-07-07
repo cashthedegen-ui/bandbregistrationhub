@@ -11,12 +11,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
-import { CalendarClock, CheckCircle2, CreditCard, FileText, Pencil, Plus, Receipt, Wallet, XCircle } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, CreditCard, FileText, Pencil, Plus, Receipt, ShieldAlert, Wallet, XCircle } from "lucide-react";
 import type { StudentRow } from "@/lib/types";
 import {
   type PaymentPlan, type PaymentInstallment, type PaymentRecord, type PlanFrequency, type PlanStatus,
+  type BillingType, type BillingChange,
   familyKeyOf, familySiblings, fetchPlanByFamily, fetchInstallments, fetchRecords,
   createPaymentPlan, recordPayment, updateInstallment, waiveInstallment, applyCredit, updatePlanNotes,
+  cancelPaymentPlan, fetchBillingChanges,
 } from "@/lib/payment-plans";
 import { logAudit } from "@/lib/audit-log";
 
@@ -25,6 +27,8 @@ const PLAN_BADGE: Record<PlanStatus, string> = {
   Upcoming: "bg-sky-500/15 text-sky-300 border-sky-500/30",
   Overdue: "bg-red-500/15 text-red-300 border-red-500/30",
   "Paid Off": "bg-primary/15 text-primary border-primary/30",
+  Cancelled: "bg-muted text-muted-foreground border-border",
+  "Removed by Admin": "bg-orange-500/15 text-orange-300 border-orange-500/30",
 };
 
 export function PaymentPlanDrawer({
