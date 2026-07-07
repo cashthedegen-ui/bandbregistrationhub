@@ -90,6 +90,10 @@ export interface PaymentRecord {
   staff_name: string;
   kind: PaymentKind;
   created_at: string;
+  analytics_excluded?: boolean;
+  excluded_reason?: string | null;
+  removed_from_plan_at?: string | null;
+  removed_by_staff?: string | null;
 }
 
 /** Stable family key. Prefer parent email; fall back to parent name + school. */
@@ -392,9 +396,10 @@ export async function cancelPaymentPlan(input: {
   const u = userRes.user;
   const prev = await fetchFamilyBilling(input.family_key);
 
+  const cancelled_at = new Date().toISOString();
   const { error: upErr } = await supabase.from("payment_plans").update({
     status: input.removal_kind,
-    cancelled_at: new Date().toISOString(),
+    cancelled_at,
     cancelled_reason: input.reason,
     cancelled_by: u?.id ?? null,
     cancelled_by_email: u?.email ?? "",
@@ -402,6 +407,19 @@ export async function cancelPaymentPlan(input: {
     next_due_date: null,
   }).eq("id", input.plan_id);
   if (upErr) throw upErr;
+
+  // Mark all payment records on this plan as excluded from live analytics.
+  // History is preserved — payments remain visible in the drawer.
+  const excludedReason = input.removal_kind === "Cancelled"
+    ? "Payment plan cancelled"
+    : "Payment plan removed";
+  const { error: exErr } = await (supabase as any).from("payment_records").update({
+    analytics_excluded: true,
+    excluded_reason: excludedReason,
+    removed_from_plan_at: cancelled_at,
+    removed_by_staff: u?.email ?? "",
+  }).eq("plan_id", input.plan_id);
+  if (exErr) throw exErr;
 
   await upsertFamilyBilling({
     family_key: input.family_key,
