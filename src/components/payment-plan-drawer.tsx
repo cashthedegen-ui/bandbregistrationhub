@@ -141,6 +141,10 @@ export function PaymentPlanDrawer({
                   await applyCredit(plan.id, amt, note);
                   toast.success("Credit applied"); reload();
                 }}>Apply Credit</Button>
+                <Button size="sm" variant="outline" className="ml-auto border-red-500/30 text-red-300 hover:bg-red-500/10"
+                  onClick={() => setRemoveOpen(true)}>
+                  <ShieldAlert className="h-4 w-4 mr-1.5" /> Remove from Plan
+                </Button>
               </div>
             </Card>
 
