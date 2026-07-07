@@ -58,8 +58,9 @@ export function PaymentPlanDrawer({
     if (!familyKey) return;
     setLoading(true);
     try {
-      const p = await fetchPlanByFamily(familyKey);
+      const [p, hist] = await Promise.all([fetchPlanByFamily(familyKey), fetchBillingChanges(familyKey)]);
       setPlan(p);
+      setHistory(hist);
       if (p) {
         const [ins, rec] = await Promise.all([fetchInstallments(p.id), fetchRecords(p.id)]);
         setInstallments(ins);
