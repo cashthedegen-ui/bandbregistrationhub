@@ -90,6 +90,10 @@ export interface PaymentRecord {
   staff_name: string;
   kind: PaymentKind;
   created_at: string;
+  analytics_excluded?: boolean;
+  excluded_reason?: string | null;
+  removed_from_plan_at?: string | null;
+  removed_by_staff?: string | null;
 }
 
 /** Stable family key. Prefer parent email; fall back to parent name + school. */
