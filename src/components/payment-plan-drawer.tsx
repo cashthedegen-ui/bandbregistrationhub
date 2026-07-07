@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
-import { AlertTriangle, CalendarClock, CheckCircle2, CreditCard, FileText, Pencil, Plus, Receipt, ShieldAlert, Wallet, XCircle } from "lucide-react";
+import { CalendarClock, CheckCircle2, CreditCard, FileText, Pencil, Plus, Receipt, ShieldAlert, Wallet, XCircle } from "lucide-react";
 import type { StudentRow } from "@/lib/types";
 import {
   type PaymentPlan, type PaymentInstallment, type PaymentRecord, type PlanFrequency, type PlanStatus,
