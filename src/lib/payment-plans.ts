@@ -31,6 +31,36 @@ export interface PaymentPlan {
   notes: string;
   created_at: string;
   updated_at: string;
+  cancelled_at?: string | null;
+  cancelled_reason?: string | null;
+  cancelled_by_email?: string | null;
+  billing_type_after?: BillingType | null;
+}
+
+export interface FamilyBilling {
+  id: string;
+  family_key: string;
+  parent_name: string;
+  parent_email: string;
+  school_name: string;
+  student_names: string;
+  billing_type: BillingType;
+  updated_by_email: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BillingChange {
+  id: string;
+  family_key: string;
+  parent_name: string;
+  previous_type: string | null;
+  new_type: string;
+  reason: string;
+  plan_id: string | null;
+  actor_email: string;
+  actor_name: string;
+  created_at: string;
 }
 
 export interface PaymentInstallment {
