@@ -291,8 +291,140 @@ export function PaymentPlanDrawer({
           installment={waiveOpen}
           onDone={() => { setWaiveOpen(null); reload(); onPlanChanged?.(); }}
         />
+        {/* Remove from plan */}
+        <RemovePlanDialog
+          open={removeOpen}
+          onClose={() => setRemoveOpen(false)}
+          plan={plan}
+          hasRecords={records.some((r) => r.kind !== "Waive" && Number(r.amount) > 0)}
+          totalPaid={records.filter((r) => r.kind !== "Waive").reduce((s, r) => s + Number(r.amount || 0), 0)}
+          onDone={() => { setRemoveOpen(false); reload(); onPlanChanged?.(); }}
+        />
       </SheetContent>
     </Sheet>
+  );
+}
+
+function BillingHistoryCard({ history }: { history: BillingChange[] }) {
+  return (
+    <Card className="bg-background border-border p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <FileText className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-semibold">Billing Change History</h3>
+        <span className="ml-auto text-[11px] text-muted-foreground">Append-only · {history.length} entr{history.length === 1 ? "y" : "ies"}</span>
+      </div>
+      <ul className="space-y-2 text-sm">
+        {history.map((h) => (
+          <li key={h.id} className="flex flex-col border-b border-border pb-2 last:border-0 last:pb-0">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">{new Date(h.created_at).toLocaleString()}</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground">{h.actor_name || h.actor_email || "Staff"}</span>
+            </div>
+            <div className="mt-0.5">
+              <span className="text-muted-foreground">{h.previous_type || "—"}</span>
+              <span className="mx-2 text-muted-foreground">→</span>
+              <span className="font-medium">{h.new_type}</span>
+            </div>
+            {h.reason && <div className="text-xs text-muted-foreground mt-0.5">{h.reason}</div>}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+function RemovePlanDialog({
+  open, onClose, plan, hasRecords, totalPaid, onDone,
+}: {
+  open: boolean; onClose: () => void; plan: PaymentPlan | null;
+  hasRecords: boolean; totalPaid: number; onDone: () => void;
+}) {
+  const [target, setTarget] = useState<BillingType>("Paid in Full");
+  const [reason, setReason] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { if (open) { setTarget("Paid in Full"); setReason(""); setConfirmed(false); } }, [open]);
+  if (!plan) return null;
+
+  const submit = async () => {
+    if (!reason.trim()) return toast.error("Please add a reason / admin note");
+    if (hasRecords && !confirmed) return toast.error("Please confirm — this family has recorded payments");
+    setSaving(true);
+    try {
+      await cancelPaymentPlan({
+        plan_id: plan.id,
+        family_key: plan.family_key,
+        parent_name: plan.parent_name,
+        new_billing_type: target,
+        reason,
+        removal_kind: "Removed by Admin",
+      });
+      await logAudit({
+        action: `removed family from payment plan → ${target}`,
+        entityType: "payment_plan", entityId: plan.id, entityName: plan.parent_name,
+        details: { reason, new_billing_type: target, had_records: hasRecords, total_paid: totalPaid },
+      });
+      toast.success("Family removed from payment plan");
+      onDone();
+    } catch (e: any) {
+      toast.error(`Failed: ${e?.message || e}`);
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="bg-card border-border max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-red-400" />
+            Remove from Payment Plan?
+          </DialogTitle>
+        </DialogHeader>
+        <div className="text-sm text-muted-foreground">
+          Are you sure you want to remove <span className="text-foreground font-medium">{plan.parent_name}</span> from the payment plan?
+          Payment history, installments, and internal notes will be preserved.
+        </div>
+
+        {hasRecords && (
+          <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-200 flex gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div>
+              This family has recorded payments totaling <span className="font-semibold">{formatCurrency(totalPaid)}</span>.
+              Payment history will be preserved. No refund will be issued.
+              <label className="mt-2 flex items-center gap-2 text-yellow-100 cursor-pointer">
+                <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+                I understand — continue with removal
+              </label>
+            </div>
+          </div>
+        )}
+
+        <Field label="Move to billing type">
+          <Select value={target} onValueChange={(v) => setTarget(v as BillingType)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Paid in Full">Paid in Full</SelectItem>
+              <SelectItem value="Financial Aid">Financial Aid</SelectItem>
+              <SelectItem value="Unpaid">Unpaid</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label="Reason / admin note (required)">
+          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} className="min-h-[70px]"
+            placeholder="e.g. Added by mistake · Switched to Financial Aid · Paid in full outside system · Duplicate registration" />
+        </Field>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="destructive" onClick={submit} disabled={saving}>
+            {saving ? "Removing…" : "Remove from Plan"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
