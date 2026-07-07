@@ -51,7 +51,9 @@ function PaymentsPage() {
   const filtered = useMemo(() => {
     const qq = q.toLowerCase();
     return plans.filter((p) => {
-      if (status !== "all" && p.status !== status) return false;
+      if (status === "active" && !ACTIVE_STATUSES.includes(p.status)) return false;
+      else if (status === "inactive" && !INACTIVE_STATUSES.includes(p.status)) return false;
+      else if (status !== "all" && status !== "active" && status !== "inactive" && p.status !== status) return false;
       if (school !== "all" && p.school_name !== school) return false;
       if (qq && !`${p.parent_name} ${p.parent_email} ${p.student_names} ${p.school_name}`.toLowerCase().includes(qq)) return false;
       return true;
@@ -59,14 +61,15 @@ function PaymentsPage() {
   }, [plans, q, status, school]);
 
   const kpis = useMemo(() => {
-    const active = plans.filter((p) => p.status !== "Paid Off");
+    const live = plans.filter((p) => !INACTIVE_STATUSES.includes(p.status));
+    const active = live.filter((p) => p.status !== "Paid Off");
     const outstanding = active.reduce((s, p) => s + Number(p.remaining_balance), 0);
-    const totalTarget = plans.reduce((s, p) => s + Number(p.total_amount), 0);
-    const totalPaid = plans.reduce((s, p) => s + Number(p.amount_paid), 0);
+    const totalTarget = live.reduce((s, p) => s + Number(p.total_amount), 0);
+    const totalPaid = live.reduce((s, p) => s + Number(p.amount_paid), 0);
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const weekOut = new Date(today); weekOut.setDate(weekOut.getDate() + 7);
     const dueWeek = active.filter((p) => p.next_due_date && new Date(p.next_due_date + "T00:00:00") >= today && new Date(p.next_due_date + "T00:00:00") <= weekOut);
-    const overdue = plans.filter((p) => p.status === "Overdue");
+    const overdue = live.filter((p) => p.status === "Overdue");
     const collectionRate = totalTarget > 0 ? (totalPaid / totalTarget) * 100 : 0;
     return { active: active.length, outstanding, dueWeek: dueWeek.length, overdue: overdue.length, collectionRate };
   }, [plans]);
