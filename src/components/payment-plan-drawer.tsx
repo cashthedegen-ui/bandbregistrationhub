@@ -99,17 +99,20 @@ export function PaymentPlanDrawer({
         {loading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
         ) : !plan ? (
-          <div className="mt-6">
+          <div className="mt-6 space-y-4">
             <Card className="bg-background border-border p-6 text-center">
               <CreditCard className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <div className="text-sm font-medium mb-1">No payment plan yet</div>
+              <div className="text-sm font-medium mb-1">No active payment plan</div>
               <div className="text-xs text-muted-foreground mb-4">
-                This family currently uses the existing payment workflow (Paid in Full). Create a Payment Plan to switch to installments.
+                {history.length > 0
+                  ? "This family previously had a payment plan. You can create a new one below."
+                  : "This family currently uses the existing payment workflow (Paid in Full). Create a Payment Plan to switch to installments."}
               </div>
               <Button onClick={() => setCreateOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="h-4 w-4 mr-1.5" /> Create Payment Plan
+                <Plus className="h-4 w-4 mr-1.5" /> Create New Payment Plan
               </Button>
             </Card>
+            {history.length > 0 && <BillingHistoryCard history={history} />}
           </div>
         ) : (
           <div className="mt-4 space-y-4">
