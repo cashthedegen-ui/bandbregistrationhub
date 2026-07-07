@@ -109,10 +109,14 @@ function PaymentsPage() {
             <SelectTrigger className="w-full md:w-36 bg-background"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All status</SelectItem>
+              <SelectItem value="active">Active (Current + Upcoming + Overdue)</SelectItem>
               <SelectItem value="Current">Current</SelectItem>
               <SelectItem value="Upcoming">Upcoming</SelectItem>
               <SelectItem value="Overdue">Overdue</SelectItem>
               <SelectItem value="Paid Off">Paid Off</SelectItem>
+              <SelectItem value="Cancelled">Cancelled</SelectItem>
+              <SelectItem value="Removed by Admin">Removed by Admin</SelectItem>
+              <SelectItem value="inactive">All Cancelled / Removed</SelectItem>
             </SelectContent>
           </Select>
           <Select value={school} onValueChange={setSchool}>
