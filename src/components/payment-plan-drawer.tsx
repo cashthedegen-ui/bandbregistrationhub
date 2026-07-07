@@ -51,6 +51,8 @@ export function PaymentPlanDrawer({
   const [waiveOpen, setWaiveOpen] = useState<PaymentInstallment | null>(null);
   const [editInst, setEditInst] = useState<PaymentInstallment | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [history, setHistory] = useState<BillingChange[]>([]);
 
   const reload = useCallback(async () => {
     if (!familyKey) return;
