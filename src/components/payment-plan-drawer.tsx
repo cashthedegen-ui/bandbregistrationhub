@@ -252,6 +252,8 @@ export function PaymentPlanDrawer({
                 await updatePlanNotes(plan.id, notesDraft); toast.success("Notes saved"); reload();
               }}>Save notes</Button>
             </Card>
+
+            {history.length > 0 && <BillingHistoryCard history={history} />}
           </div>
         )}
 
