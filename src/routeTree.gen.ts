@@ -19,6 +19,7 @@ import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppRunSheetsRouteImport } from './routes/_app.run-sheets'
 import { Route as AppRoutesRouteImport } from './routes/_app.routes'
 import { Route as AppPaymentsRouteImport } from './routes/_app.payments'
+import { Route as AppFinancialAidRouteImport } from './routes/_app.financial-aid'
 import { Route as AppAutomationsRouteImport } from './routes/_app.automations'
 import { Route as AppAuditRouteImport } from './routes/_app.audit'
 import { Route as AppArchiveRouteImport } from './routes/_app.archive'
@@ -73,6 +74,11 @@ const AppPaymentsRoute = AppPaymentsRouteImport.update({
   path: '/payments',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFinancialAidRoute = AppFinancialAidRouteImport.update({
+  id: '/financial-aid',
+  path: '/financial-aid',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAutomationsRoute = AppAutomationsRouteImport.update({
   id: '/automations',
   path: '/automations',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/archive': typeof AppArchiveRoute
   '/audit': typeof AppAuditRoute
   '/automations': typeof AppAutomationsRoute
+  '/financial-aid': typeof AppFinancialAidRoute
   '/payments': typeof AppPaymentsRoute
   '/routes': typeof AppRoutesRoute
   '/run-sheets': typeof AppRunSheetsRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/archive': typeof AppArchiveRoute
   '/audit': typeof AppAuditRoute
   '/automations': typeof AppAutomationsRoute
+  '/financial-aid': typeof AppFinancialAidRoute
   '/payments': typeof AppPaymentsRoute
   '/routes': typeof AppRoutesRoute
   '/run-sheets': typeof AppRunSheetsRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/_app/archive': typeof AppArchiveRoute
   '/_app/audit': typeof AppAuditRoute
   '/_app/automations': typeof AppAutomationsRoute
+  '/_app/financial-aid': typeof AppFinancialAidRoute
   '/_app/payments': typeof AppPaymentsRoute
   '/_app/routes': typeof AppRoutesRoute
   '/_app/run-sheets': typeof AppRunSheetsRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/archive'
     | '/audit'
     | '/automations'
+    | '/financial-aid'
     | '/payments'
     | '/routes'
     | '/run-sheets'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/archive'
     | '/audit'
     | '/automations'
+    | '/financial-aid'
     | '/payments'
     | '/routes'
     | '/run-sheets'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/_app/archive'
     | '/_app/audit'
     | '/_app/automations'
+    | '/_app/financial-aid'
     | '/_app/payments'
     | '/_app/routes'
     | '/_app/run-sheets'
@@ -269,6 +281,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPaymentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/financial-aid': {
+      id: '/_app/financial-aid'
+      path: '/financial-aid'
+      fullPath: '/financial-aid'
+      preLoaderRoute: typeof AppFinancialAidRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/automations': {
       id: '/_app/automations'
       path: '/automations'
@@ -305,6 +324,7 @@ interface AppRouteChildren {
   AppArchiveRoute: typeof AppArchiveRoute
   AppAuditRoute: typeof AppAuditRoute
   AppAutomationsRoute: typeof AppAutomationsRoute
+  AppFinancialAidRoute: typeof AppFinancialAidRoute
   AppPaymentsRoute: typeof AppPaymentsRoute
   AppRoutesRoute: typeof AppRoutesRoute
   AppRunSheetsRoute: typeof AppRunSheetsRoute
@@ -318,6 +338,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppArchiveRoute: AppArchiveRoute,
   AppAuditRoute: AppAuditRoute,
   AppAutomationsRoute: AppAutomationsRoute,
+  AppFinancialAidRoute: AppFinancialAidRoute,
   AppPaymentsRoute: AppPaymentsRoute,
   AppRoutesRoute: AppRoutesRoute,
   AppRunSheetsRoute: AppRunSheetsRoute,
