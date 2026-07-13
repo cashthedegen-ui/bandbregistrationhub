@@ -266,6 +266,48 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_aid_history: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          actor_name: string | null
+          created_at: string
+          family_key: string | null
+          id: string
+          new_values: Json | null
+          notes: string | null
+          previous_values: Json | null
+          student_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          family_key?: string | null
+          id?: string
+          new_values?: Json | null
+          notes?: string | null
+          previous_values?: Json | null
+          student_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          family_key?: string | null
+          id?: string
+          new_values?: Json | null
+          notes?: string | null
+          previous_values?: Json | null
+          student_id?: string | null
+        }
+        Relationships: []
+      }
       forms_config: {
         Row: {
           key: string
