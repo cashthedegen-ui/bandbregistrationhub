@@ -658,3 +658,71 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+
+function RecordSchoolPayment({
+  currentSchoolPaid, onRecord,
+}: {
+  currentSchoolPaid: number;
+  onRecord: (amount: number, note: string) => void;
+}) {
+  const [amount, setAmount] = useState<string>("");
+  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [method, setMethod] = useState<string>("Check");
+  const [confirmation, setConfirmation] = useState<string>("");
+  const [note, setNote] = useState<string>("");
+
+  const submit = () => {
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) {
+      toast.error("Enter a positive amount");
+      return;
+    }
+    const meta = `date=${date}; method=${method}; ref=${confirmation || "—"}`;
+    onRecord(amt, [meta, note].filter(Boolean).join(" | "));
+    setAmount(""); setConfirmation(""); setNote("");
+    toast.success("School payment recorded");
+  };
+
+  return (
+    <Card className="bg-card border-border">
+      <CardContent className="p-4 space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <School className="h-4 w-4 text-primary" /> Record School Payment
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Adds to School Payments Collected (currently {formatCurrency(currentSchoolPaid)}) and Collected total.
+          Does not modify Family Paid.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Amount">
+            <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </Field>
+          <Field label="Payment Date">
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+          <Field label="Method">
+            <Select value={method} onValueChange={setMethod}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Check">Check</SelectItem>
+                <SelectItem value="ACH">ACH / Wire</SelectItem>
+                <SelectItem value="Card">Card</SelectItem>
+                <SelectItem value="Cash">Cash</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Confirmation / Check #">
+            <Input value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
+          </Field>
+        </div>
+        <Field label="Internal Note">
+          <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+        </Field>
+        <div className="flex justify-end">
+          <Button onClick={submit}>Record Payment</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
