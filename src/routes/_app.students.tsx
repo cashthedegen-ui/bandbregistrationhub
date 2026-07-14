@@ -1279,8 +1279,8 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function MiniField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-2 py-1 border-b border-border/40 last:border-b-0">
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className="text-xs font-medium text-right truncate max-w-[60%]" title={value}>{value || "—"}</span>
+      <span className="text-[11px] text-muted-foreground shrink-0">{label}</span>
+      <span className="text-xs font-medium text-right break-words min-w-0" title={value}>{value || "—"}</span>
     </div>
   );
 }
