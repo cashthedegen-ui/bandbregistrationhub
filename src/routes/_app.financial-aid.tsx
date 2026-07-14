@@ -272,28 +272,31 @@ function FinancialAidPage() {
                   <th className="px-3 py-3 text-left">Parent</th>
                   <th className="px-3 py-3 text-left">School</th>
                   <th className="px-3 py-3 text-left">Grade</th>
-                  <th className="px-3 py-3 text-right">Aid</th>
-                  <th className="px-3 py-3 text-right">Family</th>
-                  <th className="px-3 py-3 text-right">School Bal.</th>
+                  <th className="px-3 py-3 text-right">Total Bus Cost</th>
+                  <th className="px-3 py-3 text-right">Family Paid</th>
+                  <th className="px-3 py-3 text-right">School Balance</th>
                   <th className="px-3 py-3 text-right">Collected</th>
-                  <th className="px-3 py-3 text-left">Payment</th>
-                  <th className="px-3 py-3 text-left">Reg</th>
+                  <th className="px-3 py-3 text-left">Payment Status</th>
+                  <th className="px-3 py-3 text-left">Reg. Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {displayed.map((s) => {
                   const t = totalsForStudent(s);
+                  const badgeTone = t.paymentStatus === "Paid" ? "text-emerald-300 border-emerald-500/40"
+                    : t.paymentStatus === "Partially Paid" ? "text-yellow-300 border-yellow-500/40"
+                    : "text-red-300 border-red-500/40";
                   return (
                     <tr key={s.id} className="hover:bg-muted/20 cursor-pointer" onClick={() => setSelected(s)}>
                       <td className="px-3 py-2.5 font-medium">{s.studentName}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{s.parentName}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{s.schoolName}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{s.grade || "—"}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(t.awardAmount)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(t.familyResponsibility)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(t.totalBusCost)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(t.familyPaid)}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-red-300">{formatCurrency(t.schoolBalance)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-emerald-300">{formatCurrency(t.amountCollected)}</td>
-                      <td className="px-3 py-2.5"><Badge variant="outline">{s.paymentStatus}</Badge></td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-emerald-300">{formatCurrency(t.collected)}</td>
+                      <td className="px-3 py-2.5"><Badge variant="outline" className={badgeTone}>{t.paymentStatus}</Badge></td>
                       <td className="px-3 py-2.5"><Badge variant="outline">{s.status}</Badge></td>
                     </tr>
                   );
