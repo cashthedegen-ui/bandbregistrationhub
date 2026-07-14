@@ -71,32 +71,33 @@ function FinancialAidPage() {
   }, [faStudents, q, qParent, school, grade, regStatus, payStatus, kpiFilter]);
 
   const kpis = useMemo(() => {
-    let awarded = 0, collected = 0, outstandingSchool = 0;
+    let totalBusCost = 0, familyPaid = 0, collected = 0, outstandingSchool = 0;
     const schoolSet = new Set<string>();
     faStudents.forEach((s) => {
       const t = totalsForStudent(s);
-      awarded += t.awardAmount;
-      collected += t.amountCollected;
+      totalBusCost += t.totalBusCost;
+      familyPaid += t.familyPaid;
+      collected += t.collected;
       outstandingSchool += t.schoolBalance;
       if (s.schoolName) schoolSet.add(s.schoolName);
     });
-    const avg = faStudents.length > 0 ? awarded / faStudents.length : 0;
     return {
-      count: faStudents.length, awarded, outstandingSchool, schools: schoolSet.size, avg, collected,
+      count: faStudents.length, totalBusCost, familyPaid, collected, outstandingSchool, schools: schoolSet.size,
     };
   }, [faStudents]);
 
   const schoolSummary = useMemo(() => {
-    const map = new Map<string, { school: string; students: number; awarded: number; collected: number; outstanding: number; owedBySchool: number }>();
+    const map = new Map<string, { school: string; students: number; totalBusCost: number; familyPaid: number; schoolPaid: number; collected: number; outstanding: number }>();
     faStudents.forEach((s) => {
       const key = s.schoolName || "—";
       const t = totalsForStudent(s);
-      const row = map.get(key) ?? { school: key, students: 0, awarded: 0, collected: 0, outstanding: 0, owedBySchool: 0 };
+      const row = map.get(key) ?? { school: key, students: 0, totalBusCost: 0, familyPaid: 0, schoolPaid: 0, collected: 0, outstanding: 0 };
       row.students += 1;
-      row.awarded += t.awardAmount;
-      row.collected += t.amountCollected;
-      row.outstanding += t.outstanding;
-      row.owedBySchool += t.schoolBalance;
+      row.totalBusCost += t.totalBusCost;
+      row.familyPaid += t.familyPaid;
+      row.schoolPaid += t.schoolPaid;
+      row.collected += t.collected;
+      row.outstanding += t.schoolBalance;
       map.set(key, row);
     });
     const rows = Array.from(map.values());
