@@ -33,8 +33,15 @@ import { formatNumber } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/students")({
   head: () => ({ meta: [{ title: "Students — B & B Transit" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    status: typeof s.status === "string" ? s.status : undefined,
+    alerts: s.alerts === "1" || s.alerts === 1 || s.alerts === true ? true : undefined,
+    duplicates: s.duplicates === "1" || s.duplicates === 1 || s.duplicates === true ? true : undefined,
+    payment: typeof s.payment === "string" ? s.payment : undefined,
+  }),
   component: StudentsPage,
 });
+
 
 const STATUSES: Status[] = ["New", "Reviewed", "Confirmed", "Waitlisted"];
 const PAYMENTS: PaymentStatus[] = ["Pending", "Received", "Overdue"];
