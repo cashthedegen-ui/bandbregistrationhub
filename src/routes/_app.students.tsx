@@ -1250,9 +1250,21 @@ function ExpandedRow({
         <SectionTitle>Payment</SectionTitle>
         <MiniField label="Type" value={et} />
         <MiniField label="Status" value={r.paymentStatus || "Pending"} />
-        <MiniField label="RT / OW" value={`${formatCurrency(r.rtAmount ?? 0)} / ${formatCurrency(r.owAmount ?? 0)}`} />
-        <MiniField label="Paid" value={formatCurrency(r.amountPaid ?? 0)} />
-        <MiniField label="Balance" value={formatCurrency(balance)} />
+        {isAid ? (
+          <>
+            <MiniField label="Total Bus Cost" value={formatCurrency((r.familyPaid ?? 0) + (r.schoolOwes ?? 0))} />
+            <MiniField label="Family Paid" value={formatCurrency(r.familyPaid ?? 0)} />
+            <MiniField label="School Paid" value={formatCurrency(r.schoolPaidAmount ?? 0)} />
+            <MiniField label="School Balance" value={formatCurrency(balance)} />
+            <MiniField label="Total Collected" value={formatCurrency((r.familyPaid ?? 0) + (r.schoolPaidAmount ?? 0))} />
+          </>
+        ) : (
+          <>
+            <MiniField label="RT / OW" value={`${formatCurrency(r.rtAmount ?? 0)} / ${formatCurrency(r.owAmount ?? 0)}`} />
+            <MiniField label="Paid" value={formatCurrency(r.amountPaid ?? 0)} />
+            <MiniField label="Balance" value={formatCurrency(balance)} />
+          </>
+        )}
       </div>
       <div>
         <SectionTitle>Route & Registration</SectionTitle>
