@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,19 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { AlertTriangle, BadgeCheck, CheckCheck, Copy, Download, FileText, Filter, MailCheck, Pencil, Search, StickyNote, Trash2, Wallet, X } from "lucide-react";
+import {
+  AlertTriangle, Archive, BadgeCheck, CheckCheck, ChevronDown, ChevronRight,
+  Copy, Download, FileText, Filter, Mail, MailCheck, MoreHorizontal, Pencil, Phone,
+  Search, Send, StickyNote, Trash2, Wallet, X,
+} from "lucide-react";
 import { PaymentPlanDrawer } from "@/components/payment-plan-drawer";
 import type { PaymentStatus, PaymentType, Status, StudentRow } from "@/lib/types";
 import { exportRows, exportStudentsClean } from "@/lib/excel";
@@ -29,7 +37,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber, cn } from "@/lib/utils";
+import { fetchAllPlans, familyKeyOf, type PaymentPlan } from "@/lib/payment-plans";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_app/students")({
   head: () => ({ meta: [{ title: "Students — B & B Transit" }] }),
@@ -38,35 +48,43 @@ export const Route = createFileRoute("/_app/students")({
     alerts: s.alerts === "1" || s.alerts === 1 || s.alerts === true ? true : undefined,
     duplicates: s.duplicates === "1" || s.duplicates === 1 || s.duplicates === true ? true : undefined,
     payment: typeof s.payment === "string" ? s.payment : undefined,
+    quick: typeof s.quick === "string" ? s.quick : undefined,
   }),
   component: StudentsPage,
 });
-
 
 const STATUSES: Status[] = ["New", "Reviewed", "Confirmed", "Waitlisted"];
 const PAYMENTS: PaymentStatus[] = ["Pending", "Received", "Overdue"];
 const PAYMENT_TYPES: PaymentType[] = ["Self Pay", "Financial Aid", "Unpaid"];
 
-const PAYMENT_CLASS: Record<PaymentStatus, string> = {
+type QuickChip = "all" | "pending" | "paid" | "financial-aid" | "payment-plans" | "needs-review" | "duplicates" | "archived";
+
+const PAYMENT_STATUS_CLASS: Record<PaymentStatus, string> = {
   Pending: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
   Received: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   Overdue: "bg-red-500/15 text-red-300 border-red-500/30",
 };
 
-const PAYMENT_TYPE_CLASS: Record<PaymentType, string> = {
+const PAYMENT_TYPE_CLASS: Record<string, string> = {
   "Self Pay": "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   "Financial Aid": "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  "Unpaid": "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
+  "Payment Plan": "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
+  "Unpaid": "bg-red-500/15 text-red-300 border-red-500/30",
+};
+
+const STATUS_CLASS: Record<Status, string> = {
+  New: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  Reviewed: "bg-primary/15 text-primary border-primary/30",
+  Confirmed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  Waitlisted: "bg-amber-500/15 text-amber-300 border-amber-500/30",
 };
 
 function StatusBadge({ status }: { status: Status }) {
-  const map: Record<Status, string> = {
-    New: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-    Reviewed: "bg-primary/15 text-primary border-primary/30",
-    Confirmed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-    Waitlisted: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  };
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${map[status]}`}>{status}</span>;
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${STATUS_CLASS[status]}`}>
+      {status}
+    </span>
+  );
 }
 
 function StudentsPage() {
@@ -79,7 +97,9 @@ function StudentsPage() {
   const [alertsOnly, setAlertsOnly] = useState<boolean>(!!search.alerts);
   const [duplicatesOnly, setDuplicatesOnly] = useState<boolean>(!!search.duplicates);
   const [paymentFilter, setPaymentFilter] = useState<string>(search.payment ?? "all");
+  const [quick, setQuick] = useState<QuickChip>((search.quick as QuickChip) || "all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [openRow, setOpenRow] = useState<StudentRow | null>(null);
   const [dupBanner, setDupBanner] = useState(true);
   const [dupGroupOpen, setDupGroupOpen] = useState<string | null>(null);
@@ -91,10 +111,29 @@ function StudentsPage() {
   const [deleteRow, setDeleteRow] = useState<StudentRow | null>(null);
   const [confirmLetterRow, setConfirmLetterRow] = useState<StudentRow | null>(null);
   const [planAnchor, setPlanAnchor] = useState<StudentRow | null>(null);
+  const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
+  const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
+  const [editingPayStatusId, setEditingPayStatusId] = useState<string | null>(null);
 
+  // Read-only: fetch plan family keys so we can show a "Payment Plan" badge / filter.
+  const [planFamilyKeys, setPlanFamilyKeys] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let cancel = false;
+    fetchAllPlans().then((plans: PaymentPlan[]) => {
+      if (cancel) return;
+      const live = plans.filter((p) => p.status !== "Cancelled" && p.status !== "Removed by Admin");
+      setPlanFamilyKeys(new Set(live.map((p) => p.family_key)));
+    }).catch(() => {});
+    return () => { cancel = true; };
+  }, [students.length]);
 
   const schools = useMemo(() => Array.from(new Set(students.map((s) => s.schoolName))).filter(Boolean), [students]);
   const grades = useMemo(() => Array.from(new Set(students.map((s) => s.grade))).filter(Boolean), [students]);
+
+  const effectiveType = (r: StudentRow): "Self Pay" | "Financial Aid" | "Payment Plan" | "Unpaid" => {
+    if (planFamilyKeys.has(familyKeyOf(r))) return "Payment Plan";
+    return r.paymentType || (r.paid ? "Self Pay" : "Unpaid");
+  };
 
   const filtered = useMemo(() => {
     const qq = q.toLowerCase();
@@ -105,11 +144,21 @@ function StudentsPage() {
       if (alertsOnly && !s.alertFlag) return false;
       if (duplicatesOnly && !s.duplicateFlag) return false;
       if (paymentFilter !== "all" && s.paymentStatus !== paymentFilter) return false;
+      if (quick !== "all") {
+        const t = effectiveType(s);
+        const ps = s.paymentStatus || "Pending";
+        if (quick === "pending" && ps !== "Pending") return false;
+        if (quick === "paid" && ps !== "Received") return false;
+        if (quick === "financial-aid" && t !== "Financial Aid") return false;
+        if (quick === "payment-plans" && t !== "Payment Plan") return false;
+        if (quick === "needs-review" && s.status !== "New") return false;
+        if (quick === "duplicates" && !s.duplicateFlag) return false;
+        if (quick === "archived") return false; // students table has no archived flag
+      }
       if (qq && !(`${s.studentName} ${s.parentName} ${s.parentEmail} ${s.stopAddress}`.toLowerCase().includes(qq))) return false;
       return true;
     });
-  }, [students, q, school, status, grade, alertsOnly, duplicatesOnly, paymentFilter]);
-
+  }, [students, q, school, status, grade, alertsOnly, duplicatesOnly, paymentFilter, quick, planFamilyKeys]);
 
   const allChecked = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
   const toggleAll = () => {
@@ -134,6 +183,23 @@ function StudentsPage() {
     if (!selectedRows.length) return toast.warning("No rows selected");
     setReceiptOpen(selectedRows);
   };
+  const bulkSetPaymentStatus = (v: PaymentStatus) => {
+    selectedRows.forEach((r) => updateStudent(r.id, { paymentStatus: v }));
+    toast.success(`Payment status → ${v}`);
+  };
+  const bulkSetStatus = (v: Status) => {
+    selectedRows.forEach((r) => updateStudent(r.id, { status: v }));
+    toast.success(`Status → ${v}`);
+  };
+  const bulkSetPaymentType = (v: PaymentType) => {
+    selectedRows.forEach((r) => updateStudent(r.id, { paymentType: v, paid: v !== "Unpaid" }));
+    toast.success(`Payment type → ${v}`);
+  };
+  const bulkSendReminder = () => {
+    const emails = Array.from(new Set(selectedRows.map((r) => r.parentEmail).filter(Boolean)));
+    if (!emails.length) return toast.warning("No parent emails on selected rows");
+    window.location.href = `mailto:?bcc=${encodeURIComponent(emails.join(","))}&subject=${encodeURIComponent("B & B Transit — Payment Reminder")}`;
+  };
 
   const markAllReviewed = () => {
     const newOnes = students.filter((s) => s.status === "New");
@@ -150,20 +216,66 @@ function StudentsPage() {
 
   const activeDupGroup = dupGroupOpen ? dupGroups.find((g) => g.id === dupGroupOpen) : null;
 
+  const newCount = students.filter((s) => s.status === "New").length;
+
+  const chip = (key: QuickChip, label: string, count?: number, tint?: string) => (
+    <button
+      key={key}
+      onClick={() => setQuick(key)}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors",
+        quick === key
+          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+          : cn("bg-background/60 hover:bg-accent border-border", tint),
+      )}
+    >
+      {label}
+      {typeof count === "number" && (
+        <span className={cn(
+          "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
+          quick === key ? "bg-primary-foreground/20" : "bg-muted",
+        )}>{formatNumber(count)}</span>
+      )}
+    </button>
+  );
+
+  const chipCounts = useMemo(() => {
+    let pending = 0, paid = 0, fa = 0, plans = 0, needs = 0;
+    for (const s of students) {
+      if ((s.paymentStatus || "Pending") === "Pending") pending++;
+      if (s.paymentStatus === "Received") paid++;
+      const t = effectiveType(s);
+      if (t === "Financial Aid") fa++;
+      if (t === "Payment Plan") plans++;
+      if (s.status === "New") needs++;
+    }
+    return { pending, paid, fa, plans, needs, duplicates: students.filter((s) => s.duplicateFlag).length };
+  }, [students, planFamilyKeys]);
+
+  const rowTint = (r: StudentRow): string => {
+    const ps = r.paymentStatus || "Pending";
+    const t = effectiveType(r);
+    if (t === "Financial Aid") return "bg-sky-500/[0.04]";
+    if (ps === "Received") return "bg-emerald-500/[0.04]";
+    if (ps === "Pending") return "bg-amber-500/[0.03]";
+    return "";
+  };
+
+  const toggleExpand = (id: string) => {
+    const next = new Set(expanded);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setExpanded(next);
+  };
+
   return (
     <>
       <PageHeader
         title="Students"
         subtitle={`${formatNumber(filtered.length)} of ${formatNumber(students.length)} students`}
         actions={
-          <>
-            <Button size="sm" variant="secondary" onClick={markAllReviewed}>
-              <CheckCheck className="h-4 w-4 mr-1.5" /> Mark All as Reviewed
-            </Button>
-            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={exportAllClean}>
-              <Download className="h-4 w-4 mr-1.5" /> Export to Excel
-            </Button>
-          </>
+          <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={exportAllClean}>
+            <Download className="h-4 w-4 mr-1.5" /> Export Excel
+          </Button>
         }
       />
 
@@ -181,6 +293,23 @@ function StudentsPage() {
           </button>
         </Card>
       )}
+
+      {/* Quick filter chips + review workflow */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {chip("all", "All", students.length)}
+        {chip("pending", "Pending", chipCounts.pending)}
+        {chip("paid", "Paid", chipCounts.paid)}
+        {chip("financial-aid", "Financial Aid", chipCounts.fa)}
+        {chip("payment-plans", "Payment Plans", chipCounts.plans)}
+        {chip("needs-review", "Needs Review", chipCounts.needs)}
+        {chip("duplicates", "Duplicates", chipCounts.duplicates)}
+        {chip("archived", "Archived", 0)}
+        {newCount > 0 && (
+          <Button size="sm" variant="secondary" className="ml-auto" onClick={markAllReviewed}>
+            <CheckCheck className="h-4 w-4 mr-1.5" /> Mark All Reviewed ({newCount})
+          </Button>
+        )}
+      </div>
 
       <Card className="bg-card border-border p-3 mb-4">
         <div className="flex flex-col md:flex-row gap-2 items-stretch md:items-center">
@@ -231,16 +360,6 @@ function StudentsPage() {
             )}
           </div>
         )}
-
-        {selected.size > 0 && (
-          <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
-            <span className="text-xs text-muted-foreground">{selected.size} selected</span>
-            <Button size="sm" variant="secondary" onClick={bulkMarkReviewed}>Mark Reviewed</Button>
-            <Button size="sm" variant="secondary" onClick={bulkExport}>Export Selected</Button>
-            <Button size="sm" variant="secondary" onClick={bulkReceipts}>Generate Receipts</Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
-          </div>
-        )}
       </Card>
 
       {filtered.length === 0 ? (
@@ -251,184 +370,359 @@ function StudentsPage() {
       ) : (
         <Card className="bg-card border-border overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <table className="w-full text-sm border-separate border-spacing-0">
+              <thead className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-3 w-8"><Checkbox checked={allChecked} onCheckedChange={toggleAll} /></th>
-                  <th className="px-3 py-3 text-left w-10">#</th>
-                  <th className="px-3 py-3 text-left">Student</th>
-                  <th className="px-3 py-3 text-left">Grade</th>
-                  <th className="px-3 py-3 text-left">School</th>
-                  <th className="px-3 py-3 text-left">Stop (1st / 2nd)</th>
-                  <th className="px-3 py-3 text-left">Parent</th>
-                  <th className="px-3 py-3 text-left">Phone</th>
-                  <th className="px-3 py-3 text-left">Flags</th>
-                  <th className="px-3 py-3 text-left">Status</th>
-                  <th className="px-3 py-3 text-left">Payment</th>
-                  <th className="px-3 py-3 text-left">Payment Type</th>
-                  <th className="px-3 py-3 text-left">Submitted</th>
-                  <th className="px-3 py-3"></th>
+                  <th className="sticky left-0 z-20 bg-muted/40 px-3 py-3.5 w-8 border-b border-border">
+                    <Checkbox checked={allChecked} onCheckedChange={toggleAll} />
+                  </th>
+                  <th className="sticky left-8 z-20 bg-muted/40 px-3 py-3.5 text-left border-b border-border shadow-[1px_0_0_0_var(--border)]">Student</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border w-20">Grade</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">School</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">Stop (1st / 2nd)</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">Parent</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">Phone</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">Flags</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">Status</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">Payment</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">Payment Type</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">Submitted</th>
+                  <th className="px-3 py-3.5 text-right border-b border-border pr-4">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.map((r, idx) => (
-                  <tr key={r.id} className="hover:bg-muted/20 cursor-pointer" onClick={() => setOpenRow(r)}>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <Checkbox checked={selected.has(r.id)} onCheckedChange={(v) => {
-                        const next = new Set(selected);
-                        if (v) next.add(r.id); else next.delete(r.id);
-                        setSelected(next);
-                      }} />
-                    </td>
-                    <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{formatNumber(idx + 1)}</td>
-                    <td className="px-3 py-2.5 font-medium">{r.studentName}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{r.grade}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{r.schoolName}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground max-w-[260px]">
-                      <div className="truncate"><span className="text-[10px] text-primary mr-1">1st</span>{r.stopAddress || "—"}</div>
-                      {r.stopAddress2 && (
-                        <div className="truncate flex items-center gap-1">
-                          <span className="text-[10px] text-muted-foreground mr-1">2nd</span>
-                          <span className="truncate">{r.stopAddress2}</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateStudent(r.id, { stopAddress: r.stopAddress2!, stopAddress2: r.stopAddress });
-                              toast.success("Moved to 2nd choice");
+              <tbody>
+                {filtered.map((r) => {
+                  const isExpanded = expanded.has(r.id);
+                  const tint = rowTint(r);
+                  const et = effectiveType(r);
+                  const ps = r.paymentStatus || "Pending";
+                  const balance = (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0);
+                  return (
+                    <>
+                      <tr
+                        key={r.id}
+                        className={cn("group transition-colors hover:bg-muted/30", tint)}
+                      >
+                        <td className={cn("sticky left-0 z-10 px-3 py-4 border-b border-border bg-card group-hover:bg-muted/30", tint)}>
+                          <Checkbox
+                            checked={selected.has(r.id)}
+                            onCheckedChange={(v) => {
+                              const next = new Set(selected);
+                              if (v) next.add(r.id); else next.delete(r.id);
+                              setSelected(next);
                             }}
-                            className="ml-1 text-[10px] text-primary hover:underline shrink-0"
-                            title="Reassign to 2nd choice"
-                          >Move →</button>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{r.parentName}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{r.parentPhone}</td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex gap-1">
-                        {r.alertFlag && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive">
-                            <AlertTriangle className="h-3 w-3" /> Alert
-                          </span>
-                        )}
-                        {r.duplicateFlag && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDupGroupOpen(r.duplicateGroupId || null); }}
-                            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
-                          >
-                            <Copy className="h-3 w-3" /> Dup
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <Select value={r.status} onValueChange={(v) => updateStudent(r.id, { status: v as Status })}>
-                        <SelectTrigger className="h-7 w-32 bg-background text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <Select value={r.paymentStatus || "Pending"} onValueChange={(v) => updateStudent(r.id, { paymentStatus: v as PaymentStatus })}>
-                        <SelectTrigger className={`h-7 w-28 text-xs border ${PAYMENT_CLASS[r.paymentStatus || "Pending"]}`}><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {PAYMENTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      {(() => {
-                        const pt: PaymentType = r.paymentType || (r.paid ? "Self Pay" : "Unpaid");
-                        return (
-                          <div className="flex flex-col gap-1">
-                            <Select value={pt} onValueChange={(v) => updateStudent(r.id, { paymentType: v as PaymentType })}>
-                              <SelectTrigger className={`h-7 w-32 text-xs border ${PAYMENT_TYPE_CLASS[pt]}`}><SelectValue /></SelectTrigger>
+                          />
+                        </td>
+                        <td className={cn("sticky left-8 z-10 px-3 py-4 border-b border-border bg-card group-hover:bg-muted/30 shadow-[1px_0_0_0_var(--border)]", tint)}>
+                          <div className="flex items-center gap-2 min-w-[180px]">
+                            <button
+                              onClick={() => toggleExpand(r.id)}
+                              className="text-muted-foreground hover:text-foreground shrink-0"
+                              title={isExpanded ? "Collapse" : "Expand"}
+                            >
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            </button>
+                            <HoverCard openDelay={200} closeDelay={80}>
+                              <HoverCardTrigger asChild>
+                                <button
+                                  onClick={() => setOpenRow(r)}
+                                  className="text-left font-semibold text-foreground hover:text-primary transition-colors truncate"
+                                >
+                                  {r.studentName}
+                                </button>
+                              </HoverCardTrigger>
+                              <HoverCardContent className="w-80 bg-card border-border" side="right" align="start">
+                                <div className="space-y-2">
+                                  <div>
+                                    <div className="font-semibold text-base leading-tight">{r.studentName}</div>
+                                    <div className="text-xs text-muted-foreground">{r.schoolName} • Grade {r.grade}</div>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    <StatusBadge status={r.status} />
+                                    <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium", PAYMENT_TYPE_CLASS[et])}>{et}</span>
+                                    <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium", PAYMENT_STATUS_CLASS[ps])}>{ps}</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                                    <MiniField label="Route / Stop" value={r.stopAddress || "—"} />
+                                    <MiniField label="Parent" value={r.parentName || "—"} />
+                                    <MiniField label="Phone" value={r.parentPhone || "—"} />
+                                    <MiniField label="Balance" value={formatCurrency(Math.max(0, balance))} />
+                                  </div>
+                                </div>
+                              </HoverCardContent>
+                            </HoverCard>
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 text-muted-foreground border-b border-border">{r.grade}</td>
+                        <td className="px-3 py-4 text-muted-foreground border-b border-border">{r.schoolName}</td>
+                        <td className="px-3 py-4 text-muted-foreground max-w-[260px] border-b border-border">
+                          <div className="truncate"><span className="text-[10px] text-primary mr-1">1st</span>{r.stopAddress || "—"}</div>
+                          {r.stopAddress2 && (
+                            <div className="truncate flex items-center gap-1">
+                              <span className="text-[10px] text-muted-foreground mr-1">2nd</span>
+                              <span className="truncate">{r.stopAddress2}</span>
+                              <button
+                                onClick={() => {
+                                  updateStudent(r.id, { stopAddress: r.stopAddress2!, stopAddress2: r.stopAddress });
+                                  toast.success("Moved to 2nd choice");
+                                }}
+                                className="ml-1 text-[10px] text-primary hover:underline shrink-0"
+                                title="Reassign to 2nd choice"
+                              >Move →</button>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 text-muted-foreground border-b border-border">{r.parentName}</td>
+                        <td className="px-3 py-4 text-muted-foreground border-b border-border">{r.parentPhone}</td>
+                        <td className="px-3 py-4 border-b border-border">
+                          <div className="flex gap-1">
+                            {r.alertFlag && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive">
+                                <AlertTriangle className="h-3 w-3" /> Alert
+                              </span>
+                            )}
+                            {r.duplicateFlag && (
+                              <button
+                                onClick={() => setDupGroupOpen(r.duplicateGroupId || null)}
+                                className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
+                              >
+                                <Copy className="h-3 w-3" /> Dup
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 border-b border-border">
+                          {editingStatusId === r.id ? (
+                            <Select
+                              defaultOpen
+                              value={r.status}
+                              onValueChange={(v) => { updateStudent(r.id, { status: v as Status }); setEditingStatusId(null); }}
+                            >
+                              <SelectTrigger className="h-7 w-32 bg-background text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <button
+                              onClick={() => setEditingStatusId(r.id)}
+                              className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium hover:opacity-80", STATUS_CLASS[r.status])}
+                            >
+                              {r.status}
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 border-b border-border">
+                          {editingPayStatusId === r.id ? (
+                            <Select
+                              defaultOpen
+                              value={ps}
+                              onValueChange={(v) => { updateStudent(r.id, { paymentStatus: v as PaymentStatus }); setEditingPayStatusId(null); }}
+                            >
+                              <SelectTrigger className={`h-7 w-28 text-xs border ${PAYMENT_STATUS_CLASS[ps]}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {PAYMENTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <button
+                              onClick={() => setEditingPayStatusId(r.id)}
+                              className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium hover:opacity-80", PAYMENT_STATUS_CLASS[ps])}
+                            >
+                              {ps === "Received" ? "Paid" : ps}
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 border-b border-border">
+                          {editingTypeId === r.id ? (
+                            <Select
+                              defaultOpen
+                              value={r.paymentType || (r.paid ? "Self Pay" : "Unpaid")}
+                              onValueChange={(v) => { updateStudent(r.id, { paymentType: v as PaymentType, paid: v !== "Unpaid" }); setEditingTypeId(null); }}
+                            >
+                              <SelectTrigger className={`h-7 w-32 text-xs border ${PAYMENT_TYPE_CLASS[et]}`}><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {PAYMENT_TYPES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            {pt === "Self Pay" && (
-                              <Input
-                                type="number"
-                                min={0}
-                                step="0.01"
-                                value={r.amountPaid ?? 0}
-                                onChange={(e) => updateStudent(r.id, { amountPaid: parseFloat(e.target.value) || 0 })}
-                                className="h-7 w-32 bg-background text-xs"
-                                placeholder="Amount $"
-                              />
-                            )}
-                            {pt === "Financial Aid" && (
-                              <>
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-[10px] text-muted-foreground leading-none">Family Paid</span>
-                                  <Input
-                                    type="number" min={0} step="0.01"
-                                    value={r.familyPaid ?? 0}
-                                    onChange={(e) => updateStudent(r.id, { familyPaid: parseFloat(e.target.value) || 0 })}
-                                    className="h-7 w-32 bg-background text-xs"
-                                    placeholder="0"
-                                  />
-                                </div>
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-[10px] text-muted-foreground leading-none">School Owes</span>
-                                  <Input
-                                    type="number" min={0} step="0.01"
-                                    value={r.schoolOwes ?? 0}
-                                    onChange={(e) => updateStudent(r.id, { schoolOwes: parseFloat(e.target.value) || 0 })}
-                                    className="h-7 w-32 bg-background text-xs"
-                                    placeholder="0"
-                                  />
-                                </div>
-                                <Input
-                                  value={r.financialAidNotes ?? ""}
-                                  onChange={(e) => updateStudent(r.id, { financialAidNotes: e.target.value })}
-                                  className="h-7 w-32 bg-background text-xs"
-                                  placeholder="Aid details"
-                                />
-                              </>
-                            )}
+                          ) : (
+                            <button
+                              onClick={() => setEditingTypeId(r.id)}
+                              className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium hover:opacity-80", PAYMENT_TYPE_CLASS[et])}
+                              title={et === "Payment Plan" ? "This family is on an active payment plan" : "Click to change payment type"}
+                            >
+                              {et}
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 text-muted-foreground text-xs border-b border-border">
+                          {new Date(r.submissionDate).toLocaleDateString()}
+                        </td>
+                        <td className="px-3 py-4 border-b border-border">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2 text-xs"
+                              onClick={() => { setEditRow(r); setEditDraft({ ...r }); }}
+                            >
+                              <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="ghost" className="h-8 px-2 text-xs">
+                                  <Mail className="h-3.5 w-3.5 mr-1" /> Contact
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-card border-border">
+                                <DropdownMenuLabel>{r.parentName || "Parent"}</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {r.parentEmail && (
+                                  <DropdownMenuItem asChild>
+                                    <a href={`mailto:${r.parentEmail}`}><Mail className="h-4 w-4 mr-2" /> Email {r.parentEmail}</a>
+                                  </DropdownMenuItem>
+                                )}
+                                {r.parentPhone && (
+                                  <DropdownMenuItem asChild>
+                                    <a href={`tel:${r.parentPhone}`}><Phone className="h-4 w-4 mr-2" /> Call {r.parentPhone}</a>
+                                  </DropdownMenuItem>
+                                )}
+                                {r.parentPhone && (
+                                  <DropdownMenuItem asChild>
+                                    <a href={`sms:${r.parentPhone}`}><Send className="h-4 w-4 mr-2" /> Text {r.parentPhone}</a>
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="icon" variant="ghost" className="h-8 w-8" title="More actions">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-card border-border w-56">
+                                {r.status !== "Confirmed" && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => { updateStudent(r.id, { status: "Confirmed" }); toast.success(`${r.studentName} confirmed`); }}>
+                                      <BadgeCheck className="h-4 w-4 mr-2 text-emerald-400" /> Mark Confirmed
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                <DropdownMenuItem onClick={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }}>
+                                  <StickyNote className="h-4 w-4 mr-2" /> Internal Notes
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setPlanAnchor(r)}>
+                                  <Wallet className="h-4 w-4 mr-2" /> Payment History
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setReceiptOpen([r])}>
+                                  <FileText className="h-4 w-4 mr-2" /> Generate Receipt
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => downloadReceipt(r, settings.receipt)}>
+                                  <Download className="h-4 w-4 mr-2" /> Download PDF
+                                </DropdownMenuItem>
+                                {r.status === "Confirmed" && (
+                                  <DropdownMenuItem onClick={() => setConfirmLetterRow(r)}>
+                                    <MailCheck className="h-4 w-4 mr-2 text-emerald-400" /> Confirmation Letter
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild>
+                                  <Link to="/archive">
+                                    <Archive className="h-4 w-4 mr-2" /> Archive (Season)
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteRow(r)}
+                                  className="text-red-400 focus:text-red-400"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" /> Delete Student
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-3 py-2.5 text-muted-foreground text-xs">{new Date(r.submissionDate).toLocaleDateString()}</td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-1">
-                        {r.status !== "Confirmed" && (
-                          <Button size="icon" variant="ghost" onClick={() => { updateStudent(r.id, { status: "Confirmed" }); toast.success(`${r.studentName} confirmed`); }} title="Confirm student">
-                            <BadgeCheck className="h-4 w-4 text-emerald-400" />
-                          </Button>
-                        )}
-                        <Button size="icon" variant="ghost" onClick={() => { setEditRow(r); setEditDraft({ ...r }); }} title="Edit student">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }} title={r.notes ? "Notes (saved)" : "Add notes"}>
-                          <StickyNote className={`h-4 w-4 ${r.notes ? "text-primary" : ""}`} />
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={() => setPlanAnchor(r)} title="Payment plan">
-                          <Wallet className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={() => downloadReceipt(r, settings.receipt)} title="PDF receipt">
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                        {r.status === "Confirmed" && (
-                          <Button size="icon" variant="ghost" onClick={() => setConfirmLetterRow(r)} title="Confirmation letter">
-                            <MailCheck className="h-4 w-4 text-emerald-400" />
-                          </Button>
-                        )}
-                        <Button size="icon" variant="ghost" onClick={() => setDeleteRow(r)} title="Delete student">
-                          <Trash2 className="h-4 w-4 text-red-400" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr key={r.id + "-expand"} className={cn(tint)}>
+                          <td colSpan={13} className="border-b border-border bg-muted/10 px-6 py-5">
+                            <ExpandedRow
+                              r={r}
+                              et={et}
+                              onEdit={() => { setEditRow(r); setEditDraft({ ...r }); }}
+                              onNotes={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }}
+                              onPayHistory={() => setPlanAnchor(r)}
+                              onReceipt={() => setReceiptOpen([r])}
+                              onDelete={() => setDeleteRow(r)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </Card>
+      )}
+
+      {/* Floating bulk actions toolbar */}
+      {selected.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-card/95 backdrop-blur px-3 py-2 shadow-xl">
+            <span className="text-xs font-medium pl-2 pr-1 tabular-nums">
+              {selected.size} selected
+            </span>
+            <div className="h-5 w-px bg-border mx-1" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-8 text-xs">Change Status</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-card border-border">
+                {STATUSES.map((s) => (
+                  <DropdownMenuItem key={s} onClick={() => bulkSetStatus(s)}>{s}</DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-8 text-xs">Payment Status</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-card border-border">
+                {PAYMENTS.map((p) => (
+                  <DropdownMenuItem key={p} onClick={() => bulkSetPaymentStatus(p)}>{p}</DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-8 text-xs">Payment Type</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-card border-border">
+                {PAYMENT_TYPES.map((p) => (
+                  <DropdownMenuItem key={p} onClick={() => bulkSetPaymentType(p)}>{p}</DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={bulkSendReminder}>
+              <Send className="h-3.5 w-3.5 mr-1" /> Reminder
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={bulkExport}>
+              <Download className="h-3.5 w-3.5 mr-1" /> Export
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={bulkMarkReviewed}>
+              <CheckCheck className="h-3.5 w-3.5 mr-1" /> Reviewed
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={bulkReceipts}>
+              <FileText className="h-3.5 w-3.5 mr-1" /> Receipts
+            </Button>
+            <div className="h-5 w-px bg-border mx-1" />
+            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setSelected(new Set())}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Row detail panel */}
@@ -494,11 +788,7 @@ function StudentsPage() {
                     </div>
                     <div className="flex gap-2 mt-3">
                       <Button size="sm" className="bg-primary text-primary-foreground" onClick={() => { updateStudent(r.id, { duplicateFlag: false }); toast.success("Kept"); }}>Keep</Button>
-                      <Button size="sm" variant="destructive" onClick={() => {
-                        deleteStudent(r.id);
-                        toast.success("Removed");
-                      }}>Remove</Button>
-
+                      <Button size="sm" variant="destructive" onClick={() => { deleteStudent(r.id); toast.success("Removed"); }}>Remove</Button>
                     </div>
                   </Card>
                 ))}
@@ -507,10 +797,10 @@ function StudentsPage() {
           )}
         </SheetContent>
       </Sheet>
+
       {confirmLetterRow && (
         <ConfirmationLetterModal row={confirmLetterRow} onClose={() => setConfirmLetterRow(null)} />
       )}
-
 
       {receiptOpen && (
         <ReceiptModal
@@ -742,6 +1032,80 @@ function StudentsPage() {
         students={students}
       />
     </>
+  );
+}
+
+function ExpandedRow({
+  r, et,
+  onEdit, onNotes, onPayHistory, onReceipt, onDelete,
+}: {
+  r: StudentRow;
+  et: string;
+  onEdit: () => void;
+  onNotes: () => void;
+  onPayHistory: () => void;
+  onReceipt: () => void;
+  onDelete: () => void;
+}) {
+  const balance = Math.max(0, (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0));
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <SectionTitle>Student</SectionTitle>
+        <MiniField label="Name" value={r.studentName} />
+        <MiniField label="Grade" value={r.grade} />
+        <MiniField label="School" value={r.schoolName} />
+        <MiniField label="Status" value={r.status} />
+      </div>
+      <div>
+        <SectionTitle>Parent</SectionTitle>
+        <MiniField label="Name" value={r.parentName} />
+        <MiniField label="Phone" value={r.parentPhone} />
+        <MiniField label="Email" value={r.parentEmail} />
+        <MiniField label="Address" value={r.parentAddress} />
+      </div>
+      <div>
+        <SectionTitle>Payment</SectionTitle>
+        <MiniField label="Type" value={et} />
+        <MiniField label="Status" value={r.paymentStatus || "Pending"} />
+        <MiniField label="RT / OW" value={`${formatCurrency(r.rtAmount ?? 0)} / ${formatCurrency(r.owAmount ?? 0)}`} />
+        <MiniField label="Paid" value={formatCurrency(r.amountPaid ?? 0)} />
+        <MiniField label="Balance" value={formatCurrency(balance)} />
+      </div>
+      <div>
+        <SectionTitle>Route & Registration</SectionTitle>
+        <MiniField label="Stop (1st)" value={r.stopAddress || "—"} />
+        <MiniField label="Stop (2nd)" value={r.stopAddress2 || "—"} />
+        <MiniField label="Submitted" value={new Date(r.submissionDate).toLocaleString()} />
+        {r.checkNumber && <MiniField label="Check #" value={r.checkNumber} />}
+      </div>
+      {r.notes && (
+        <div className="md:col-span-4">
+          <SectionTitle>Internal Notes</SectionTitle>
+          <div className="rounded-md border border-border bg-background/60 p-3 text-xs whitespace-pre-wrap">{r.notes}</div>
+        </div>
+      )}
+      <div className="md:col-span-4 flex flex-wrap gap-2 pt-1">
+        <Button size="sm" variant="secondary" onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit Student</Button>
+        <Button size="sm" variant="secondary" onClick={onPayHistory}><Wallet className="h-3.5 w-3.5 mr-1" /> Payment History</Button>
+        <Button size="sm" variant="secondary" onClick={onReceipt}><FileText className="h-3.5 w-3.5 mr-1" /> Generate Receipt</Button>
+        <Button size="sm" variant="secondary" onClick={onNotes}><StickyNote className="h-3.5 w-3.5 mr-1" /> Internal Notes</Button>
+        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-400" onClick={onDelete}><Trash2 className="h-3.5 w-3.5 mr-1" /> Delete</Button>
+      </div>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">{children}</div>;
+}
+
+function MiniField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-2 py-1 border-b border-border/40 last:border-b-0">
+      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <span className="text-xs font-medium text-right truncate max-w-[60%]" title={value}>{value || "—"}</span>
+    </div>
   );
 }
 
