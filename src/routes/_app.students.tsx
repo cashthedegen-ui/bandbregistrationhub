@@ -627,7 +627,7 @@ function StudentsPage() {
                                       <MiniField label="Route / Stop" value={r.stopAddress || "—"} />
                                       <MiniField label="Parent" value={r.parentName || "—"} />
                                       <MiniField label="Phone" value={r.parentPhone || "—"} />
-                                      <MiniField label="Balance" value={formatCurrency(Math.max(0, (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0)))} />
+                                      <MiniField label="Balance" value={formatCurrency(r.paymentType === "Financial Aid" ? Math.max(0, (r.schoolOwes ?? 0) - (r.schoolPaidAmount ?? 0)) : Math.max(0, (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0)))} />
                                     </div>
                                   </div>
                                 </HoverCardContent>
