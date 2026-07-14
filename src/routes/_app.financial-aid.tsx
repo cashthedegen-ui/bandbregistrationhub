@@ -150,16 +150,18 @@ function FinancialAidPage() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Kpi label="Students on Financial Aid" value={formatNumber(kpis.count)} icon={Users}
           active={kpiFilter === "all"} onClick={() => setKpiFilter("all")} />
-        <Kpi label="Total Aid Awarded" value={formatCurrency(kpis.awarded)} icon={HandHeart}
+        <Kpi label="Total Bus Cost" value={formatCurrency(kpis.totalBusCost)} icon={HandHeart}
           active={false} onClick={() => setKpiFilter("all")} />
+        <Kpi label="Total Family Paid" value={formatCurrency(kpis.familyPaid)} icon={DollarSign}
+          active={false} onClick={() => setKpiFilter("all")} />
+        <Kpi label="Total Collected" value={formatCurrency(kpis.collected)} icon={TrendingUp}
+          active={kpiFilter === "collected"} onClick={() => setKpiFilter("collected")} />
         <Kpi label="Outstanding School Balance" value={formatCurrency(kpis.outstandingSchool)} icon={Wallet}
           tone="red" active={kpiFilter === "outstanding"} onClick={() => setKpiFilter("outstanding")} />
         <Kpi label="Schools Participating" value={formatNumber(kpis.schools)} icon={School}
-          active={false} onClick={() => setKpiFilter("all")} />
-        <Kpi label="Average Award" value={formatCurrency(kpis.avg)} icon={TrendingUp}
           active={false} onClick={() => setKpiFilter("all")} />
       </div>
 
