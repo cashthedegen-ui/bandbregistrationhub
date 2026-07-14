@@ -627,7 +627,7 @@ function StudentsPage() {
                                       <MiniField label="Route / Stop" value={r.stopAddress || "—"} />
                                       <MiniField label="Parent" value={r.parentName || "—"} />
                                       <MiniField label="Phone" value={r.parentPhone || "—"} />
-                                      <MiniField label="Balance" value={formatCurrency(Math.max(0, (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0)))} />
+                                      <MiniField label="Balance" value={formatCurrency(r.paymentType === "Financial Aid" ? Math.max(0, (r.schoolOwes ?? 0) - (r.schoolPaidAmount ?? 0)) : Math.max(0, (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0)))} />
                                     </div>
                                   </div>
                                 </HoverCardContent>
@@ -1220,7 +1220,13 @@ function ExpandedRow({
   onReceipt: () => void;
   onDelete: () => void;
 }) {
-  const balance = Math.max(0, (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0));
+  const isAid = r.paymentType === "Financial Aid";
+  // Financial Aid students: Balance = School Owes - School Payments Received
+  // (synced with the Financial Aid page; does NOT subtract Family Paid).
+  // Self Pay / Unpaid students keep the existing RT+OW - Paid calculation.
+  const balance = isAid
+    ? Math.max(0, (r.schoolOwes ?? 0) - (r.schoolPaidAmount ?? 0))
+    : Math.max(0, (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0));
   return (
     <div
       className="grid gap-4 text-sm"
