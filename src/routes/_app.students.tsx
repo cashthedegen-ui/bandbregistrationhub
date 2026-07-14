@@ -368,26 +368,209 @@ function StudentsPage() {
           <div className="text-sm text-muted-foreground">No students match your filters.</div>
         </Card>
       ) : (
-        <Card className="bg-card border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-separate border-spacing-0">
+        <Card className="bg-card border-border overflow-hidden @container/students">
+          {/* ============ CARD LAYOUT: tablet portrait & narrow (below @3xl) ============ */}
+          <div className="@3xl/students:hidden divide-y divide-border">
+            <div className="flex items-center gap-2 px-3 py-2 bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <Checkbox checked={allChecked} onCheckedChange={toggleAll} />
+              <span>Select all ({filtered.length})</span>
+            </div>
+            {filtered.map((r) => {
+              const isExpanded = expanded.has(r.id);
+              const tint = rowTint(r);
+              const et = effectiveType(r);
+              const ps = r.paymentStatus || "Pending";
+              return (
+                <div key={r.id} className={cn("p-3 transition-colors", tint)}>
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      className="mt-1 shrink-0"
+                      checked={selected.has(r.id)}
+                      onCheckedChange={(v) => {
+                        const next = new Set(selected);
+                        if (v) next.add(r.id); else next.delete(r.id);
+                        setSelected(next);
+                      }}
+                    />
+                    <button
+                      onClick={() => toggleExpand(r.id)}
+                      className="mt-1 shrink-0 text-muted-foreground hover:text-foreground"
+                      title={isExpanded ? "Collapse" : "Expand"}
+                    >
+                      {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <button
+                            onClick={() => setOpenRow(r)}
+                            className="text-left font-semibold text-foreground hover:text-primary transition-colors break-words"
+                          >
+                            {r.studentName}
+                          </button>
+                          <div className="text-xs text-muted-foreground break-words">
+                            Grade {r.grade} • {r.schoolName}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          {r.alertFlag && <AlertTriangle className="h-4 w-4 text-destructive" />}
+                          {r.duplicateFlag && (
+                            <button
+                              onClick={() => setDupGroupOpen(r.duplicateGroupId || null)}
+                              className="text-primary"
+                              title="Potential duplicate"
+                            ><Copy className="h-4 w-4" /></button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2 grid grid-cols-1 @sm/students:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                        <div className="min-w-0">
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Route</div>
+                          <div className="break-words">{r.stopAddress || "—"}</div>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Parent</div>
+                          <div className="break-words">{r.parentName || "—"}</div>
+                          {r.parentPhone && <div className="text-muted-foreground">{r.parentPhone}</div>}
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <button
+                          onClick={() => setEditingStatusId(r.id)}
+                          className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium", STATUS_CLASS[r.status])}
+                        >
+                          {r.status}
+                        </button>
+                        <button
+                          onClick={() => setEditingPayStatusId(r.id)}
+                          className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium", PAYMENT_STATUS_CLASS[ps])}
+                        >
+                          {ps === "Received" ? "Paid" : ps}
+                        </button>
+                        <button
+                          onClick={() => setEditingTypeId(r.id)}
+                          className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium", PAYMENT_TYPE_CLASS[et])}
+                        >
+                          {et}
+                        </button>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => { setEditRow(r); setEditDraft({ ...r }); }}>
+                          <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="ghost" className="h-8 px-2 text-xs">
+                              <Mail className="h-3.5 w-3.5 mr-1" /> Contact
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-card border-border">
+                            <DropdownMenuLabel>{r.parentName || "Parent"}</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {r.parentEmail && (
+                              <DropdownMenuItem asChild>
+                                <a href={`mailto:${r.parentEmail}`}><Mail className="h-4 w-4 mr-2" /> Email {r.parentEmail}</a>
+                              </DropdownMenuItem>
+                            )}
+                            {r.parentPhone && (
+                              <DropdownMenuItem asChild>
+                                <a href={`tel:${r.parentPhone}`}><Phone className="h-4 w-4 mr-2" /> Call {r.parentPhone}</a>
+                              </DropdownMenuItem>
+                            )}
+                            {r.parentPhone && (
+                              <DropdownMenuItem asChild>
+                                <a href={`sms:${r.parentPhone}`}><Send className="h-4 w-4 mr-2" /> Text {r.parentPhone}</a>
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="ghost" className="h-8 px-2 text-xs">
+                              <MoreHorizontal className="h-3.5 w-3.5 mr-1" /> More
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-card border-border w-56">
+                            {r.status !== "Confirmed" && (
+                              <>
+                                <DropdownMenuItem onClick={() => { updateStudent(r.id, { status: "Confirmed" }); toast.success(`${r.studentName} confirmed`); }}>
+                                  <BadgeCheck className="h-4 w-4 mr-2 text-emerald-400" /> Mark Confirmed
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                              </>
+                            )}
+                            <DropdownMenuItem onClick={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }}>
+                              <StickyNote className="h-4 w-4 mr-2" /> Internal Notes
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPlanAnchor(r)}>
+                              <Wallet className="h-4 w-4 mr-2" /> Payment History
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setReceiptOpen([r])}>
+                              <FileText className="h-4 w-4 mr-2" /> Generate Receipt
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => downloadReceipt(r, settings.receipt)}>
+                              <Download className="h-4 w-4 mr-2" /> Download PDF
+                            </DropdownMenuItem>
+                            {r.status === "Confirmed" && (
+                              <DropdownMenuItem onClick={() => setConfirmLetterRow(r)}>
+                                <MailCheck className="h-4 w-4 mr-2 text-emerald-400" /> Confirmation Letter
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild>
+                              <Link to="/archive"><Archive className="h-4 w-4 mr-2" /> Archive (Season)</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDeleteRow(r)} className="text-red-400 focus:text-red-400">
+                              <Trash2 className="h-4 w-4 mr-2" /> Delete Student
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="mt-3 rounded-md border border-border bg-muted/10 p-3">
+                      <ExpandedRow
+                        r={r}
+                        et={et}
+                        onEdit={() => { setEditRow(r); setEditDraft({ ...r }); }}
+                        onNotes={() => { setNotesRow(r); setNotesDraft(r.notes || ""); }}
+                        onPayHistory={() => setPlanAnchor(r)}
+                        onReceipt={() => setReceiptOpen([r])}
+                        onDelete={() => setDeleteRow(r)}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ============ COMPACT TABLE: laptop / tablet landscape and up (@3xl+) ============ */}
+          <div className="hidden @3xl/students:block overflow-x-auto">
+            <table className="w-full text-sm border-separate border-spacing-0 table-fixed">
+              <colgroup>
+                <col className="w-10" />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "22%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "11%" }} />
+                <col style={{ width: "15%" }} />
+                <col className="hidden @6xl/students:table-column" style={{ width: "8%" }} />
+                <col style={{ width: "8%" }} />
+              </colgroup>
               <thead className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="sticky left-0 z-20 bg-muted/40 px-3 py-3.5 w-8 border-b border-border">
+                  <th className="px-3 py-3.5 border-b border-border">
                     <Checkbox checked={allChecked} onCheckedChange={toggleAll} />
                   </th>
-                  <th className="sticky left-8 z-20 bg-muted/40 px-3 py-3.5 text-left border-b border-border shadow-[1px_0_0_0_var(--border)]">Student</th>
-                  <th className="px-3 py-3.5 text-left border-b border-border w-20">Grade</th>
-                  <th className="px-3 py-3.5 text-left border-b border-border">School</th>
-                  <th className="px-3 py-3.5 text-left border-b border-border">Stop (1st / 2nd)</th>
-                  <th className="px-3 py-3.5 text-left border-b border-border">Parent</th>
-                  <th className="px-3 py-3.5 text-left border-b border-border">Phone</th>
-                  <th className="px-3 py-3.5 text-left border-b border-border">Flags</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">Student / Grade</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">School / Route</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">Parent / Phone</th>
                   <th className="px-3 py-3.5 text-left border-b border-border">Status</th>
-                  <th className="px-3 py-3.5 text-left border-b border-border">Payment</th>
-                  <th className="px-3 py-3.5 text-left border-b border-border">Payment Type</th>
-                  <th className="px-3 py-3.5 text-left border-b border-border">Submitted</th>
-                  <th className="px-3 py-3.5 text-right border-b border-border pr-4">Actions</th>
+                  <th className="px-3 py-3.5 text-left border-b border-border">Billing</th>
+                  <th className="hidden @6xl/students:table-cell px-3 py-3.5 text-left border-b border-border">Submitted</th>
+                  <th className="px-3 py-3.5 text-right border-b border-border pr-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -396,14 +579,10 @@ function StudentsPage() {
                   const tint = rowTint(r);
                   const et = effectiveType(r);
                   const ps = r.paymentStatus || "Pending";
-                  const balance = (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0);
                   return (
                     <>
-                      <tr
-                        key={r.id}
-                        className={cn("group transition-colors hover:bg-muted/30", tint)}
-                      >
-                        <td className={cn("sticky left-0 z-10 px-3 py-4 border-b border-border bg-card group-hover:bg-muted/30", tint)}>
+                      <tr key={r.id} className={cn("group transition-colors hover:bg-muted/30 align-top", tint)}>
+                        <td className="px-3 py-3 border-b border-border">
                           <Checkbox
                             checked={selected.has(r.id)}
                             onCheckedChange={(v) => {
@@ -413,92 +592,85 @@ function StudentsPage() {
                             }}
                           />
                         </td>
-                        <td className={cn("sticky left-8 z-10 px-3 py-4 border-b border-border bg-card group-hover:bg-muted/30 shadow-[1px_0_0_0_var(--border)]", tint)}>
-                          <div className="flex items-center gap-2 min-w-[180px]">
+                        <td className="px-3 py-3 border-b border-border">
+                          <div className="flex items-start gap-2 min-w-0">
                             <button
                               onClick={() => toggleExpand(r.id)}
-                              className="text-muted-foreground hover:text-foreground shrink-0"
+                              className="mt-0.5 text-muted-foreground hover:text-foreground shrink-0"
                               title={isExpanded ? "Collapse" : "Expand"}
                             >
                               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                             </button>
-                            <HoverCard openDelay={200} closeDelay={80}>
-                              <HoverCardTrigger asChild>
-                                <button
-                                  onClick={() => setOpenRow(r)}
-                                  className="text-left font-semibold text-foreground hover:text-primary transition-colors truncate"
-                                >
-                                  {r.studentName}
-                                </button>
-                              </HoverCardTrigger>
-                              <HoverCardContent className="w-80 bg-card border-border" side="right" align="start">
-                                <div className="space-y-2">
-                                  <div>
-                                    <div className="font-semibold text-base leading-tight">{r.studentName}</div>
-                                    <div className="text-xs text-muted-foreground">{r.schoolName} • Grade {r.grade}</div>
+                            <div className="min-w-0 flex-1">
+                              <HoverCard openDelay={200} closeDelay={80}>
+                                <HoverCardTrigger asChild>
+                                  <button
+                                    onClick={() => setOpenRow(r)}
+                                    className="text-left font-semibold text-foreground hover:text-primary transition-colors block w-full truncate"
+                                    title={r.studentName}
+                                  >
+                                    {r.studentName}
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-80 bg-card border-border" side="right" align="start">
+                                  <div className="space-y-2">
+                                    <div>
+                                      <div className="font-semibold text-base leading-tight">{r.studentName}</div>
+                                      <div className="text-xs text-muted-foreground">{r.schoolName} • Grade {r.grade}</div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      <StatusBadge status={r.status} />
+                                      <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium", PAYMENT_TYPE_CLASS[et])}>{et}</span>
+                                      <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium", PAYMENT_STATUS_CLASS[ps])}>{ps}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                                      <MiniField label="Route / Stop" value={r.stopAddress || "—"} />
+                                      <MiniField label="Parent" value={r.parentName || "—"} />
+                                      <MiniField label="Phone" value={r.parentPhone || "—"} />
+                                      <MiniField label="Balance" value={formatCurrency(Math.max(0, (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0)))} />
+                                    </div>
                                   </div>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    <StatusBadge status={r.status} />
-                                    <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium", PAYMENT_TYPE_CLASS[et])}>{et}</span>
-                                    <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium", PAYMENT_STATUS_CLASS[ps])}>{ps}</span>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-                                    <MiniField label="Route / Stop" value={r.stopAddress || "—"} />
-                                    <MiniField label="Parent" value={r.parentName || "—"} />
-                                    <MiniField label="Phone" value={r.parentPhone || "—"} />
-                                    <MiniField label="Balance" value={formatCurrency(Math.max(0, balance))} />
-                                  </div>
-                                </div>
-                              </HoverCardContent>
-                            </HoverCard>
-                          </div>
-                        </td>
-                        <td className="px-3 py-4 text-muted-foreground border-b border-border">{r.grade}</td>
-                        <td className="px-3 py-4 text-muted-foreground border-b border-border">{r.schoolName}</td>
-                        <td className="px-3 py-4 text-muted-foreground max-w-[260px] border-b border-border">
-                          <div className="truncate"><span className="text-[10px] text-primary mr-1">1st</span>{r.stopAddress || "—"}</div>
-                          {r.stopAddress2 && (
-                            <div className="truncate flex items-center gap-1">
-                              <span className="text-[10px] text-muted-foreground mr-1">2nd</span>
-                              <span className="truncate">{r.stopAddress2}</span>
-                              <button
-                                onClick={() => {
-                                  updateStudent(r.id, { stopAddress: r.stopAddress2!, stopAddress2: r.stopAddress });
-                                  toast.success("Moved to 2nd choice");
-                                }}
-                                className="ml-1 text-[10px] text-primary hover:underline shrink-0"
-                                title="Reassign to 2nd choice"
-                              >Move →</button>
+                                </HoverCardContent>
+                              </HoverCard>
+                              <div className="text-xs text-muted-foreground truncate">Grade {r.grade}</div>
+                              <div className="mt-1 flex gap-1">
+                                {r.alertFlag && (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive">
+                                    <AlertTriangle className="h-3 w-3" /> Alert
+                                  </span>
+                                )}
+                                {r.duplicateFlag && (
+                                  <button
+                                    onClick={() => setDupGroupOpen(r.duplicateGroupId || null)}
+                                    className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
+                                  >
+                                    <Copy className="h-3 w-3" /> Dup
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-4 text-muted-foreground border-b border-border">{r.parentName}</td>
-                        <td className="px-3 py-4 text-muted-foreground border-b border-border">{r.parentPhone}</td>
-                        <td className="px-3 py-4 border-b border-border">
-                          <div className="flex gap-1">
-                            {r.alertFlag && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive">
-                                <AlertTriangle className="h-3 w-3" /> Alert
-                              </span>
-                            )}
-                            {r.duplicateFlag && (
-                              <button
-                                onClick={() => setDupGroupOpen(r.duplicateGroupId || null)}
-                                className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
-                              >
-                                <Copy className="h-3 w-3" /> Dup
-                              </button>
-                            )}
                           </div>
                         </td>
-                        <td className="px-3 py-4 border-b border-border">
+                        <td className="px-3 py-3 border-b border-border">
+                          <div className="min-w-0">
+                            <div className="text-foreground line-clamp-2 break-words" title={r.schoolName}>{r.schoolName}</div>
+                            <div className="text-xs text-muted-foreground line-clamp-2 break-words" title={r.stopAddress || ""}>{r.stopAddress || "—"}</div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 border-b border-border">
+                          <div className="min-w-0">
+                            <div className="text-foreground truncate" title={r.parentName}>{r.parentName}</div>
+                            <div className="text-xs text-muted-foreground truncate" title={r.parentPhone}>{r.parentPhone}</div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 border-b border-border">
                           {editingStatusId === r.id ? (
                             <Select
                               defaultOpen
                               value={r.status}
                               onValueChange={(v) => { updateStudent(r.id, { status: v as Status }); setEditingStatusId(null); }}
                             >
-                              <SelectTrigger className="h-7 w-32 bg-background text-xs"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-7 w-full bg-background text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                               </SelectContent>
@@ -506,72 +678,73 @@ function StudentsPage() {
                           ) : (
                             <button
                               onClick={() => setEditingStatusId(r.id)}
-                              className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium hover:opacity-80", STATUS_CLASS[r.status])}
+                              className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium hover:opacity-80 max-w-full truncate", STATUS_CLASS[r.status])}
                             >
                               {r.status}
                             </button>
                           )}
                         </td>
-                        <td className="px-3 py-4 border-b border-border">
-                          {editingPayStatusId === r.id ? (
-                            <Select
-                              defaultOpen
-                              value={ps}
-                              onValueChange={(v) => { updateStudent(r.id, { paymentStatus: v as PaymentStatus }); setEditingPayStatusId(null); }}
-                            >
-                              <SelectTrigger className={`h-7 w-28 text-xs border ${PAYMENT_STATUS_CLASS[ps]}`}><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {PAYMENTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <button
-                              onClick={() => setEditingPayStatusId(r.id)}
-                              className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium hover:opacity-80", PAYMENT_STATUS_CLASS[ps])}
-                            >
-                              {ps === "Received" ? "Paid" : ps}
-                            </button>
-                          )}
+                        <td className="px-3 py-3 border-b border-border">
+                          <div className="flex flex-col gap-1 items-start min-w-0">
+                            {editingPayStatusId === r.id ? (
+                              <Select
+                                defaultOpen
+                                value={ps}
+                                onValueChange={(v) => { updateStudent(r.id, { paymentStatus: v as PaymentStatus }); setEditingPayStatusId(null); }}
+                              >
+                                <SelectTrigger className={`h-7 w-full text-xs border ${PAYMENT_STATUS_CLASS[ps]}`}><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {PAYMENTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <button
+                                onClick={() => setEditingPayStatusId(r.id)}
+                                className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium hover:opacity-80 max-w-full truncate", PAYMENT_STATUS_CLASS[ps])}
+                              >
+                                {ps === "Received" ? "Paid" : ps}
+                              </button>
+                            )}
+                            {editingTypeId === r.id ? (
+                              <Select
+                                defaultOpen
+                                value={r.paymentType || (r.paid ? "Self Pay" : "Unpaid")}
+                                onValueChange={(v) => { updateStudent(r.id, { paymentType: v as PaymentType, paid: v !== "Unpaid" }); setEditingTypeId(null); }}
+                              >
+                                <SelectTrigger className={`h-7 w-full text-xs border ${PAYMENT_TYPE_CLASS[et]}`}><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {PAYMENT_TYPES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <button
+                                onClick={() => setEditingTypeId(r.id)}
+                                className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium hover:opacity-80 max-w-full truncate", PAYMENT_TYPE_CLASS[et])}
+                                title={et === "Payment Plan" ? "This family is on an active payment plan" : "Click to change payment type"}
+                              >
+                                {et}
+                              </button>
+                            )}
+                          </div>
                         </td>
-                        <td className="px-3 py-4 border-b border-border">
-                          {editingTypeId === r.id ? (
-                            <Select
-                              defaultOpen
-                              value={r.paymentType || (r.paid ? "Self Pay" : "Unpaid")}
-                              onValueChange={(v) => { updateStudent(r.id, { paymentType: v as PaymentType, paid: v !== "Unpaid" }); setEditingTypeId(null); }}
-                            >
-                              <SelectTrigger className={`h-7 w-32 text-xs border ${PAYMENT_TYPE_CLASS[et]}`}><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {PAYMENT_TYPES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <button
-                              onClick={() => setEditingTypeId(r.id)}
-                              className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium hover:opacity-80", PAYMENT_TYPE_CLASS[et])}
-                              title={et === "Payment Plan" ? "This family is on an active payment plan" : "Click to change payment type"}
-                            >
-                              {et}
-                            </button>
-                          )}
-                        </td>
-                        <td className="px-3 py-4 text-muted-foreground text-xs border-b border-border">
+                        <td className="hidden @6xl/students:table-cell px-3 py-3 text-muted-foreground text-xs border-b border-border">
                           {new Date(r.submissionDate).toLocaleDateString()}
                         </td>
-                        <td className="px-3 py-4 border-b border-border">
-                          <div className="flex items-center justify-end gap-1">
+                        <td className="px-2 py-3 border-b border-border">
+                          <div className="flex items-center justify-end gap-0.5">
                             <Button
-                              size="sm"
+                              size="icon"
                               variant="ghost"
-                              className="h-8 px-2 text-xs"
+                              className="h-8 w-8"
+                              title="Edit"
                               onClick={() => { setEditRow(r); setEditDraft({ ...r }); }}
                             >
-                              <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                              <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button size="sm" variant="ghost" className="h-8 px-2 text-xs">
-                                  <Mail className="h-3.5 w-3.5 mr-1" /> Contact
+                                <Button size="icon" variant="ghost" className="h-8 w-8" title="Contact">
+                                  <Mail className="h-3.5 w-3.5" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="bg-card border-border">
@@ -645,7 +818,7 @@ function StudentsPage() {
                       </tr>
                       {isExpanded && (
                         <tr key={r.id + "-expand"} className={cn(tint)}>
-                          <td colSpan={13} className="border-b border-border bg-muted/10 px-6 py-5">
+                          <td colSpan={8} className="border-b border-border bg-muted/10 px-4 py-4">
                             <ExpandedRow
                               r={r}
                               et={et}
@@ -1049,7 +1222,10 @@ function ExpandedRow({
 }) {
   const balance = Math.max(0, (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0));
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+    <div
+      className="grid gap-4 text-sm"
+      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))" }}
+    >
       <div>
         <SectionTitle>Student</SectionTitle>
         <MiniField label="Name" value={r.studentName} />
@@ -1080,12 +1256,12 @@ function ExpandedRow({
         {r.checkNumber && <MiniField label="Check #" value={r.checkNumber} />}
       </div>
       {r.notes && (
-        <div className="md:col-span-4">
+        <div style={{ gridColumn: "1 / -1" }}>
           <SectionTitle>Internal Notes</SectionTitle>
-          <div className="rounded-md border border-border bg-background/60 p-3 text-xs whitespace-pre-wrap">{r.notes}</div>
+          <div className="rounded-md border border-border bg-background/60 p-3 text-xs whitespace-pre-wrap break-words">{r.notes}</div>
         </div>
       )}
-      <div className="md:col-span-4 flex flex-wrap gap-2 pt-1">
+      <div className="flex flex-wrap gap-2 pt-1" style={{ gridColumn: "1 / -1" }}>
         <Button size="sm" variant="secondary" onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit Student</Button>
         <Button size="sm" variant="secondary" onClick={onPayHistory}><Wallet className="h-3.5 w-3.5 mr-1" /> Payment History</Button>
         <Button size="sm" variant="secondary" onClick={onReceipt}><FileText className="h-3.5 w-3.5 mr-1" /> Generate Receipt</Button>
@@ -1103,8 +1279,8 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function MiniField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-2 py-1 border-b border-border/40 last:border-b-0">
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className="text-xs font-medium text-right truncate max-w-[60%]" title={value}>{value || "—"}</span>
+      <span className="text-[11px] text-muted-foreground shrink-0">{label}</span>
+      <span className="text-xs font-medium text-right break-words min-w-0" title={value}>{value || "—"}</span>
     </div>
   );
 }
