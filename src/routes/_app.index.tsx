@@ -361,9 +361,9 @@ function Dashboard() {
           <Link to="/analytics" className="ml-auto text-xs text-primary hover:underline">Analytics →</Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Kpi label="Today's Revenue" value={formatCurrency(revenueSnapshot.today)} icon={DollarSign} tone="emerald" link={{ to: "/analytics" }} />
-          <Kpi label="This Week" value={formatCurrency(revenueSnapshot.week)} icon={TrendingUp} tone="emerald" link={{ to: "/analytics" }} />
-          <Kpi label="Season Total" value={formatCurrency(revenueSnapshot.season)} icon={Wallet} tone="emerald" link={{ to: "/analytics" }} />
+          <Kpi label="Today's Revenue" value={formatCurrency(revenueSnapshot.today)} icon={DollarSign} tone="emerald" link={{ to: "/analytics", search: { range: "today" } }} />
+          <Kpi label="This Week" value={formatCurrency(revenueSnapshot.week)} icon={TrendingUp} tone="emerald" link={{ to: "/analytics", search: { range: "week" } }} />
+          <Kpi label="Season Total" value={formatCurrency(revenueSnapshot.season)} icon={Wallet} tone="emerald" link={{ to: "/analytics", search: { range: "season" } }} />
         </div>
       </div>
 
