@@ -71,32 +71,33 @@ function FinancialAidPage() {
   }, [faStudents, q, qParent, school, grade, regStatus, payStatus, kpiFilter]);
 
   const kpis = useMemo(() => {
-    let awarded = 0, collected = 0, outstandingSchool = 0;
+    let totalBusCost = 0, familyPaid = 0, collected = 0, outstandingSchool = 0;
     const schoolSet = new Set<string>();
     faStudents.forEach((s) => {
       const t = totalsForStudent(s);
-      awarded += t.awardAmount;
-      collected += t.amountCollected;
+      totalBusCost += t.totalBusCost;
+      familyPaid += t.familyPaid;
+      collected += t.collected;
       outstandingSchool += t.schoolBalance;
       if (s.schoolName) schoolSet.add(s.schoolName);
     });
-    const avg = faStudents.length > 0 ? awarded / faStudents.length : 0;
     return {
-      count: faStudents.length, awarded, outstandingSchool, schools: schoolSet.size, avg, collected,
+      count: faStudents.length, totalBusCost, familyPaid, collected, outstandingSchool, schools: schoolSet.size,
     };
   }, [faStudents]);
 
   const schoolSummary = useMemo(() => {
-    const map = new Map<string, { school: string; students: number; awarded: number; collected: number; outstanding: number; owedBySchool: number }>();
+    const map = new Map<string, { school: string; students: number; totalBusCost: number; familyPaid: number; schoolPaid: number; collected: number; outstanding: number }>();
     faStudents.forEach((s) => {
       const key = s.schoolName || "—";
       const t = totalsForStudent(s);
-      const row = map.get(key) ?? { school: key, students: 0, awarded: 0, collected: 0, outstanding: 0, owedBySchool: 0 };
+      const row = map.get(key) ?? { school: key, students: 0, totalBusCost: 0, familyPaid: 0, schoolPaid: 0, collected: 0, outstanding: 0 };
       row.students += 1;
-      row.awarded += t.awardAmount;
-      row.collected += t.amountCollected;
-      row.outstanding += t.outstanding;
-      row.owedBySchool += t.schoolBalance;
+      row.totalBusCost += t.totalBusCost;
+      row.familyPaid += t.familyPaid;
+      row.schoolPaid += t.schoolPaid;
+      row.collected += t.collected;
+      row.outstanding += t.schoolBalance;
       map.set(key, row);
     });
     const rows = Array.from(map.values());
@@ -120,12 +121,13 @@ function FinancialAidPage() {
         Parent: s.parentName,
         School: s.schoolName,
         Grade: s.grade,
-        "Award Amount": t.awardAmount,
-        "Family Responsibility": t.familyResponsibility,
+        "Total Bus Cost": t.totalBusCost,
+        "Family Paid": t.familyPaid,
+        "School Payments": t.schoolPaid,
         "School Balance": t.schoolBalance,
-        "Amount Collected": t.amountCollected,
+        "Collected": t.collected,
         "Outstanding": t.outstanding,
-        "Payment Status": s.paymentStatus,
+        "Payment Status": t.paymentStatus,
         "Registration Status": s.status,
       };
     });
@@ -149,16 +151,18 @@ function FinancialAidPage() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Kpi label="Students on Financial Aid" value={formatNumber(kpis.count)} icon={Users}
           active={kpiFilter === "all"} onClick={() => setKpiFilter("all")} />
-        <Kpi label="Total Aid Awarded" value={formatCurrency(kpis.awarded)} icon={HandHeart}
+        <Kpi label="Total Bus Cost" value={formatCurrency(kpis.totalBusCost)} icon={HandHeart}
           active={false} onClick={() => setKpiFilter("all")} />
+        <Kpi label="Total Family Paid" value={formatCurrency(kpis.familyPaid)} icon={DollarSign}
+          active={false} onClick={() => setKpiFilter("all")} />
+        <Kpi label="Total Collected" value={formatCurrency(kpis.collected)} icon={TrendingUp}
+          active={kpiFilter === "collected"} onClick={() => setKpiFilter("collected")} />
         <Kpi label="Outstanding School Balance" value={formatCurrency(kpis.outstandingSchool)} icon={Wallet}
           tone="red" active={kpiFilter === "outstanding"} onClick={() => setKpiFilter("outstanding")} />
         <Kpi label="Schools Participating" value={formatNumber(kpis.schools)} icon={School}
-          active={false} onClick={() => setKpiFilter("all")} />
-        <Kpi label="Average Award" value={formatCurrency(kpis.avg)} icon={TrendingUp}
           active={false} onClick={() => setKpiFilter("all")} />
       </div>
 
@@ -181,23 +185,25 @@ function FinancialAidPage() {
                 <tr>
                   <th className="px-3 py-2.5 text-left">School</th>
                   <th className="px-3 py-2.5 text-right">Students</th>
-                  <th className="px-3 py-2.5 text-right">Aid Awarded</th>
-                  <th className="px-3 py-2.5 text-right">Collected</th>
-                  <th className="px-3 py-2.5 text-right">Outstanding</th>
-                  <th className="px-3 py-2.5 text-right">School Owes</th>
+                  <th className="px-3 py-2.5 text-right">Total Bus Cost</th>
+                  <th className="px-3 py-2.5 text-right">Family Paid</th>
+                  <th className="px-3 py-2.5 text-right">School Payments</th>
+                  <th className="px-3 py-2.5 text-right">Total Collected</th>
+                  <th className="px-3 py-2.5 text-right">Outstanding Bal.</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {schoolSummary.length === 0 ? (
-                  <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No financial aid students yet.</td></tr>
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No financial aid students yet.</td></tr>
                 ) : schoolSummary.map((r) => (
                   <tr key={r.school} className="hover:bg-muted/20">
                     <td className="px-3 py-2.5 font-medium">{r.school}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{r.students}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(r.awarded)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(r.totalBusCost)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(r.familyPaid)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(r.schoolPaid)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-emerald-300">{formatCurrency(r.collected)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-yellow-300">{formatCurrency(r.outstanding)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-red-300">{formatCurrency(r.owedBySchool)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-red-300">{formatCurrency(r.outstanding)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -267,28 +273,31 @@ function FinancialAidPage() {
                   <th className="px-3 py-3 text-left">Parent</th>
                   <th className="px-3 py-3 text-left">School</th>
                   <th className="px-3 py-3 text-left">Grade</th>
-                  <th className="px-3 py-3 text-right">Aid</th>
-                  <th className="px-3 py-3 text-right">Family</th>
-                  <th className="px-3 py-3 text-right">School Bal.</th>
+                  <th className="px-3 py-3 text-right">Total Bus Cost</th>
+                  <th className="px-3 py-3 text-right">Family Paid</th>
+                  <th className="px-3 py-3 text-right">School Balance</th>
                   <th className="px-3 py-3 text-right">Collected</th>
-                  <th className="px-3 py-3 text-left">Payment</th>
-                  <th className="px-3 py-3 text-left">Reg</th>
+                  <th className="px-3 py-3 text-left">Payment Status</th>
+                  <th className="px-3 py-3 text-left">Reg. Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {displayed.map((s) => {
                   const t = totalsForStudent(s);
+                  const badgeTone = t.paymentStatus === "Paid" ? "text-emerald-300 border-emerald-500/40"
+                    : t.paymentStatus === "Partially Paid" ? "text-yellow-300 border-yellow-500/40"
+                    : "text-red-300 border-red-500/40";
                   return (
                     <tr key={s.id} className="hover:bg-muted/20 cursor-pointer" onClick={() => setSelected(s)}>
                       <td className="px-3 py-2.5 font-medium">{s.studentName}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{s.parentName}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{s.schoolName}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{s.grade || "—"}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(t.awardAmount)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(t.familyResponsibility)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(t.totalBusCost)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(t.familyPaid)}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-red-300">{formatCurrency(t.schoolBalance)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-emerald-300">{formatCurrency(t.amountCollected)}</td>
-                      <td className="px-3 py-2.5"><Badge variant="outline">{s.paymentStatus}</Badge></td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-emerald-300">{formatCurrency(t.collected)}</td>
+                      <td className="px-3 py-2.5"><Badge variant="outline" className={badgeTone}>{t.paymentStatus}</Badge></td>
                       <td className="px-3 py-2.5"><Badge variant="outline">{s.status}</Badge></td>
                     </tr>
                   );
@@ -437,40 +446,35 @@ function FinancialAidDrawer({
 
             {/* Totals */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <MiniStat label="Award" value={formatCurrency(t.awardAmount)} />
-              <MiniStat label="Collected" value={formatCurrency(t.amountCollected)} tone="emerald" />
+              <MiniStat label="Total Bus Cost" value={formatCurrency(t.totalBusCost)} />
+              <MiniStat label="Family Paid" value={formatCurrency(t.familyPaid)} />
               <MiniStat label="School Balance" value={formatCurrency(t.schoolBalance)} tone="red" />
-              <MiniStat label="Outstanding" value={formatCurrency(t.outstanding)} tone="yellow" />
+              <MiniStat label="Collected" value={formatCurrency(t.collected)} tone="emerald" />
+            </div>
+            <div className="text-xs text-muted-foreground -mt-2">
+              Payment Status (derived): <span className="text-foreground font-medium">{t.paymentStatus}</span>
             </div>
 
             {/* Edit fields */}
             <Card className="bg-card border-border">
               <CardContent className="p-4 space-y-3">
                 <h3 className="text-sm font-semibold flex items-center gap-2"><DollarSign className="h-4 w-4 text-primary" /> Financial Aid Details</h3>
+                <p className="text-xs text-muted-foreground">
+                  Family Paid uses the same field as the Students page — edits sync both ways.
+                  Total Bus Cost = Family Paid + Original School Responsibility.
+                </p>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Family Responsibility">
+                  <Field label="Family Paid">
                     <Input type="number" step="0.01" value={draft.familyPaid ?? 0}
                       onChange={(e) => setF("familyPaid", parseFloat(e.target.value) || 0)} />
                   </Field>
-                  <Field label="School Balance (Award)">
+                  <Field label="Original School Responsibility">
                     <Input type="number" step="0.01" value={draft.schoolOwes ?? 0}
                       onChange={(e) => setF("schoolOwes", parseFloat(e.target.value) || 0)} />
                   </Field>
-                  <Field label="Amount Collected (Family)">
-                    <Input type="number" step="0.01" value={draft.amountPaid ?? 0}
-                      onChange={(e) => setF("amountPaid", parseFloat(e.target.value) || 0)} />
-                  </Field>
-                  <Field label="School Paid Amount">
+                  <Field label="School Payments Collected (cumulative)">
                     <Input type="number" step="0.01" value={draft.schoolPaidAmount ?? 0}
                       onChange={(e) => setF("schoolPaidAmount", parseFloat(e.target.value) || 0)} />
-                  </Field>
-                  <Field label="Payment Status">
-                    <Select value={draft.paymentStatus} onValueChange={(v) => setF("paymentStatus", v as PaymentStatus)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {PAYMENT_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
                   </Field>
                   <Field label="Registration Status">
                     <Select value={draft.status} onValueChange={(v) => setF("status", v as Status)}>
@@ -497,8 +501,8 @@ function FinancialAidDrawer({
                   <Button
                     onClick={() => commit({
                       familyPaid: draft.familyPaid, schoolOwes: draft.schoolOwes,
-                      amountPaid: draft.amountPaid, schoolPaidAmount: draft.schoolPaidAmount,
-                      schoolPaidReceived: draft.schoolPaidReceived, paymentStatus: draft.paymentStatus,
+                      schoolPaidAmount: draft.schoolPaidAmount,
+                      schoolPaidReceived: draft.schoolPaidReceived,
                       status: draft.status, financialAidNotes: draft.financialAidNotes,
                     }, "Updated Financial Aid details")}
                   >
@@ -507,6 +511,24 @@ function FinancialAidDrawer({
                 </div>
               </CardContent>
             </Card>
+
+            {/* Record School Payment */}
+            <RecordSchoolPayment
+              currentSchoolPaid={Number(draft.schoolPaidAmount ?? 0)}
+              onRecord={(amount, note) => {
+                const newTotal = Number(draft.schoolPaidAmount ?? 0) + amount;
+                commit(
+                  {
+                    schoolPaidAmount: newTotal,
+                    schoolPaidReceived: true,
+                  },
+                  `Recorded school payment: ${amount}`,
+                  note,
+                );
+                setDraft((d) => d ? { ...d, schoolPaidAmount: newTotal, schoolPaidReceived: true } : d);
+              }}
+            />
+
 
             {/* Danger zone */}
             <Card className="bg-card border-border">
@@ -634,5 +656,73 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</Label>
       {children}
     </div>
+  );
+}
+
+function RecordSchoolPayment({
+  currentSchoolPaid, onRecord,
+}: {
+  currentSchoolPaid: number;
+  onRecord: (amount: number, note: string) => void;
+}) {
+  const [amount, setAmount] = useState<string>("");
+  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [method, setMethod] = useState<string>("Check");
+  const [confirmation, setConfirmation] = useState<string>("");
+  const [note, setNote] = useState<string>("");
+
+  const submit = () => {
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) {
+      toast.error("Enter a positive amount");
+      return;
+    }
+    const meta = `date=${date}; method=${method}; ref=${confirmation || "—"}`;
+    onRecord(amt, [meta, note].filter(Boolean).join(" | "));
+    setAmount(""); setConfirmation(""); setNote("");
+    toast.success("School payment recorded");
+  };
+
+  return (
+    <Card className="bg-card border-border">
+      <CardContent className="p-4 space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <School className="h-4 w-4 text-primary" /> Record School Payment
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Adds to School Payments Collected (currently {formatCurrency(currentSchoolPaid)}) and Collected total.
+          Does not modify Family Paid.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Amount">
+            <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </Field>
+          <Field label="Payment Date">
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+          <Field label="Method">
+            <Select value={method} onValueChange={setMethod}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Check">Check</SelectItem>
+                <SelectItem value="ACH">ACH / Wire</SelectItem>
+                <SelectItem value="Card">Card</SelectItem>
+                <SelectItem value="Cash">Cash</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Confirmation / Check #">
+            <Input value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
+          </Field>
+        </div>
+        <Field label="Internal Note">
+          <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+        </Field>
+        <div className="flex justify-end">
+          <Button onClick={submit}>Record Payment</Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

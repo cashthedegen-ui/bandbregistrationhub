@@ -2,9 +2,14 @@ import { supabase } from "@/integrations/supabase/client";
 import type { StudentRow } from "./types";
 
 /**
- * Financial Aid helpers. Reads existing student rows where paymentType === "Financial Aid".
- * All edits go through the normal students store; this module only adds an append-only
- * history log so the FA management page has a full audit trail.
+ * Financial Aid helpers. Source of truth = existing student fields on StudentRow:
+ *   - familyPaid          → Family Paid (family's contribution to the bus cost)
+ *   - schoolOwes          → Original School Responsibility (portion owed by school)
+ *   - schoolPaidAmount    → cumulative school payments collected
+ *   - schoolPaidReceived  → flag that at least one school payment landed
+ *
+ * All Financial Aid surfaces (KPIs, school summary, student table, drawer, exports)
+ * use `totalsForStudent` so numbers stay synchronized across views.
  */
 
 export interface FinancialAidHistoryEntry {
@@ -25,23 +30,51 @@ export function isFinancialAid(s: StudentRow): boolean {
   return s.paymentType === "Financial Aid";
 }
 
+export type DerivedPaymentStatus = "Paid" | "Partially Paid" | "Unpaid";
+
 export interface FinancialAidTotals {
-  awardAmount: number;      // Total award (family portion + school portion)
+  totalBusCost: number;       // familyPaid + original school responsibility
+  familyPaid: number;         // from StudentRow.familyPaid (same field as Students page)
+  schoolPaid: number;         // cumulative school payments collected
+  schoolBalance: number;      // MAX(totalBusCost - familyPaid - schoolPaid, 0)
+  collected: number;          // familyPaid + schoolPaid
+  outstanding: number;        // MAX(totalBusCost - collected, 0)
+  paymentStatus: DerivedPaymentStatus;
+
+  // Legacy aliases retained so older callers keep compiling.
+  awardAmount: number;
   familyResponsibility: number;
-  schoolBalance: number;    // How much school still owes
-  amountCollected: number;  // Family paid + school paid
-  outstanding: number;      // Award - collected
+  amountCollected: number;
 }
 
 export function totalsForStudent(s: StudentRow): FinancialAidTotals {
-  const familyResponsibility = Number(s.familyPaid ?? 0);
-  const schoolOwes = Number(s.schoolOwes ?? 0);
-  const awardAmount = familyResponsibility + schoolOwes;
-  const schoolPaid = s.schoolPaidReceived ? Number(s.schoolPaidAmount ?? schoolOwes) : 0;
-  const amountCollected = Number(s.amountPaid ?? 0) + schoolPaid;
-  const schoolBalance = Math.max(0, schoolOwes - schoolPaid);
-  const outstanding = Math.max(0, awardAmount - amountCollected);
-  return { awardAmount, familyResponsibility, schoolBalance, amountCollected, outstanding };
+  const familyPaid = Number(s.familyPaid ?? 0);
+  const schoolOwesOriginal = Number(s.schoolOwes ?? 0);
+  const totalBusCost = familyPaid + schoolOwesOriginal;
+  // schoolPaidAmount is treated as cumulative collected from the school.
+  const schoolPaid = Number(s.schoolPaidAmount ?? 0);
+  const collected = familyPaid + schoolPaid;
+  const schoolBalance = Math.max(0, totalBusCost - familyPaid - schoolPaid);
+  const outstanding = Math.max(0, totalBusCost - collected);
+
+  let paymentStatus: DerivedPaymentStatus;
+  if (totalBusCost > 0 && collected >= totalBusCost) paymentStatus = "Paid";
+  else if (collected > 0) paymentStatus = "Partially Paid";
+  else paymentStatus = "Unpaid";
+
+  return {
+    totalBusCost,
+    familyPaid,
+    schoolPaid,
+    schoolBalance,
+    collected,
+    outstanding,
+    paymentStatus,
+    // legacy aliases
+    awardAmount: totalBusCost,
+    familyResponsibility: familyPaid,
+    amountCollected: collected,
+  };
 }
 
 export async function logFinancialAidHistory(input: {
