@@ -1256,12 +1256,12 @@ function ExpandedRow({
         {r.checkNumber && <MiniField label="Check #" value={r.checkNumber} />}
       </div>
       {r.notes && (
-        <div className="md:col-span-4">
+        <div style={{ gridColumn: "1 / -1" }}>
           <SectionTitle>Internal Notes</SectionTitle>
-          <div className="rounded-md border border-border bg-background/60 p-3 text-xs whitespace-pre-wrap">{r.notes}</div>
+          <div className="rounded-md border border-border bg-background/60 p-3 text-xs whitespace-pre-wrap break-words">{r.notes}</div>
         </div>
       )}
-      <div className="md:col-span-4 flex flex-wrap gap-2 pt-1">
+      <div className="flex flex-wrap gap-2 pt-1" style={{ gridColumn: "1 / -1" }}>
         <Button size="sm" variant="secondary" onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit Student</Button>
         <Button size="sm" variant="secondary" onClick={onPayHistory}><Wallet className="h-3.5 w-3.5 mr-1" /> Payment History</Button>
         <Button size="sm" variant="secondary" onClick={onReceipt}><FileText className="h-3.5 w-3.5 mr-1" /> Generate Receipt</Button>
