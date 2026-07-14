@@ -14,6 +14,7 @@ import { stopKey } from "@/lib/storage";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import { fetchAllPlans, fetchAllPaymentRecords, familyKeyOf, type PaymentPlan, type PaymentRecord } from "@/lib/payment-plans";
 import { fetchAuditLog, type AuditEntry } from "@/lib/audit-log";
+import { computeFinancialSummary } from "@/lib/financial-summary";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "Dashboard — B & B Transit" }] }),
