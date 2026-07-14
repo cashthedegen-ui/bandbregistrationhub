@@ -151,7 +151,23 @@ function PaymentsPage() {
             </SelectContent>
           </Select>
         </div>
+        {(dueWeekOnly || sortOutstanding) && (
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground">Active filters:</span>
+            {dueWeekOnly && (
+              <button onClick={() => setDueWeekOnly(false)} className="text-[11px] rounded-full border border-sky-500/40 bg-sky-500/10 text-sky-300 px-2 py-0.5 hover:bg-sky-500/20">
+                Due This Week ✕
+              </button>
+            )}
+            {sortOutstanding && (
+              <button onClick={() => setSortOutstanding(false)} className="text-[11px] rounded-full border border-yellow-500/40 bg-yellow-500/10 text-yellow-300 px-2 py-0.5 hover:bg-yellow-500/20">
+                Sorted by Outstanding ✕
+              </button>
+            )}
+          </div>
+        )}
       </Card>
+
 
       {loading ? (
         <Card className="bg-card border-border p-10 text-center text-sm text-muted-foreground">Loading payment plans…</Card>
