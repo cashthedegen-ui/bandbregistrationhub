@@ -1222,7 +1222,10 @@ function ExpandedRow({
 }) {
   const balance = Math.max(0, (r.rtAmount ?? 0) + (r.owAmount ?? 0) - (r.amountPaid ?? 0));
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+    <div
+      className="grid gap-4 text-sm"
+      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))" }}
+    >
       <div>
         <SectionTitle>Student</SectionTitle>
         <MiniField label="Name" value={r.studentName} />
