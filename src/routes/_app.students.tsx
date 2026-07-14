@@ -71,10 +71,14 @@ function StatusBadge({ status }: { status: Status }) {
 
 function StudentsPage() {
   const { students, updateStudent, deleteStudent, dupGroups, settings } = useStore();
+  const search = Route.useSearch();
   const [q, setQ] = useState("");
   const [school, setSchool] = useState<string>("all");
-  const [status, setStatus] = useState<string>("all");
+  const [status, setStatus] = useState<string>(search.status ?? "all");
   const [grade, setGrade] = useState<string>("all");
+  const [alertsOnly, setAlertsOnly] = useState<boolean>(!!search.alerts);
+  const [duplicatesOnly, setDuplicatesOnly] = useState<boolean>(!!search.duplicates);
+  const [paymentFilter, setPaymentFilter] = useState<string>(search.payment ?? "all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openRow, setOpenRow] = useState<StudentRow | null>(null);
   const [dupBanner, setDupBanner] = useState(true);
@@ -98,10 +102,14 @@ function StudentsPage() {
       if (school !== "all" && s.schoolName !== school) return false;
       if (status !== "all" && s.status !== status) return false;
       if (grade !== "all" && s.grade !== grade) return false;
+      if (alertsOnly && !s.alertFlag) return false;
+      if (duplicatesOnly && !s.duplicateFlag) return false;
+      if (paymentFilter !== "all" && s.paymentStatus !== paymentFilter) return false;
       if (qq && !(`${s.studentName} ${s.parentName} ${s.parentEmail} ${s.stopAddress}`.toLowerCase().includes(qq))) return false;
       return true;
     });
-  }, [students, q, school, status, grade]);
+  }, [students, q, school, status, grade, alertsOnly, duplicatesOnly, paymentFilter]);
+
 
   const allChecked = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
   const toggleAll = () => {
