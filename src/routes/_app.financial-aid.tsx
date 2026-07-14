@@ -184,23 +184,25 @@ function FinancialAidPage() {
                 <tr>
                   <th className="px-3 py-2.5 text-left">School</th>
                   <th className="px-3 py-2.5 text-right">Students</th>
-                  <th className="px-3 py-2.5 text-right">Aid Awarded</th>
-                  <th className="px-3 py-2.5 text-right">Collected</th>
-                  <th className="px-3 py-2.5 text-right">Outstanding</th>
-                  <th className="px-3 py-2.5 text-right">School Owes</th>
+                  <th className="px-3 py-2.5 text-right">Total Bus Cost</th>
+                  <th className="px-3 py-2.5 text-right">Family Paid</th>
+                  <th className="px-3 py-2.5 text-right">School Payments</th>
+                  <th className="px-3 py-2.5 text-right">Total Collected</th>
+                  <th className="px-3 py-2.5 text-right">Outstanding Bal.</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {schoolSummary.length === 0 ? (
-                  <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No financial aid students yet.</td></tr>
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No financial aid students yet.</td></tr>
                 ) : schoolSummary.map((r) => (
                   <tr key={r.school} className="hover:bg-muted/20">
                     <td className="px-3 py-2.5 font-medium">{r.school}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{r.students}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(r.awarded)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(r.totalBusCost)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(r.familyPaid)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(r.schoolPaid)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-emerald-300">{formatCurrency(r.collected)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-yellow-300">{formatCurrency(r.outstanding)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-red-300">{formatCurrency(r.owedBySchool)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-red-300">{formatCurrency(r.outstanding)}</td>
                   </tr>
                 ))}
               </tbody>
