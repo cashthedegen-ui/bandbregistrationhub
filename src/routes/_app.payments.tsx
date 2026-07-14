@@ -16,8 +16,13 @@ import type { StudentRow } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/payments")({
   head: () => ({ meta: [{ title: "Payment Plans — B & B Transit" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    filter: typeof s.filter === "string" ? s.filter : undefined,
+    sort: typeof s.sort === "string" ? s.sort : undefined,
+  }),
   component: PaymentsPage,
 });
+
 
 const BADGE: Record<PlanStatus, string> = {
   Current: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
