@@ -121,12 +121,13 @@ function FinancialAidPage() {
         Parent: s.parentName,
         School: s.schoolName,
         Grade: s.grade,
-        "Award Amount": t.awardAmount,
-        "Family Responsibility": t.familyResponsibility,
+        "Total Bus Cost": t.totalBusCost,
+        "Family Paid": t.familyPaid,
+        "School Payments": t.schoolPaid,
         "School Balance": t.schoolBalance,
-        "Amount Collected": t.amountCollected,
+        "Collected": t.collected,
         "Outstanding": t.outstanding,
-        "Payment Status": s.paymentStatus,
+        "Payment Status": t.paymentStatus,
         "Registration Status": s.status,
       };
     });
