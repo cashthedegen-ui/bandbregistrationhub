@@ -38,11 +38,18 @@ const INACTIVE_STATUSES: PlanStatus[] = ["Cancelled", "Removed by Admin"];
 
 function PaymentsPage() {
   const { students } = useStore();
+  const search = Route.useSearch();
   const [plans, setPlans] = useState<PaymentPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState<string>("all");
+  const [status, setStatus] = useState<string>(
+    search.filter === "overdue" ? "Overdue" :
+    search.filter === "active" ? "active" :
+    "all"
+  );
   const [school, setSchool] = useState<string>("all");
+  const [dueWeekOnly, setDueWeekOnly] = useState<boolean>(search.filter === "due-week");
+  const [sortOutstanding, setSortOutstanding] = useState<boolean>(search.sort === "outstanding" || search.filter === "outstanding");
   const [drawerAnchor, setDrawerAnchor] = useState<StudentRow | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -55,15 +62,27 @@ function PaymentsPage() {
 
   const filtered = useMemo(() => {
     const qq = q.toLowerCase();
-    return plans.filter((p) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const weekOut = new Date(today); weekOut.setDate(weekOut.getDate() + 7);
+    let out = plans.filter((p) => {
       if (status === "active" && !ACTIVE_STATUSES.includes(p.status)) return false;
       else if (status === "inactive" && !INACTIVE_STATUSES.includes(p.status)) return false;
       else if (status !== "all" && status !== "active" && status !== "inactive" && p.status !== status) return false;
       if (school !== "all" && p.school_name !== school) return false;
+      if (dueWeekOnly) {
+        if (!p.next_due_date) return false;
+        const d = new Date(p.next_due_date + "T00:00:00");
+        if (d < today || d > weekOut) return false;
+      }
       if (qq && !`${p.parent_name} ${p.parent_email} ${p.student_names} ${p.school_name}`.toLowerCase().includes(qq)) return false;
       return true;
     });
-  }, [plans, q, status, school]);
+    if (sortOutstanding) {
+      out = [...out].sort((a, b) => Number(b.remaining_balance) - Number(a.remaining_balance));
+    }
+    return out;
+  }, [plans, q, status, school, dueWeekOnly, sortOutstanding]);
+
 
   const kpis = useMemo(() => {
     const live = plans.filter((p) => !INACTIVE_STATUSES.includes(p.status));
