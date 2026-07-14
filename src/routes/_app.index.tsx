@@ -14,6 +14,7 @@ import { stopKey } from "@/lib/storage";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import { fetchAllPlans, fetchAllPaymentRecords, familyKeyOf, type PaymentPlan, type PaymentRecord } from "@/lib/payment-plans";
 import { fetchAuditLog, type AuditEntry } from "@/lib/audit-log";
+import { computeFinancialSummary } from "@/lib/financial-summary";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "Dashboard — B & B Transit" }] }),
@@ -123,69 +124,9 @@ function Dashboard() {
     return { collected, outstanding, pending, overdue };
   }, [records, plans, students]);
 
-  const revenueSnapshot = useMemo(() => {
-    // ------- Today / Week: only timestamped payment_records qualify --------
-    const now = new Date();
-    const startToday = new Date(now); startToday.setHours(0, 0, 0, 0);
-    const endToday = new Date(startToday); endToday.setDate(endToday.getDate() + 1);
-    const startWeek = new Date(startToday);
-    startWeek.setDate(startWeek.getDate() - startWeek.getDay()); // Sunday 00:00 local
-    const endWeek = new Date(startWeek); endWeek.setDate(endWeek.getDate() + 7);
+  // Shared with the Analytics page — single source of truth for revenue.
+  const financials = useMemo(() => computeFinancialSummary(students), [students]);
 
-    let today = 0, week = 0;
-    for (const r of records) {
-      if (r.analytics_excluded) continue; // safety; fetchAllPaymentRecords already filters
-      const amt = Number(r.amount || 0);
-      // payment_date may be "YYYY-MM-DD" (date-only). Parse as local midnight
-      // so today's payments aren't shifted into UTC-yesterday.
-      const raw = String(r.payment_date || "");
-      const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(raw + "T00:00:00") : new Date(raw);
-      if (isNaN(d.getTime())) continue;
-      if (d >= startToday && d < endToday) today += amt;
-      if (d >= startWeek && d < endWeek) week += amt;
-    }
-
-    // ------- Season Total: every dollar actually collected in the system ---
-    // Sources are disjoint by design:
-    //   1. Live payment plans -> plan.amount_paid (installments already paid).
-    //      Cancelled / Removed-by-Admin plans are excluded from analytics.
-    //   2. Non-plan families with a Self Pay / Paid-in-Full record -> student.amountPaid.
-    //   3. Financial Aid students -> familyPaid + schoolPaidAmount (money received).
-    // Plan families' student.amountPaid is skipped here to prevent double-count
-    // with plan.amount_paid; Financial Aid families are tracked via familyPaid.
-    const planFamilyKeys = new Set(
-      plans
-        .filter((p) => p.status !== "Cancelled" && p.status !== "Removed by Admin")
-        .map((p) => p.family_key),
-    );
-
-    let planCollected = 0;
-    for (const p of plans) {
-      if (p.status === "Cancelled" || p.status === "Removed by Admin") continue;
-      planCollected += Number(p.amount_paid || 0);
-    }
-
-    let selfPayCollected = 0;
-    let financialAidCollected = 0;
-    const seenFamilyPaid = new Set<string>(); // dedupe familyPaid per family (siblings share)
-    for (const s of students) {
-      const fk = familyKeyOf(s);
-      if (s.paymentType === "Financial Aid") {
-        // familyPaid is a family-level amount; schoolPaidAmount is per-student
-        if (!seenFamilyPaid.has(fk)) {
-          financialAidCollected += Number(s.familyPaid || 0);
-          seenFamilyPaid.add(fk);
-        }
-        financialAidCollected += Number(s.schoolPaidAmount || 0);
-      } else if (s.paymentType !== "Unpaid" && !planFamilyKeys.has(fk)) {
-        // Paid in Full / Self Pay, not on an active plan
-        selfPayCollected += Number(s.amountPaid || 0);
-      }
-    }
-
-    const season = planCollected + selfPayCollected + financialAidCollected;
-    return { today, week, season };
-  }, [records, plans, students]);
 
 
   const stopCapacityWidget = useMemo(() => {
@@ -361,9 +302,29 @@ function Dashboard() {
           <Link to="/analytics" className="ml-auto text-xs text-primary hover:underline">Analytics →</Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Kpi label="Today's Revenue" value={formatCurrency(revenueSnapshot.today)} icon={DollarSign} tone="emerald" link={{ to: "/analytics", search: { range: "today" } }} />
-          <Kpi label="This Week" value={formatCurrency(revenueSnapshot.week)} icon={TrendingUp} tone="emerald" link={{ to: "/analytics", search: { range: "week" } }} />
-          <Kpi label="Season Total" value={formatCurrency(revenueSnapshot.season)} icon={Wallet} tone="emerald" link={{ to: "/analytics", search: { range: "season" } }} />
+          <Kpi
+            label="Cash Collected"
+            value={formatCurrency(financials.cashCollected)}
+            icon={DollarSign}
+            tone="emerald"
+            hint="Money already received"
+            link={{ to: "/analytics", search: { focus: "collected" } }}
+          />
+          <Kpi
+            label="Outstanding Receivables"
+            value={formatCurrency(financials.outstandingReceivables)}
+            icon={Wallet}
+            tone="yellow"
+            hint="Money still owed"
+            link={{ to: "/analytics", search: { focus: "receivables" } }}
+          />
+          <Kpi
+            label="Projected Season Revenue"
+            value={formatCurrency(financials.projectedSeasonRevenue)}
+            icon={TrendingUp}
+            hint="Collected plus outstanding"
+            link={{ to: "/analytics", search: { focus: "overview" } }}
+          />
         </div>
       </div>
 

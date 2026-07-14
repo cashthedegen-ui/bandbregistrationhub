@@ -4,9 +4,11 @@ import { useStore } from "@/lib/store";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { computeFinancialSummary } from "@/lib/financial-summary";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+
 
 export const Route = createFileRoute("/_app/analytics")({
   head: () => ({ meta: [{ title: "Analytics — B & B Transit" }] }),
@@ -48,41 +50,11 @@ function Analytics() {
   const alertRows = students.filter((s) => s.alertFlag);
   const reviewedPct = students.length ? Math.round((students.filter((s) => s.status !== "New").length / students.length) * 100) : 0;
 
-  const paymentBySchool = useMemo(() => {
-    const m = new Map<string, {
-      total: number;
-      selfPay: number; selfPayCollected: number;
-      aid: number; aidFamilyPaid: number; aidSchoolOwed: number;
-      unpaid: number;
-    }>();
-    for (const s of students) {
-      const k = s.schoolName || "Unassigned";
-      const cur = m.get(k) || { total: 0, selfPay: 0, selfPayCollected: 0, aid: 0, aidFamilyPaid: 0, aidSchoolOwed: 0, unpaid: 0 };
-      cur.total += 1;
-      const pt = s.paymentType || (s.paid ? "Self Pay" : "Unpaid");
-      if (pt === "Self Pay") {
-        cur.selfPay += 1;
-        cur.selfPayCollected += Number(s.amountPaid) || 0;
-      } else if (pt === "Financial Aid") {
-        cur.aid += 1;
-        cur.aidFamilyPaid += Number(s.familyPaid) || 0;
-        cur.aidSchoolOwed += Number(s.schoolOwes) || 0;
-      } else {
-        cur.unpaid += 1;
-      }
-      m.set(k, cur);
-    }
-    return Array.from(m, ([school, v]) => ({ school, ...v })).sort((a, b) => b.total - a.total);
-  }, [students]);
-  const grandSelfPay = paymentBySchool.reduce((a, b) => a + b.selfPayCollected, 0);
-  const grandFamilyAid = paymentBySchool.reduce((a, b) => a + b.aidFamilyPaid, 0);
-  const grandCashIn = grandSelfPay + grandFamilyAid;
-  const grandSchoolOwed = paymentBySchool.reduce((a, b) => a + b.aidSchoolOwed, 0);
-  const grandTotalRevenue = grandCashIn + grandSchoolOwed;
-  const totals = paymentBySchool.reduce(
-    (a, b) => ({ selfPay: a.selfPay + b.selfPay, aid: a.aid + b.aid, unpaid: a.unpaid + b.unpaid }),
-    { selfPay: 0, aid: 0, unpaid: 0 },
-  );
+  // Shared financial summary — same source of truth used by the Dashboard.
+  const summary = useMemo(() => computeFinancialSummary(students), [students]);
+  const paymentBySchool = summary.bySchool;
+  const { grandCashIn, grandSchoolOwed, grandTotalRevenue, totals } = summary;
+
 
   return (
     <>
