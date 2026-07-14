@@ -33,8 +33,15 @@ import { formatNumber } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/students")({
   head: () => ({ meta: [{ title: "Students — B & B Transit" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    status: typeof s.status === "string" ? s.status : undefined,
+    alerts: s.alerts === "1" || s.alerts === 1 || s.alerts === true ? true : undefined,
+    duplicates: s.duplicates === "1" || s.duplicates === 1 || s.duplicates === true ? true : undefined,
+    payment: typeof s.payment === "string" ? s.payment : undefined,
+  }),
   component: StudentsPage,
 });
+
 
 const STATUSES: Status[] = ["New", "Reviewed", "Confirmed", "Waitlisted"];
 const PAYMENTS: PaymentStatus[] = ["Pending", "Received", "Overdue"];
@@ -64,10 +71,14 @@ function StatusBadge({ status }: { status: Status }) {
 
 function StudentsPage() {
   const { students, updateStudent, deleteStudent, dupGroups, settings } = useStore();
+  const search = Route.useSearch();
   const [q, setQ] = useState("");
   const [school, setSchool] = useState<string>("all");
-  const [status, setStatus] = useState<string>("all");
+  const [status, setStatus] = useState<string>(search.status ?? "all");
   const [grade, setGrade] = useState<string>("all");
+  const [alertsOnly, setAlertsOnly] = useState<boolean>(!!search.alerts);
+  const [duplicatesOnly, setDuplicatesOnly] = useState<boolean>(!!search.duplicates);
+  const [paymentFilter, setPaymentFilter] = useState<string>(search.payment ?? "all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openRow, setOpenRow] = useState<StudentRow | null>(null);
   const [dupBanner, setDupBanner] = useState(true);
@@ -91,10 +102,14 @@ function StudentsPage() {
       if (school !== "all" && s.schoolName !== school) return false;
       if (status !== "all" && s.status !== status) return false;
       if (grade !== "all" && s.grade !== grade) return false;
+      if (alertsOnly && !s.alertFlag) return false;
+      if (duplicatesOnly && !s.duplicateFlag) return false;
+      if (paymentFilter !== "all" && s.paymentStatus !== paymentFilter) return false;
       if (qq && !(`${s.studentName} ${s.parentName} ${s.parentEmail} ${s.stopAddress}`.toLowerCase().includes(qq))) return false;
       return true;
     });
-  }, [students, q, school, status, grade]);
+  }, [students, q, school, status, grade, alertsOnly, duplicatesOnly, paymentFilter]);
+
 
   const allChecked = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
   const toggleAll = () => {
@@ -195,6 +210,27 @@ function StudentsPage() {
             </SelectContent>
           </Select>
         </div>
+
+        {(alertsOnly || duplicatesOnly || paymentFilter !== "all") && (
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground">Active filters:</span>
+            {alertsOnly && (
+              <button onClick={() => setAlertsOnly(false)} className="text-[11px] rounded-full border border-red-500/40 bg-red-500/10 text-red-300 px-2 py-0.5 hover:bg-red-500/20">
+                Alert flags <X className="inline h-3 w-3 ml-1" />
+              </button>
+            )}
+            {duplicatesOnly && (
+              <button onClick={() => setDuplicatesOnly(false)} className="text-[11px] rounded-full border border-primary/40 bg-primary/10 text-primary px-2 py-0.5 hover:bg-primary/20">
+                Duplicates <X className="inline h-3 w-3 ml-1" />
+              </button>
+            )}
+            {paymentFilter !== "all" && (
+              <button onClick={() => setPaymentFilter("all")} className="text-[11px] rounded-full border border-yellow-500/40 bg-yellow-500/10 text-yellow-300 px-2 py-0.5 hover:bg-yellow-500/20">
+                Payment: {paymentFilter} <X className="inline h-3 w-3 ml-1" />
+              </button>
+            )}
+          </div>
+        )}
 
         {selected.size > 0 && (
           <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">

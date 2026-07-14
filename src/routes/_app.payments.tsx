@@ -16,8 +16,13 @@ import type { StudentRow } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/payments")({
   head: () => ({ meta: [{ title: "Payment Plans — B & B Transit" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    filter: typeof s.filter === "string" ? s.filter : undefined,
+    sort: typeof s.sort === "string" ? s.sort : undefined,
+  }),
   component: PaymentsPage,
 });
+
 
 const BADGE: Record<PlanStatus, string> = {
   Current: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
@@ -33,11 +38,18 @@ const INACTIVE_STATUSES: PlanStatus[] = ["Cancelled", "Removed by Admin"];
 
 function PaymentsPage() {
   const { students } = useStore();
+  const search = Route.useSearch();
   const [plans, setPlans] = useState<PaymentPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState<string>("all");
+  const [status, setStatus] = useState<string>(
+    search.filter === "overdue" ? "Overdue" :
+    search.filter === "active" ? "active" :
+    "all"
+  );
   const [school, setSchool] = useState<string>("all");
+  const [dueWeekOnly, setDueWeekOnly] = useState<boolean>(search.filter === "due-week");
+  const [sortOutstanding, setSortOutstanding] = useState<boolean>(search.sort === "outstanding" || search.filter === "outstanding");
   const [drawerAnchor, setDrawerAnchor] = useState<StudentRow | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -50,15 +62,27 @@ function PaymentsPage() {
 
   const filtered = useMemo(() => {
     const qq = q.toLowerCase();
-    return plans.filter((p) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const weekOut = new Date(today); weekOut.setDate(weekOut.getDate() + 7);
+    let out = plans.filter((p) => {
       if (status === "active" && !ACTIVE_STATUSES.includes(p.status)) return false;
       else if (status === "inactive" && !INACTIVE_STATUSES.includes(p.status)) return false;
       else if (status !== "all" && status !== "active" && status !== "inactive" && p.status !== status) return false;
       if (school !== "all" && p.school_name !== school) return false;
+      if (dueWeekOnly) {
+        if (!p.next_due_date) return false;
+        const d = new Date(p.next_due_date + "T00:00:00");
+        if (d < today || d > weekOut) return false;
+      }
       if (qq && !`${p.parent_name} ${p.parent_email} ${p.student_names} ${p.school_name}`.toLowerCase().includes(qq)) return false;
       return true;
     });
-  }, [plans, q, status, school]);
+    if (sortOutstanding) {
+      out = [...out].sort((a, b) => Number(b.remaining_balance) - Number(a.remaining_balance));
+    }
+    return out;
+  }, [plans, q, status, school, dueWeekOnly, sortOutstanding]);
+
 
   const kpis = useMemo(() => {
     const live = plans.filter((p) => !INACTIVE_STATUSES.includes(p.status));
@@ -127,7 +151,23 @@ function PaymentsPage() {
             </SelectContent>
           </Select>
         </div>
+        {(dueWeekOnly || sortOutstanding) && (
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground">Active filters:</span>
+            {dueWeekOnly && (
+              <button onClick={() => setDueWeekOnly(false)} className="text-[11px] rounded-full border border-sky-500/40 bg-sky-500/10 text-sky-300 px-2 py-0.5 hover:bg-sky-500/20">
+                Due This Week ✕
+              </button>
+            )}
+            {sortOutstanding && (
+              <button onClick={() => setSortOutstanding(false)} className="text-[11px] rounded-full border border-yellow-500/40 bg-yellow-500/10 text-yellow-300 px-2 py-0.5 hover:bg-yellow-500/20">
+                Sorted by Outstanding ✕
+              </button>
+            )}
+          </div>
+        )}
       </Card>
+
 
       {loading ? (
         <Card className="bg-card border-border p-10 text-center text-sm text-muted-foreground">Loading payment plans…</Card>
