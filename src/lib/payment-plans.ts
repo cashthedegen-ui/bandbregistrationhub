@@ -196,6 +196,14 @@ export async function fetchRecords(plan_id: string): Promise<PaymentRecord[]> {
   return (data as any) ?? [];
 }
 
+/** All non-excluded payment records across every plan (used for revenue snapshots). */
+export async function fetchAllPaymentRecords(): Promise<PaymentRecord[]> {
+  const { data, error } = await supabase.from("payment_records").select("*").order("payment_date", { ascending: false });
+  if (error) throw error;
+  return ((data as any) ?? []).filter((r: PaymentRecord) => !r.analytics_excluded);
+}
+
+
 export interface CreatePlanInput {
   family: { family_key: string; parent_name: string; parent_email: string; parent_phone: string; school_name: string; student_names: string };
   total_amount: number;
