@@ -211,6 +211,27 @@ function StudentsPage() {
           </Select>
         </div>
 
+        {(alertsOnly || duplicatesOnly || paymentFilter !== "all") && (
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground">Active filters:</span>
+            {alertsOnly && (
+              <button onClick={() => setAlertsOnly(false)} className="text-[11px] rounded-full border border-red-500/40 bg-red-500/10 text-red-300 px-2 py-0.5 hover:bg-red-500/20">
+                Alert flags <X className="inline h-3 w-3 ml-1" />
+              </button>
+            )}
+            {duplicatesOnly && (
+              <button onClick={() => setDuplicatesOnly(false)} className="text-[11px] rounded-full border border-primary/40 bg-primary/10 text-primary px-2 py-0.5 hover:bg-primary/20">
+                Duplicates <X className="inline h-3 w-3 ml-1" />
+              </button>
+            )}
+            {paymentFilter !== "all" && (
+              <button onClick={() => setPaymentFilter("all")} className="text-[11px] rounded-full border border-yellow-500/40 bg-yellow-500/10 text-yellow-300 px-2 py-0.5 hover:bg-yellow-500/20">
+                Payment: {paymentFilter} <X className="inline h-3 w-3 ml-1" />
+              </button>
+            )}
+          </div>
+        )}
+
         {selected.size > 0 && (
           <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
             <span className="text-xs text-muted-foreground">{selected.size} selected</span>
