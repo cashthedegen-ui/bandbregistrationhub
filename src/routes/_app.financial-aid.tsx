@@ -446,40 +446,35 @@ function FinancialAidDrawer({
 
             {/* Totals */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <MiniStat label="Award" value={formatCurrency(t.awardAmount)} />
-              <MiniStat label="Collected" value={formatCurrency(t.amountCollected)} tone="emerald" />
+              <MiniStat label="Total Bus Cost" value={formatCurrency(t.totalBusCost)} />
+              <MiniStat label="Family Paid" value={formatCurrency(t.familyPaid)} />
               <MiniStat label="School Balance" value={formatCurrency(t.schoolBalance)} tone="red" />
-              <MiniStat label="Outstanding" value={formatCurrency(t.outstanding)} tone="yellow" />
+              <MiniStat label="Collected" value={formatCurrency(t.collected)} tone="emerald" />
+            </div>
+            <div className="text-xs text-muted-foreground -mt-2">
+              Payment Status (derived): <span className="text-foreground font-medium">{t.paymentStatus}</span>
             </div>
 
             {/* Edit fields */}
             <Card className="bg-card border-border">
               <CardContent className="p-4 space-y-3">
                 <h3 className="text-sm font-semibold flex items-center gap-2"><DollarSign className="h-4 w-4 text-primary" /> Financial Aid Details</h3>
+                <p className="text-xs text-muted-foreground">
+                  Family Paid uses the same field as the Students page — edits sync both ways.
+                  Total Bus Cost = Family Paid + Original School Responsibility.
+                </p>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Family Responsibility">
+                  <Field label="Family Paid">
                     <Input type="number" step="0.01" value={draft.familyPaid ?? 0}
                       onChange={(e) => setF("familyPaid", parseFloat(e.target.value) || 0)} />
                   </Field>
-                  <Field label="School Balance (Award)">
+                  <Field label="Original School Responsibility">
                     <Input type="number" step="0.01" value={draft.schoolOwes ?? 0}
                       onChange={(e) => setF("schoolOwes", parseFloat(e.target.value) || 0)} />
                   </Field>
-                  <Field label="Amount Collected (Family)">
-                    <Input type="number" step="0.01" value={draft.amountPaid ?? 0}
-                      onChange={(e) => setF("amountPaid", parseFloat(e.target.value) || 0)} />
-                  </Field>
-                  <Field label="School Paid Amount">
+                  <Field label="School Payments Collected (cumulative)">
                     <Input type="number" step="0.01" value={draft.schoolPaidAmount ?? 0}
                       onChange={(e) => setF("schoolPaidAmount", parseFloat(e.target.value) || 0)} />
-                  </Field>
-                  <Field label="Payment Status">
-                    <Select value={draft.paymentStatus} onValueChange={(v) => setF("paymentStatus", v as PaymentStatus)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {PAYMENT_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
                   </Field>
                   <Field label="Registration Status">
                     <Select value={draft.status} onValueChange={(v) => setF("status", v as Status)}>
@@ -506,8 +501,8 @@ function FinancialAidDrawer({
                   <Button
                     onClick={() => commit({
                       familyPaid: draft.familyPaid, schoolOwes: draft.schoolOwes,
-                      amountPaid: draft.amountPaid, schoolPaidAmount: draft.schoolPaidAmount,
-                      schoolPaidReceived: draft.schoolPaidReceived, paymentStatus: draft.paymentStatus,
+                      schoolPaidAmount: draft.schoolPaidAmount,
+                      schoolPaidReceived: draft.schoolPaidReceived,
                       status: draft.status, financialAidNotes: draft.financialAidNotes,
                     }, "Updated Financial Aid details")}
                   >
@@ -516,6 +511,24 @@ function FinancialAidDrawer({
                 </div>
               </CardContent>
             </Card>
+
+            {/* Record School Payment */}
+            <RecordSchoolPayment
+              currentSchoolPaid={Number(draft.schoolPaidAmount ?? 0)}
+              onRecord={(amount, note) => {
+                const newTotal = Number(draft.schoolPaidAmount ?? 0) + amount;
+                commit(
+                  {
+                    schoolPaidAmount: newTotal,
+                    schoolPaidReceived: true,
+                  },
+                  `Recorded school payment: ${amount}`,
+                  note,
+                );
+                setDraft((d) => d ? { ...d, schoolPaidAmount: newTotal, schoolPaidReceived: true } : d);
+              }}
+            />
+
 
             {/* Danger zone */}
             <Card className="bg-card border-border">
