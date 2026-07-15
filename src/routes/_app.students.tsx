@@ -116,6 +116,8 @@ function StudentsPage() {
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
   const [editingPayStatusId, setEditingPayStatusId] = useState<string | null>(null);
+  const [commsRow, setCommsRow] = useState<StudentRow | null>(null);
+  const [commsRefresh, setCommsRefresh] = useState(0);
   const [repairResult, setRepairResult] = useState<null | {
     scanned: number;
     repaired: number;
