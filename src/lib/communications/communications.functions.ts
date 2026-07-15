@@ -135,7 +135,8 @@ export const sendCommunication = createServerFn({ method: "POST" })
       registration_date: student.submissionDate
         ? new Date(student.submissionDate).toLocaleDateString()
         : "",
-      school_year: "2026 – 2027",
+      payment_date: new Date().toLocaleDateString("en-US"),
+      school_year: "2026–2027",
       due_date: "",
       payment_link: "",
     };
@@ -334,6 +335,7 @@ export const listStudentCommunicationLogs = createServerFn({ method: "GET" })
         "id, template_id, template_name, student_id, student_name, parent_name, recipient_email, communication_type, school_or_program, rendered_subject, rendered_body, status, provider_message_id, failure_reason, initiated_by_email, initiated_at, delivered_at",
       )
       .eq("student_id", data.studentId)
+      .eq("is_test", false)
       .order("initiated_at", { ascending: false });
     if (error) throw new Error(error.message);
     return (rows ?? []) as CommunicationLogRow[];
@@ -373,6 +375,7 @@ export const listRecentCommunicationLogs = createServerFn({ method: "GET" })
       .select(
         "id, template_id, template_name, student_id, student_name, parent_name, recipient_email, communication_type, school_or_program, rendered_subject, rendered_body, status, provider_message_id, failure_reason, initiated_by_email, initiated_at, delivered_at",
       )
+      .eq("is_test", false)
       .order("initiated_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);

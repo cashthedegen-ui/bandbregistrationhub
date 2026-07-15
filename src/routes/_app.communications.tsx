@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "@/components/page-header";
@@ -65,20 +65,25 @@ function CommunicationsPage() {
         ) : (
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {templates.map((t) => (
-              <div key={t.id} className="rounded border border-border bg-background/50 p-3 text-xs">
+              <Link
+                key={t.id}
+                to="/communications/templates/$templateId"
+                params={{ templateId: t.id }}
+                className="rounded border border-border bg-background/50 hover:border-primary/60 hover:bg-background transition-colors p-3 text-xs block"
+              >
                 <div className="font-medium text-sm">{t.template_name}</div>
                 <div className="text-muted-foreground mt-1">
                   {t.communication_type} · {t.school_or_program}
                   {t.form_id ? ` · form ${t.form_id}` : ""}
                 </div>
-              </div>
+                <div className="text-[10px] text-primary mt-2">Open template →</div>
+              </Link>
             ))}
           </div>
         )}
         <div className="mt-3 text-[11px] text-muted-foreground">
-          To trigger a confirmation, open a matching student on the Students page and choose
-          <span className="mx-1 font-medium">Send Confirmation</span> in the row actions. The full
-          Communications workspace (filters, bulk send, template editor) is arriving next.
+          Click a template to preview, send a test copy, edit (admins only), or view version history.
+          To send a live confirmation, open a matching paid student on the Students page.
         </div>
       </Card>
 

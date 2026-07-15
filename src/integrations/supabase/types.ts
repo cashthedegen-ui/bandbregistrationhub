@@ -150,6 +150,7 @@ export type Database = {
           initiated_at: string
           initiated_by: string | null
           initiated_by_email: string | null
+          is_test: boolean
           metadata: Json
           parent_name: string | null
           provider_message_id: string | null
@@ -173,6 +174,7 @@ export type Database = {
           initiated_at?: string
           initiated_by?: string | null
           initiated_by_email?: string | null
+          is_test?: boolean
           metadata?: Json
           parent_name?: string | null
           provider_message_id?: string | null
@@ -196,6 +198,7 @@ export type Database = {
           initiated_at?: string
           initiated_by?: string | null
           initiated_by_email?: string | null
+          is_test?: boolean
           metadata?: Json
           parent_name?: string | null
           provider_message_id?: string | null
@@ -213,6 +216,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "communication_logs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "communication_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communication_template_versions: {
+        Row: {
+          email_body: string
+          id: string
+          note: string | null
+          saved_at: string
+          saved_by: string | null
+          saved_by_email: string | null
+          subject: string
+          template_id: string
+          template_name: string
+          version_number: number
+        }
+        Insert: {
+          email_body: string
+          id?: string
+          note?: string | null
+          saved_at?: string
+          saved_by?: string | null
+          saved_by_email?: string | null
+          subject: string
+          template_id: string
+          template_name: string
+          version_number: number
+        }
+        Update: {
+          email_body?: string
+          id?: string
+          note?: string | null
+          saved_at?: string
+          saved_by?: string | null
+          saved_by_email?: string | null
+          subject?: string
+          template_id?: string
+          template_name?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_template_versions_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "communication_templates"
