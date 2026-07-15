@@ -60,15 +60,15 @@ export function interpolateLetterBody(body: string, vars: LetterVariables): { ht
 // The logo is drawn as inline SVG so it renders identically in the on-screen
 // preview and the emailed HTML — no external asset needed.
 export const BB_LOGO_SVG = `
-<svg viewBox="0 0 420 110" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="B and B Transportation, Inc.">
-  <g fill="#4b5563" font-family="Georgia, 'Times New Roman', serif">
-    <text x="60" y="46" font-size="42" font-weight="700" letter-spacing="1">B</text>
-    <text x="105" y="46" font-size="20" font-style="italic" font-weight="400">AND</text>
-    <text x="160" y="46" font-size="42" font-weight="700" letter-spacing="1">B</text>
-    <line x1="30" y1="58" x2="400" y2="58" stroke="#4b5563" stroke-width="1.2"/>
-    <line x1="30" y1="62" x2="400" y2="62" stroke="#4b5563" stroke-width="1.2"/>
-    <text x="60" y="82" font-size="22" font-weight="700" letter-spacing="2">TRANSPORTATION, INC.</text>
-    <text x="60" y="102" font-size="13" font-style="italic" fill="#6b7280">"transporting the world's most precious cargo"</text>
+<svg viewBox="0 0 420 130" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="B and B Transportation, Inc.">
+  <g fill="#4b5563" font-family="Georgia, 'Times New Roman', serif" text-anchor="middle">
+    <text x="180" y="52" font-size="46" font-weight="700">B</text>
+    <text x="210" y="48" font-size="20" font-style="italic" font-weight="400">AND</text>
+    <text x="240" y="52" font-size="46" font-weight="700">B</text>
+    <line x1="60" y1="64" x2="360" y2="64" stroke="#4b5563" stroke-width="1.2"/>
+    <line x1="60" y1="68" x2="360" y2="68" stroke="#4b5563" stroke-width="1.2"/>
+    <text x="210" y="92" font-size="22" font-weight="700" letter-spacing="2">TRANSPORTATION, INC.</text>
+    <text x="210" y="114" font-size="13" font-style="italic" fill="#6b7280">"transporting the world's most precious cargo"</text>
   </g>
 </svg>`;
 
@@ -86,21 +86,21 @@ export function renderLetterHtml(opts: {
   box-sizing:border-box;
   width:8.5in; max-width:100%;
   min-height:11in;
-  padding:0.75in 0.85in 0.55in;
+  padding:0.6in 0.85in 0.55in;
   background:#ffffff; color:#1f2937;
   font-family: 'Century Gothic', 'Avenir Next', 'Segoe UI', Helvetica, Arial, sans-serif;
   font-size:14px; line-height:1.55;
   position:relative;
 ">
-  <div style="display:flex; justify-content:center; padding-bottom:8px;">
-    <div style="width:340px;">${BB_LOGO_SVG}</div>
+  <div style="display:flex; justify-content:center; align-items:center; margin:0 auto 6px; width:100%;">
+    <div style="width:360px; max-width:100%;">${BB_LOGO_SVG}</div>
   </div>
-  <hr style="border:none; border-top:1px solid #9ca3af; margin:4px 0 40px;"/>
+  <hr style="border:none; border-top:1px solid #9ca3af; margin:4px 0 28px;"/>
 
-  <div style="text-align:center; font-size:34px; color:#6b7280; font-weight:400; letter-spacing:2px; margin-bottom:14px;">
+  <div style="text-align:center; font-size:32px; color:#6b7280; font-weight:400; letter-spacing:2px; margin-bottom:10px;">
     ${escapeHtml(opts.vars.school_year)}
   </div>
-  <div style="text-align:center; font-size:26px; color:#4b5563; font-weight:400; margin-bottom:34px;">
+  <div style="text-align:center; font-size:24px; color:#4b5563; font-weight:400; margin-bottom:30px;">
     St Luke&rsquo;s School Parking Shuttle
   </div>
 
