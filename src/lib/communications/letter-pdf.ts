@@ -60,66 +60,75 @@ export function buildLetterPdf(templateBodyHtml: string, vars: LetterVariables):
   const gray = { r: 75, g: 85, b: 99 };
   const light = { r: 156, g: 163, b: 175 };
 
-  // ===== Logo =====
+  // ===== Logo (top-centered, mirrors preview/email SVG) =====
   doc.setTextColor(gray.r, gray.g, gray.b);
   const centerX = W / 2;
-  // "B AND B" line
+
+  // Baseline for "B AND B" row
+  const logoTop = 58;
+  const bY = logoTop + 30;
+
+  // Measure widths so the group is truly centered
   doc.setFont("times", "bold");
-  doc.setFontSize(30);
-  const bText = "B";
-  const bW = doc.getTextWidth(bText);
+  doc.setFontSize(34);
+  const bW = doc.getTextWidth("B");
   doc.setFont("times", "italic");
-  doc.setFontSize(14);
+  doc.setFontSize(16);
   const andW = doc.getTextWidth("AND");
-  const totalW = bW * 2 + andW + 20;
-  let x = centerX - totalW / 2;
+  const gapPx = 10;
+  const groupW = bW * 2 + andW + gapPx * 2;
+  let x = centerX - groupW / 2;
+
   doc.setFont("times", "bold");
-  doc.setFontSize(30);
-  doc.text("B", x, 82);
-  x += bW + 8;
+  doc.setFontSize(34);
+  doc.text("B", x, bY);
+  x += bW + gapPx;
   doc.setFont("times", "italic");
-  doc.setFontSize(14);
-  doc.text("AND", x, 78);
-  x += andW + 8;
+  doc.setFontSize(16);
+  doc.text("AND", x, bY - 4);
+  x += andW + gapPx;
   doc.setFont("times", "bold");
-  doc.setFontSize(30);
-  doc.text("B", x, 82);
+  doc.setFontSize(34);
+  doc.text("B", x, bY);
 
   // Double line under logo
+  const lineY = bY + 10;
   doc.setDrawColor(gray.r, gray.g, gray.b);
   doc.setLineWidth(0.6);
-  doc.line(M + 40, 90, W - M - 40, 90);
-  doc.line(M + 40, 93, W - M - 40, 93);
+  doc.line(M + 40, lineY, W - M - 40, lineY);
+  doc.line(M + 40, lineY + 3, W - M - 40, lineY + 3);
 
   // "TRANSPORTATION, INC."
   doc.setFont("times", "bold");
-  doc.setFontSize(16);
-  doc.text("TRANSPORTATION, INC.", centerX, 112, { align: "center" });
+  doc.setFontSize(18);
+  doc.text("TRANSPORTATION, INC.", centerX, lineY + 24, { align: "center" });
 
   // Tagline
   doc.setFont("times", "italic");
   doc.setFontSize(10);
   doc.setTextColor(107, 114, 128);
-  doc.text('"transporting the world\'s most precious cargo"', centerX, 128, { align: "center" });
+  doc.text('"transporting the world\'s most precious cargo"', centerX, lineY + 40, { align: "center" });
 
-  // Rule
+  // Horizontal divider under logo block
+  const dividerY = lineY + 54;
   doc.setDrawColor(light.r, light.g, light.b);
   doc.setLineWidth(0.5);
-  doc.line(M, 140, W - M, 140);
+  doc.line(M, dividerY, W - M, dividerY);
 
-  // ===== School year band =====
-  let y = 205;
+  // ===== School year =====
+  let y = dividerY + 46;
   doc.setTextColor(107, 114, 128);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(28);
   doc.text(vars.school_year, centerX, y, { align: "center" });
 
   // Title
-  y += 42;
+  y += 36;
   doc.setTextColor(gray.r, gray.g, gray.b);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(22);
   doc.text("St Luke\u2019s School Parking Shuttle", centerX, y, { align: "center" });
+
 
   // ===== Body paragraphs =====
   y += 44;
