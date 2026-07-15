@@ -376,12 +376,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         });
         pushActivity(`Synced ${rows.length} submissions: ${added} new, ${updated} updated, ${skippedExisting} already existed${skippedDeleted ? `, ${skippedDeleted} previously deleted` : ""}`);
         void logAudit({
-          action: `synced ${rows.length} submissions (${added} new, ${skippedExisting} already existed)`,
+          action: `synced ${rows.length} submissions (${added} new, ${updated} updated, ${skippedExisting} already existed)`,
           entityType: "sync",
           entityName: `${cfgs.length} form(s)`,
-          details: { total: rows.length, added, skippedExisting, skippedDeleted },
+          details: { total: rows.length, added, updated, skippedExisting, skippedDeleted },
         });
-        toast.success(`${added} new added${skippedDeleted ? ` · ${skippedDeleted} skipped (deleted)` : ""}`);
+        toast.success(`${added} new added${updated ? ` · ${updated} updated` : ""}${skippedDeleted ? ` · ${skippedDeleted} skipped (deleted)` : ""}`);
       }
     } catch (e: any) {
       toast.error(`Sync failed: ${e?.message || e}`);
