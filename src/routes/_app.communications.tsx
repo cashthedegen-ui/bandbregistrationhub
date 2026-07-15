@@ -67,7 +67,7 @@ function CommunicationsPage() {
             {templates.map((t) => (
               <Link
                 key={t.id}
-                to="/communications/templates/$templateId"
+                to="/templates/$templateId"
                 params={{ templateId: t.id }}
                 className="rounded border border-border bg-background/50 hover:border-primary/60 hover:bg-background transition-colors p-3 text-xs block"
               >

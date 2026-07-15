@@ -25,7 +25,7 @@ import { Route as AppAutomationsRouteImport } from './routes/_app.automations'
 import { Route as AppAuditRouteImport } from './routes/_app.audit'
 import { Route as AppArchiveRouteImport } from './routes/_app.archive'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
-import { Route as AppCommunicationsTemplatesTemplateIdRouteImport } from './routes/_app.communications.templates.$templateId'
+import { Route as AppTemplatesTemplateIdRouteImport } from './routes/_app.templates.$templateId'
 
 const TrustRoute = TrustRouteImport.update({
   id: '/trust',
@@ -106,12 +106,11 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCommunicationsTemplatesTemplateIdRoute =
-  AppCommunicationsTemplatesTemplateIdRouteImport.update({
-    id: '/templates/$templateId',
-    path: '/templates/$templateId',
-    getParentRoute: () => AppCommunicationsRoute,
-  } as any)
+const AppTemplatesTemplateIdRoute = AppTemplatesTemplateIdRouteImport.update({
+  id: '/templates/$templateId',
+  path: '/templates/$templateId',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -121,7 +120,7 @@ export interface FileRoutesByFullPath {
   '/archive': typeof AppArchiveRoute
   '/audit': typeof AppAuditRoute
   '/automations': typeof AppAutomationsRoute
-  '/communications': typeof AppCommunicationsRouteWithChildren
+  '/communications': typeof AppCommunicationsRoute
   '/financial-aid': typeof AppFinancialAidRoute
   '/payments': typeof AppPaymentsRoute
   '/routes': typeof AppRoutesRoute
@@ -129,7 +128,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRoute
   '/students': typeof AppStudentsRoute
   '/api/formstack': typeof ApiFormstackRoute
-  '/communications/templates/$templateId': typeof AppCommunicationsTemplatesTemplateIdRoute
+  '/templates/$templateId': typeof AppTemplatesTemplateIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -138,7 +137,7 @@ export interface FileRoutesByTo {
   '/archive': typeof AppArchiveRoute
   '/audit': typeof AppAuditRoute
   '/automations': typeof AppAutomationsRoute
-  '/communications': typeof AppCommunicationsRouteWithChildren
+  '/communications': typeof AppCommunicationsRoute
   '/financial-aid': typeof AppFinancialAidRoute
   '/payments': typeof AppPaymentsRoute
   '/routes': typeof AppRoutesRoute
@@ -147,7 +146,7 @@ export interface FileRoutesByTo {
   '/students': typeof AppStudentsRoute
   '/api/formstack': typeof ApiFormstackRoute
   '/': typeof AppIndexRoute
-  '/communications/templates/$templateId': typeof AppCommunicationsTemplatesTemplateIdRoute
+  '/templates/$templateId': typeof AppTemplatesTemplateIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -158,7 +157,7 @@ export interface FileRoutesById {
   '/_app/archive': typeof AppArchiveRoute
   '/_app/audit': typeof AppAuditRoute
   '/_app/automations': typeof AppAutomationsRoute
-  '/_app/communications': typeof AppCommunicationsRouteWithChildren
+  '/_app/communications': typeof AppCommunicationsRoute
   '/_app/financial-aid': typeof AppFinancialAidRoute
   '/_app/payments': typeof AppPaymentsRoute
   '/_app/routes': typeof AppRoutesRoute
@@ -167,7 +166,7 @@ export interface FileRoutesById {
   '/_app/students': typeof AppStudentsRoute
   '/api/formstack': typeof ApiFormstackRoute
   '/_app/': typeof AppIndexRoute
-  '/_app/communications/templates/$templateId': typeof AppCommunicationsTemplatesTemplateIdRoute
+  '/_app/templates/$templateId': typeof AppTemplatesTemplateIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -187,7 +186,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/students'
     | '/api/formstack'
-    | '/communications/templates/$templateId'
+    | '/templates/$templateId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -205,7 +204,7 @@ export interface FileRouteTypes {
     | '/students'
     | '/api/formstack'
     | '/'
-    | '/communications/templates/$templateId'
+    | '/templates/$templateId'
   id:
     | '__root__'
     | '/_app'
@@ -224,7 +223,7 @@ export interface FileRouteTypes {
     | '/_app/students'
     | '/api/formstack'
     | '/_app/'
-    | '/_app/communications/templates/$templateId'
+    | '/_app/templates/$templateId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -348,34 +347,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/communications/templates/$templateId': {
-      id: '/_app/communications/templates/$templateId'
+    '/_app/templates/$templateId': {
+      id: '/_app/templates/$templateId'
       path: '/templates/$templateId'
-      fullPath: '/communications/templates/$templateId'
-      preLoaderRoute: typeof AppCommunicationsTemplatesTemplateIdRouteImport
-      parentRoute: typeof AppCommunicationsRoute
+      fullPath: '/templates/$templateId'
+      preLoaderRoute: typeof AppTemplatesTemplateIdRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
-
-interface AppCommunicationsRouteChildren {
-  AppCommunicationsTemplatesTemplateIdRoute: typeof AppCommunicationsTemplatesTemplateIdRoute
-}
-
-const AppCommunicationsRouteChildren: AppCommunicationsRouteChildren = {
-  AppCommunicationsTemplatesTemplateIdRoute:
-    AppCommunicationsTemplatesTemplateIdRoute,
-}
-
-const AppCommunicationsRouteWithChildren =
-  AppCommunicationsRoute._addFileChildren(AppCommunicationsRouteChildren)
 
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppArchiveRoute: typeof AppArchiveRoute
   AppAuditRoute: typeof AppAuditRoute
   AppAutomationsRoute: typeof AppAutomationsRoute
-  AppCommunicationsRoute: typeof AppCommunicationsRouteWithChildren
+  AppCommunicationsRoute: typeof AppCommunicationsRoute
   AppFinancialAidRoute: typeof AppFinancialAidRoute
   AppPaymentsRoute: typeof AppPaymentsRoute
   AppRoutesRoute: typeof AppRoutesRoute
@@ -383,6 +370,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppStudentsRoute: typeof AppStudentsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppTemplatesTemplateIdRoute: typeof AppTemplatesTemplateIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -390,7 +378,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppArchiveRoute: AppArchiveRoute,
   AppAuditRoute: AppAuditRoute,
   AppAutomationsRoute: AppAutomationsRoute,
-  AppCommunicationsRoute: AppCommunicationsRouteWithChildren,
+  AppCommunicationsRoute: AppCommunicationsRoute,
   AppFinancialAidRoute: AppFinancialAidRoute,
   AppPaymentsRoute: AppPaymentsRoute,
   AppRoutesRoute: AppRoutesRoute,
@@ -398,6 +386,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppStudentsRoute: AppStudentsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppTemplatesTemplateIdRoute: AppTemplatesTemplateIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
