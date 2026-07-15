@@ -261,12 +261,13 @@ export function CommunicationPreviewModal({
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-                Email Body
+                Letter Preview
               </div>
-              <div
-                className="rounded border border-border bg-background/60 p-3 text-sm prose prose-invert prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: preview?.body || "" }}
-              />
+              <div className="rounded border border-border bg-neutral-200 p-3 overflow-auto max-h-[520px]">
+                <div style={{ transform: "scale(0.55)", transformOrigin: "top left", width: "182%" }}>
+                  <div dangerouslySetInnerHTML={{ __html: preview?.body || "" }} />
+                </div>
+              </div>
             </div>
           </div>
         )}
