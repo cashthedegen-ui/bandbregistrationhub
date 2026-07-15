@@ -95,50 +95,35 @@ export function CommunicationPreviewModal({
     [student, template],
   );
 
-  // Preview using the same variable substitution the server will do
+  // Preview via the shared letter renderer so the modal shows the exact
+  // letter that will be sent (matching the approved PDF layout).
   const preview = useMemo(() => {
     if (!template || !student) return null;
-    const currency = (n: number | undefined | null) =>
-      new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n ?? 0));
     const paidAmount =
       student.paymentType === "Financial Aid" ? student.familyPaid ?? 0 : student.amountPaid ?? 0;
-    const remaining =
-      student.paymentType === "Financial Aid"
-        ? Math.max(0, student.schoolOwes ?? 0)
-        : Math.max(
-            0,
-            (student.rtAmount ?? 0) + (student.owAmount ?? 0) - (student.amountPaid ?? 0),
-          );
-    const vars: Record<string, string> = {
-      parent_name: student.parentName || "",
-      student_name: student.studentName || "",
-      grade: student.grade || "",
-      school_program: student.schoolName || "",
-      payment_status: student.paymentStatus || "",
-      payment_type: student.paymentType || "",
-      amount_paid: currency(paidAmount),
-      remaining_balance: currency(remaining),
-      registration_date: student.submissionDate
-        ? new Date(student.submissionDate).toLocaleDateString()
-        : "",
-      school_year: "2026 – 2027",
-      due_date: "",
-      payment_link: "",
-    };
-    const missing: string[] = [];
-    const substitute = (s: string) =>
+    const vars = buildLetterVariables({
+      studentName: student.studentName,
+      parentName: student.parentName,
+      amountPaid: paidAmount,
+      paymentDate: new Date(),
+      schoolYear: "2026–2027",
+    });
+    const substituteSubject = (s: string): string =>
       s.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k: string) => {
-        const v = vars[k];
-        if (!v && !["due_date", "payment_link"].includes(k)) {
-          if (!missing.includes(k)) missing.push(k);
-        }
-        return v || `{{${k}}}`;
+        const map: Record<string, string> = {
+          student_name: vars.student_name,
+          parent_name: vars.parent_name,
+          amount_paid: vars.amount_paid,
+          payment_date: vars.payment_date,
+          school_year: vars.school_year,
+        };
+        return map[k] ?? `{{${k}}}`;
       });
-    return {
-      subject: substitute(template.subject),
-      body: substitute(template.email_body),
-      missing,
-    };
+    const { html, missing } = renderLetterHtml({
+      templateBodyHtml: template.email_body,
+      vars,
+    });
+    return { subject: substituteSubject(template.subject), body: html, missing };
   }, [template, student]);
 
   const handleSend = async () => {
