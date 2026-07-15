@@ -375,6 +375,7 @@ export const listRecentCommunicationLogs = createServerFn({ method: "GET" })
       .select(
         "id, template_id, template_name, student_id, student_name, parent_name, recipient_email, communication_type, school_or_program, rendered_subject, rendered_body, status, provider_message_id, failure_reason, initiated_by_email, initiated_at, delivered_at",
       )
+      .eq("is_test", false)
       .order("initiated_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
