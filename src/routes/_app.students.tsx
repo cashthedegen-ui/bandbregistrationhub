@@ -21,7 +21,7 @@ import {
 import {
   AlertTriangle, Archive, BadgeCheck, CheckCheck, ChevronDown, ChevronRight,
   Copy, Download, FileText, Filter, Mail, MailCheck, MoreHorizontal, Pencil, Phone,
-  Search, Send, StickyNote, Trash2, Wallet, X,
+  Search, Send, StickyNote, Trash2, Wallet, Wrench, X,
 } from "lucide-react";
 import { PaymentPlanDrawer } from "@/components/payment-plan-drawer";
 import type { PaymentStatus, PaymentType, Status, StudentRow } from "@/lib/types";
@@ -88,7 +88,7 @@ function StatusBadge({ status }: { status: Status }) {
 }
 
 function StudentsPage() {
-  const { students, updateStudent, deleteStudent, dupGroups, settings } = useStore();
+  const { students, updateStudent, deleteStudent, dupGroups, settings, repairingStLukesNames, repairStLukesParkingShuttleNames } = useStore();
   const search = Route.useSearch();
   const [q, setQ] = useState("");
   const [school, setSchool] = useState<string>("all");
@@ -114,6 +114,12 @@ function StudentsPage() {
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
   const [editingPayStatusId, setEditingPayStatusId] = useState<string | null>(null);
+  const [repairResult, setRepairResult] = useState<null | {
+    scanned: number;
+    repaired: number;
+    skipped: number;
+    unresolved: Array<{ id: string; submissionId: string; parentName: string; reason: string }>;
+  }>(null);
 
   // Read-only: fetch plan family keys so we can show a "Payment Plan" badge / filter.
   const [planFamilyKeys, setPlanFamilyKeys] = useState<Set<string>>(new Set());
@@ -273,11 +279,55 @@ function StudentsPage() {
         title="Students"
         subtitle={`${formatNumber(filtered.length)} of ${formatNumber(students.length)} students`}
         actions={
-          <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={exportAllClean}>
-            <Download className="h-4 w-4 mr-1.5" /> Export Excel
-          </Button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={repairingStLukesNames}
+              onClick={async () => {
+                try {
+                  const result = await repairStLukesParkingShuttleNames();
+                  setRepairResult(result);
+                } catch {
+                  // Store action already shows the error toast.
+                }
+              }}
+            >
+              <Wrench className="h-4 w-4 mr-1.5" />
+              {repairingStLukesNames ? "Repairing…" : "Repair St. Luke’s Parking Shuttle Names"}
+            </Button>
+            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={exportAllClean}>
+              <Download className="h-4 w-4 mr-1.5" /> Export Excel
+            </Button>
+          </div>
         }
       />
+
+      {repairResult && (
+        <Card className="mb-4 border-primary/30 bg-primary/5 p-3">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <BadgeCheck className="h-4 w-4 text-primary" />
+            <span>St. Luke’s repair scanned {repairResult.scanned} records.</span>
+            <span className="text-emerald-300">{repairResult.repaired} repaired</span>
+            <span className="text-muted-foreground">{repairResult.skipped} skipped</span>
+            <Button size="sm" variant="ghost" className="ml-auto h-7" onClick={() => setRepairResult(null)}>Dismiss</Button>
+          </div>
+          {repairResult.unresolved.length > 0 && (
+            <div className="mt-3 rounded-md border border-border bg-background/60 p-3 text-xs">
+              <div className="mb-2 font-medium text-foreground">Records still missing a usable Driver Name</div>
+              <div className="space-y-1">
+                {repairResult.unresolved.map((item) => (
+                  <div key={item.id} className="grid gap-1 md:grid-cols-[160px_160px_1fr]">
+                    <span>{item.parentName || item.id}</span>
+                    <span className="text-muted-foreground">Submission {item.submissionId || "—"}</span>
+                    <span className="text-muted-foreground">{item.reason}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {dupGroups.length > 0 && dupBanner && (
         <Card className="mb-4 border-primary/30 bg-primary/5 p-3 flex items-center gap-3">
