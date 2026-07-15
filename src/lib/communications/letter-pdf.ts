@@ -1,22 +1,6 @@
 import jsPDF from "jspdf";
 import type { LetterVariables } from "./letter-renderer";
-import { BB_LOGO_URL, interpolateLetterBody } from "./letter-renderer";
-
-// Cache the fetched logo as a data URL so repeated PDF renders don't refetch.
-let _logoDataUrl: string | null = null;
-async function loadLogoDataUrl(): Promise<string> {
-  if (_logoDataUrl) return _logoDataUrl;
-  const res = await fetch(BB_LOGO_URL);
-  const blob = await res.blob();
-  _logoDataUrl = await new Promise<string>((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(blob);
-  });
-  return _logoDataUrl;
-}
-
+import { interpolateLetterBody } from "./letter-renderer";
 
 // Strip HTML tags to plain paragraphs preserving <strong> as bold segments.
 // Returns an array of paragraphs; each paragraph is a list of {text, bold} runs.
@@ -66,7 +50,7 @@ function stripTags(s: string): string {
     .replace(/&quot;/g, '"');
 }
 
-export async function buildLetterPdf(templateBodyHtml: string, vars: LetterVariables): Promise<jsPDF> {
+export function buildLetterPdf(templateBodyHtml: string, vars: LetterVariables): jsPDF {
   const { html } = interpolateLetterBody(templateBodyHtml, vars);
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const W = doc.internal.pageSize.getWidth();
@@ -76,17 +60,57 @@ export async function buildLetterPdf(templateBodyHtml: string, vars: LetterVaria
   const gray = { r: 75, g: 85, b: 99 };
   const light = { r: 156, g: 163, b: 175 };
 
-  // ===== Logo (embedded raster from master PDF) =====
+  // ===== Logo (top-centered, mirrors preview/email SVG) =====
+  doc.setTextColor(gray.r, gray.g, gray.b);
   const centerX = W / 2;
-  const logoDataUrl = await loadLogoDataUrl();
-  // Source logo is 1000 × 325 (aspect 3.077). Render 300pt wide, centered near top.
-  const logoW = 300;
-  const logoH = logoW * (325 / 1000);
-  const logoTop = 54;
-  doc.addImage(logoDataUrl, "PNG", centerX - logoW / 2, logoTop, logoW, logoH, undefined, "FAST");
+
+  // Baseline for "B AND B" row
+  const logoTop = 58;
+  const bY = logoTop + 30;
+
+  // Measure widths so the group is truly centered
+  doc.setFont("times", "bold");
+  doc.setFontSize(34);
+  const bW = doc.getTextWidth("B");
+  doc.setFont("times", "italic");
+  doc.setFontSize(16);
+  const andW = doc.getTextWidth("AND");
+  const gapPx = 10;
+  const groupW = bW * 2 + andW + gapPx * 2;
+  let x = centerX - groupW / 2;
+
+  doc.setFont("times", "bold");
+  doc.setFontSize(34);
+  doc.text("B", x, bY);
+  x += bW + gapPx;
+  doc.setFont("times", "italic");
+  doc.setFontSize(16);
+  doc.text("AND", x, bY - 4);
+  x += andW + gapPx;
+  doc.setFont("times", "bold");
+  doc.setFontSize(34);
+  doc.text("B", x, bY);
+
+  // Double line under logo
+  const lineY = bY + 10;
+  doc.setDrawColor(gray.r, gray.g, gray.b);
+  doc.setLineWidth(0.6);
+  doc.line(M + 40, lineY, W - M - 40, lineY);
+  doc.line(M + 40, lineY + 3, W - M - 40, lineY + 3);
+
+  // "TRANSPORTATION, INC."
+  doc.setFont("times", "bold");
+  doc.setFontSize(18);
+  doc.text("TRANSPORTATION, INC.", centerX, lineY + 24, { align: "center" });
+
+  // Tagline
+  doc.setFont("times", "italic");
+  doc.setFontSize(10);
+  doc.setTextColor(107, 114, 128);
+  doc.text('"transporting the world\'s most precious cargo"', centerX, lineY + 40, { align: "center" });
 
   // Horizontal divider under logo block
-  const dividerY = logoTop + logoH + 18;
+  const dividerY = lineY + 54;
   doc.setDrawColor(light.r, light.g, light.b);
   doc.setLineWidth(0.5);
   doc.line(M, dividerY, W - M, dividerY);
@@ -97,13 +121,6 @@ export async function buildLetterPdf(templateBodyHtml: string, vars: LetterVaria
   doc.setFont("helvetica", "normal");
   doc.setFontSize(28);
   doc.text(vars.school_year, centerX, y, { align: "center" });
-
-  // Title
-  y += 36;
-  doc.setTextColor(gray.r, gray.g, gray.b);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(22);
-
 
   // Title
   y += 36;
@@ -194,15 +211,14 @@ function flowRuns(doc: jsPDF, runs: Run[], x0: number, y0: number, maxW: number,
   return y + lineH;
 }
 
-export async function downloadLetterPdf(templateBodyHtml: string, vars: LetterVariables, filenameHint?: string) {
-  const doc = await buildLetterPdf(templateBodyHtml, vars);
+export function downloadLetterPdf(templateBodyHtml: string, vars: LetterVariables, filenameHint?: string) {
+  const doc = buildLetterPdf(templateBodyHtml, vars);
   const safe = (filenameHint || vars.student_name || "confirmation").replace(/[^a-z0-9]+/gi, "_");
   doc.save(`StLukes_Confirmation_${safe}.pdf`);
 }
 
-export async function openLetterPdfInNewTab(templateBodyHtml: string, vars: LetterVariables) {
-  const doc = await buildLetterPdf(templateBodyHtml, vars);
+export function openLetterPdfInNewTab(templateBodyHtml: string, vars: LetterVariables) {
+  const doc = buildLetterPdf(templateBodyHtml, vars);
   const url = doc.output("bloburl");
   window.open(url, "_blank", "noopener");
 }
-
