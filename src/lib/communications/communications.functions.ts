@@ -348,7 +348,7 @@ export interface TemplateRow {
   subject: string;
   email_body: string;
   active: boolean;
-  eligibility_rules: Record<string, unknown>;
+  eligibility_rules: Record<string, string | number | boolean | null>;
 }
 
 export const listCommunicationTemplates = createServerFn({ method: "GET" })
