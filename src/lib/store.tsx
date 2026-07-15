@@ -1,9 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { storage, stopKey, mergeFormsWithDefaults, DEFAULT_SETTINGS } from "./storage";
 import type { AppSettings, ArchivedSeason, StudentRow, SyncEvent } from "./types";
 import { buildDemoStudents } from "./demo-data";
 import { detectDuplicates, type DuplicateGroup } from "./duplicates";
 import { fetchAllSubmissions } from "./formstack";
+import { repairStLukesParkingShuttleNames, type RepairStLukesParkingShuttleResult } from "./st-lukes-backfill.functions";
 import { loadShared, saveShared, subscribeShared } from "./shared-state";
 import { fetchAllStudents, upsertStudent, upsertStudents, deleteStudentRow, deleteAllStudents, subscribeStudents } from "./students-repo";
 import { useAuth } from "./auth";
@@ -41,6 +43,7 @@ interface Ctx {
   dupGroups: DuplicateGroup[];
   lastSync: string | null;
   syncing: boolean;
+  repairingStLukesNames: boolean;
   syncProgress: { done: number; total: number; label: string };
   isDemo: boolean;
   activity: Activity[];
@@ -50,6 +53,7 @@ interface Ctx {
   updateStudent: (id: string, patch: Partial<StudentRow>) => void;
   deleteStudent: (id: string) => void;
   syncAll: () => Promise<void>;
+  repairStLukesParkingShuttleNames: () => Promise<RepairStLukesParkingShuttleResult>;
   archiveSeason: (label: string) => void;
   restoreSeason: (id: string) => void;
   deleteArchive: (id: string) => void;
@@ -68,12 +72,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [dupGroups, setDupGroups] = useState<DuplicateGroup[]>([]);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [repairingStLukesNames, setRepairingStLukesNames] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0, label: "" });
   const [isDemo, setIsDemo] = useState(false);
   const [activity, setActivity] = useState<Activity[]>([]);
   const [stopCapacities, setStopCapacities] = useState<Record<string, number>>({});
   const [syncHistory, setSyncHistory] = useState<SyncEvent[]>([]);
   const [deletedSubs, setDeletedSubs] = useState<string[]>([]);
+  const repairStLukesNamesFn = useServerFn(repairStLukesParkingShuttleNames);
 
   const applyStudents = useCallback((rows: StudentRow[]) => {
     const { rows: flagged, groups } = detectDuplicates(rows.map(ensureDefaults));
@@ -278,6 +284,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, [deletedSubs]);
 
+  const repairStLukesParkingShuttleNamesAction = useCallback(async () => {
+    setRepairingStLukesNames(true);
+    try {
+      const result = await repairStLukesNamesFn();
+      const remoteStudents = await fetchAllStudents();
+      applyStudents(remoteStudents);
+      pushActivity(`Repaired St. Luke's Parking Shuttle names: ${result.repaired} fixed, ${result.skipped} skipped`);
+      toast.success(`Repair complete: ${result.repaired} fixed · ${result.skipped} skipped`);
+      return result;
+    } catch (e: any) {
+      toast.error(`Repair failed: ${e?.message || e}`);
+      throw e;
+    } finally {
+      setRepairingStLukesNames(false);
+    }
+  }, [repairStLukesNamesFn, applyStudents, pushActivity]);
+
   const updateSettings = useCallback((s: AppSettings) => {
     setSettings(s);
     storage.setSettings(s);
@@ -479,10 +502,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [ready, user, settings.forms, syncing, syncAll]);
 
   const value = useMemo<Ctx>(() => ({
-    ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity,
+    ready, settings, students, archives, dupGroups, lastSync, syncing, repairingStLukesNames, syncProgress, isDemo, activity,
     stopCapacities, syncHistory,
-    updateSettings, updateStudent, deleteStudent, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo, setStopCapacity,
-  }), [ready, settings, students, archives, dupGroups, lastSync, syncing, syncProgress, isDemo, activity, stopCapacities, syncHistory, updateSettings, updateStudent, deleteStudent, syncAll, archiveSeason, restoreSeason, deleteArchive, loadDemo, setStopCapacity]);
+    updateSettings, updateStudent, deleteStudent, syncAll, repairStLukesParkingShuttleNames: repairStLukesParkingShuttleNamesAction, archiveSeason, restoreSeason, deleteArchive, loadDemo, setStopCapacity,
+  }), [ready, settings, students, archives, dupGroups, lastSync, syncing, repairingStLukesNames, syncProgress, isDemo, activity, stopCapacities, syncHistory, updateSettings, updateStudent, deleteStudent, syncAll, repairStLukesParkingShuttleNamesAction, archiveSeason, restoreSeason, deleteArchive, loadDemo, setStopCapacity]);
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
 }
