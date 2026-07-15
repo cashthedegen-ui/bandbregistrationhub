@@ -853,6 +853,21 @@ function StudentsPage() {
                                     <MailCheck className="h-4 w-4 mr-2 text-emerald-400" /> Confirmation Letter
                                   </DropdownMenuItem>
                                 )}
+                                {r.formId === "6503623" && (
+                                  <DropdownMenuItem
+                                    onClick={() => setCommsRow(r)}
+                                    disabled={r.paymentStatus !== "Received" || !r.parentEmail}
+                                    title={
+                                      r.paymentStatus !== "Received"
+                                        ? "Payment must be marked as received before this confirmation can be sent."
+                                        : !r.parentEmail
+                                        ? "Parent email is missing."
+                                        : undefined
+                                    }
+                                  >
+                                    <Send className="h-4 w-4 mr-2 text-primary" /> Send Confirmation
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild>
                                   <Link to="/archive">
