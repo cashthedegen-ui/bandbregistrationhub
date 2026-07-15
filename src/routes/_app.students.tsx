@@ -29,6 +29,8 @@ import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
 import { ConfirmationLetterModal } from "@/components/confirmation-letter-modal";
+import { CommunicationPreviewModal } from "@/components/communication-preview-modal";
+import { StudentCommunicationHistory } from "@/components/student-communication-history";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -114,6 +116,8 @@ function StudentsPage() {
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
   const [editingPayStatusId, setEditingPayStatusId] = useState<string | null>(null);
+  const [commsRow, setCommsRow] = useState<StudentRow | null>(null);
+  const [commsRefresh, setCommsRefresh] = useState(0);
   const [repairResult, setRepairResult] = useState<null | {
     scanned: number;
     repaired: number;
@@ -849,6 +853,21 @@ function StudentsPage() {
                                     <MailCheck className="h-4 w-4 mr-2 text-emerald-400" /> Confirmation Letter
                                   </DropdownMenuItem>
                                 )}
+                                {r.formId === "6503623" && (
+                                  <DropdownMenuItem
+                                    onClick={() => setCommsRow(r)}
+                                    disabled={r.paymentStatus !== "Received" || !r.parentEmail}
+                                    title={
+                                      r.paymentStatus !== "Received"
+                                        ? "Payment must be marked as received before this confirmation can be sent."
+                                        : !r.parentEmail
+                                        ? "Parent email is missing."
+                                        : undefined
+                                    }
+                                  >
+                                    <Send className="h-4 w-4 mr-2 text-primary" /> Send Confirmation
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild>
                                   <Link to="/archive">
@@ -877,6 +896,8 @@ function StudentsPage() {
                               onPayHistory={() => setPlanAnchor(r)}
                               onReceipt={() => setReceiptOpen([r])}
                               onDelete={() => setDeleteRow(r)}
+                              onSendConfirmation={() => setCommsRow(r)}
+                              commsRefresh={commsRefresh}
                             />
                           </td>
                         </tr>
@@ -1254,13 +1275,20 @@ function StudentsPage() {
         anchor={planAnchor}
         students={students}
       />
+
+      <CommunicationPreviewModal
+        student={commsRow}
+        open={!!commsRow}
+        onClose={() => setCommsRow(null)}
+        onSent={() => setCommsRefresh((n) => n + 1)}
+      />
     </>
   );
 }
 
 function ExpandedRow({
   r, et,
-  onEdit, onNotes, onPayHistory, onReceipt, onDelete,
+  onEdit, onNotes, onPayHistory, onReceipt, onDelete, onSendConfirmation, commsRefresh,
 }: {
   r: StudentRow;
   et: string;
@@ -1269,6 +1297,8 @@ function ExpandedRow({
   onPayHistory: () => void;
   onReceipt: () => void;
   onDelete: () => void;
+  onSendConfirmation?: () => void;
+  commsRefresh?: number;
 }) {
   const isAid = r.paymentType === "Financial Aid";
   // Financial Aid students: Balance = School Owes - School Payments Received
@@ -1329,8 +1359,30 @@ function ExpandedRow({
           <div className="rounded-md border border-border bg-background/60 p-3 text-xs whitespace-pre-wrap break-words">{r.notes}</div>
         </div>
       )}
+      {r.formId === "6503623" && (
+        <div style={{ gridColumn: "1 / -1" }}>
+          <StudentCommunicationHistory studentId={r.id} refreshToken={commsRefresh} />
+        </div>
+      )}
       <div className="flex flex-wrap gap-2 pt-1" style={{ gridColumn: "1 / -1" }}>
         <Button size="sm" variant="secondary" onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit Student</Button>
+        {r.formId === "6503623" && onSendConfirmation && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={onSendConfirmation}
+            disabled={r.paymentStatus !== "Received" || !r.parentEmail}
+            title={
+              r.paymentStatus !== "Received"
+                ? "Payment must be marked as received before this confirmation can be sent."
+                : !r.parentEmail
+                ? "Parent email is missing."
+                : undefined
+            }
+          >
+            <Send className="h-3.5 w-3.5 mr-1" /> Send Confirmation
+          </Button>
+        )}
         <Button size="sm" variant="secondary" onClick={onPayHistory}><Wallet className="h-3.5 w-3.5 mr-1" /> Payment History</Button>
         <Button size="sm" variant="secondary" onClick={onReceipt}><FileText className="h-3.5 w-3.5 mr-1" /> Generate Receipt</Button>
         <Button size="sm" variant="secondary" onClick={onNotes}><StickyNote className="h-3.5 w-3.5 mr-1" /> Internal Notes</Button>

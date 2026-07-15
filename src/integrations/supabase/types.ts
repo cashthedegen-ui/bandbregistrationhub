@@ -140,6 +140,134 @@ export type Database = {
         }
         Relationships: []
       }
+      communication_logs: {
+        Row: {
+          channel: string
+          communication_type: string
+          delivered_at: string | null
+          failure_reason: string | null
+          id: string
+          initiated_at: string
+          initiated_by: string | null
+          initiated_by_email: string | null
+          metadata: Json
+          parent_name: string | null
+          provider_message_id: string | null
+          recipient_email: string | null
+          recipient_phone: string | null
+          rendered_body: string | null
+          rendered_subject: string | null
+          school_or_program: string | null
+          status: string
+          student_id: string | null
+          student_name: string | null
+          template_id: string | null
+          template_name: string | null
+        }
+        Insert: {
+          channel?: string
+          communication_type: string
+          delivered_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          initiated_at?: string
+          initiated_by?: string | null
+          initiated_by_email?: string | null
+          metadata?: Json
+          parent_name?: string | null
+          provider_message_id?: string | null
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          rendered_body?: string | null
+          rendered_subject?: string | null
+          school_or_program?: string | null
+          status?: string
+          student_id?: string | null
+          student_name?: string | null
+          template_id?: string | null
+          template_name?: string | null
+        }
+        Update: {
+          channel?: string
+          communication_type?: string
+          delivered_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          initiated_at?: string
+          initiated_by?: string | null
+          initiated_by_email?: string | null
+          metadata?: Json
+          parent_name?: string | null
+          provider_message_id?: string | null
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          rendered_body?: string | null
+          rendered_subject?: string | null
+          school_or_program?: string | null
+          status?: string
+          student_id?: string | null
+          student_name?: string | null
+          template_id?: string | null
+          template_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_logs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "communication_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communication_templates: {
+        Row: {
+          active: boolean
+          communication_type: string
+          created_at: string
+          created_by: string | null
+          eligibility_rules: Json
+          email_body: string
+          form_id: string | null
+          id: string
+          school_or_program: string
+          subject: string
+          template_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          communication_type: string
+          created_at?: string
+          created_by?: string | null
+          eligibility_rules?: Json
+          email_body: string
+          form_id?: string | null
+          id?: string
+          school_or_program: string
+          subject: string
+          template_name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          communication_type?: string
+          created_at?: string
+          created_by?: string | null
+          eligibility_rules?: Json
+          email_body?: string
+          form_id?: string | null
+          id?: string
+          school_or_program?: string
+          subject?: string
+          template_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       email_history: {
         Row: {
           bcc: string | null
