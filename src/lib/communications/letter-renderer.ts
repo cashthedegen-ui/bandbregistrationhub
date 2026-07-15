@@ -47,7 +47,7 @@ export function buildLetterVariables(input: {
 export function interpolateLetterBody(body: string, vars: LetterVariables): { html: string; missing: string[] } {
   const missing: string[] = [];
   const html = body.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, key: string) => {
-    const v = (vars as Record<string, string>)[key];
+    const v = (vars as unknown as Record<string, string>)[key];
     if (v === undefined || v === null || String(v).trim() === "") {
       if (!missing.includes(key)) missing.push(key);
       return `{{${key}}}`;
