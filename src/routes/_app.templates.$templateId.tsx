@@ -44,7 +44,7 @@ import { buildLetterPdf, downloadLetterPdf, openLetterPdfInNewTab } from "@/lib/
 import { useStore } from "@/lib/store";
 import type { StudentRow } from "@/lib/types";
 
-export const Route = createFileRoute("/_app/communications/templates/$templateId")({
+export const Route = createFileRoute("/_app/templates/$templateId")({
   head: () => ({ meta: [{ title: "Template Details — Communications" }] }),
   component: TemplateDetailsPage,
 });
