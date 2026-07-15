@@ -1359,8 +1359,30 @@ function ExpandedRow({
           <div className="rounded-md border border-border bg-background/60 p-3 text-xs whitespace-pre-wrap break-words">{r.notes}</div>
         </div>
       )}
+      {r.formId === "6503623" && (
+        <div style={{ gridColumn: "1 / -1" }}>
+          <StudentCommunicationHistory studentId={r.id} refreshToken={commsRefresh} />
+        </div>
+      )}
       <div className="flex flex-wrap gap-2 pt-1" style={{ gridColumn: "1 / -1" }}>
         <Button size="sm" variant="secondary" onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit Student</Button>
+        {r.formId === "6503623" && onSendConfirmation && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={onSendConfirmation}
+            disabled={r.paymentStatus !== "Received" || !r.parentEmail}
+            title={
+              r.paymentStatus !== "Received"
+                ? "Payment must be marked as received before this confirmation can be sent."
+                : !r.parentEmail
+                ? "Parent email is missing."
+                : undefined
+            }
+          >
+            <Send className="h-3.5 w-3.5 mr-1" /> Send Confirmation
+          </Button>
+        )}
         <Button size="sm" variant="secondary" onClick={onPayHistory}><Wallet className="h-3.5 w-3.5 mr-1" /> Payment History</Button>
         <Button size="sm" variant="secondary" onClick={onReceipt}><FileText className="h-3.5 w-3.5 mr-1" /> Generate Receipt</Button>
         <Button size="sm" variant="secondary" onClick={onNotes}><StickyNote className="h-3.5 w-3.5 mr-1" /> Internal Notes</Button>
