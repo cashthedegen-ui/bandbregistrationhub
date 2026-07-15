@@ -1273,6 +1273,13 @@ function StudentsPage() {
         anchor={planAnchor}
         students={students}
       />
+
+      <CommunicationPreviewModal
+        student={commsRow}
+        open={!!commsRow}
+        onClose={() => setCommsRow(null)}
+        onSent={() => setCommsRefresh((n) => n + 1)}
+      />
     </>
   );
 }
