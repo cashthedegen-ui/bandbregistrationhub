@@ -235,6 +235,21 @@ const HARDCODED_MAPPINGS: Record<string, FormMapping> = {
     ],
     stops: ["195090275"],
   },
+  // St Luke's Junior Parking Shuttle 26-27. Primary registrant is the
+  // student driver ("Driver Name"); optional siblings ride with them.
+  "6503623": {
+    parentName: "195090325",
+    parentAddress: "195090326",
+    parentPhone: "195090327",
+    parentEmail: "195090328",
+    studentCount: "",
+    students: [
+      { name: "195090330", grade: "195090331" }, // Driver
+      { name: "195090333", grade: "195090334" }, // Sibling 1
+      { name: "195090335", grade: "195090336" }, // Sibling 2
+    ],
+    stops: [],
+  },
 };
 
 

@@ -316,14 +316,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const dedupeKey = (r: StudentRow) => `${(r.studentName || "").toLowerCase().trim()}|${(r.parentEmail || "").toLowerCase().trim()}`;
         const existing = isDemo ? [] : students;
         const existingKeys = new Set(existing.map(dedupeKey));
-        const preexistingSubIds = new Set(existing.map((r) => r.submissionId).filter(Boolean) as string[]);
+        const existingById = new Map(existing.map((r) => [r.id, r] as const));
+        const isUnnamed = (n: string | undefined) => {
+          const s = (n || "").trim().toLowerCase();
+          return !s || s === "(unnamed student)" || s === "(unknown student)";
+        };
         let added = 0;
+        let updated = 0;
         let skippedExisting = 0;
         const toAppend: StudentRow[] = [];
+        const updates = new Map<string, StudentRow>();
         for (const incoming of filteredRows) {
+          const prior = existingById.get(incoming.id);
+          // Reprocess: if we already have this exact row (same submissionId+index)
+          // but its student name was never captured, update it in place with the
+          // corrected mapping. Preserve all user-entered fields (payment, status,
+          // notes, flags, etc.) — only refresh the fields sourced from Formstack.
+          if (prior && isUnnamed(prior.studentName) && !isUnnamed(incoming.studentName)) {
+            const merged: StudentRow = {
+              ...prior,
+              studentName: incoming.studentName,
+              grade: incoming.grade || prior.grade,
+              stopAddress: incoming.stopAddress || prior.stopAddress,
+              stopAddress2: incoming.stopAddress2 || prior.stopAddress2,
+              parentName: incoming.parentName || prior.parentName,
+              parentPhone: incoming.parentPhone || prior.parentPhone,
+              parentEmail: incoming.parentEmail || prior.parentEmail,
+              parentAddress: incoming.parentAddress || prior.parentAddress,
+            };
+            updates.set(prior.id, merged);
+            existingKeys.add(dedupeKey(merged));
+            updated++;
+            continue;
+          }
           const key = dedupeKey(incoming);
-          // Skip only if this exact student already exists, OR the submission
-          // was previously imported in full (every sibling already in DB).
           if (existingKeys.has(key)) {
             skippedExisting++;
             continue;
@@ -332,30 +358,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           toAppend.push(incoming);
           added++;
         }
-        // Suppress unused-var lint for preexistingSubIds (kept for future use)
-        void preexistingSubIds;
-        if (toAppend.length > 0) await upsertStudents(toAppend);
-        applyStudents([...existing, ...toAppend]);
+        const writeBatch = [...updates.values(), ...toAppend];
+        if (writeBatch.length > 0) await upsertStudents(writeBatch);
+        const nextExisting = existing.map((r) => updates.get(r.id) ?? r);
+        applyStudents([...nextExisting, ...toAppend]);
         setIsDemo(false);
         const now = new Date().toISOString();
         setLastSync(now);
         storage.setLastSync(now);
         void saveShared("lastSync", now);
-        const evt: SyncEvent = { id: `sync-${Date.now()}`, ts: now, total: rows.length, added, updated: skippedExisting };
+        const evt: SyncEvent = { id: `sync-${Date.now()}`, ts: now, total: rows.length, added, updated: skippedExisting + updated };
         setSyncHistory((prev) => {
           const next = [evt, ...prev].slice(0, 20);
           storage.setSyncHistory(next);
           void saveShared("syncHistory", next);
           return next;
         });
-        pushActivity(`Synced ${rows.length} submissions: ${added} new, ${skippedExisting} already existed${skippedDeleted ? `, ${skippedDeleted} previously deleted` : ""}`);
+        pushActivity(`Synced ${rows.length} submissions: ${added} new, ${updated} updated, ${skippedExisting} already existed${skippedDeleted ? `, ${skippedDeleted} previously deleted` : ""}`);
         void logAudit({
-          action: `synced ${rows.length} submissions (${added} new, ${skippedExisting} already existed)`,
+          action: `synced ${rows.length} submissions (${added} new, ${updated} updated, ${skippedExisting} already existed)`,
           entityType: "sync",
           entityName: `${cfgs.length} form(s)`,
-          details: { total: rows.length, added, skippedExisting, skippedDeleted },
+          details: { total: rows.length, added, updated, skippedExisting, skippedDeleted },
         });
-        toast.success(`${added} new added${skippedDeleted ? ` · ${skippedDeleted} skipped (deleted)` : ""}`);
+        toast.success(`${added} new added${updated ? ` · ${updated} updated` : ""}${skippedDeleted ? ` · ${skippedDeleted} skipped (deleted)` : ""}`);
       }
     } catch (e: any) {
       toast.error(`Sync failed: ${e?.message || e}`);
