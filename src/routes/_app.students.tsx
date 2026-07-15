@@ -1288,7 +1288,7 @@ function StudentsPage() {
 
 function ExpandedRow({
   r, et,
-  onEdit, onNotes, onPayHistory, onReceipt, onDelete,
+  onEdit, onNotes, onPayHistory, onReceipt, onDelete, onSendConfirmation, commsRefresh,
 }: {
   r: StudentRow;
   et: string;
@@ -1297,6 +1297,8 @@ function ExpandedRow({
   onPayHistory: () => void;
   onReceipt: () => void;
   onDelete: () => void;
+  onSendConfirmation?: () => void;
+  commsRefresh?: number;
 }) {
   const isAid = r.paymentType === "Financial Aid";
   // Financial Aid students: Balance = School Owes - School Payments Received
