@@ -321,17 +321,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const s = (n || "").trim().toLowerCase();
           return !s || s === "(unnamed student)" || s === "(unknown student)";
         };
+        // Index unnamed rows by submissionId so we can repair prior imports
+        // even when the row id doesn't line up (e.g. earlier sync produced
+        // a single "(Unknown student)" row and the corrected mapping now
+        // yields siblings with different indices).
+        const unnamedBySubmission = new Map<string, StudentRow[]>();
+        for (const r of existing) {
+          if (isUnnamed(r.studentName) && r.submissionId) {
+            const arr = unnamedBySubmission.get(r.submissionId) || [];
+            arr.push(r);
+            unnamedBySubmission.set(r.submissionId, arr);
+          }
+        }
         let added = 0;
         let updated = 0;
         let skippedExisting = 0;
         const toAppend: StudentRow[] = [];
         const updates = new Map<string, StudentRow>();
         for (const incoming of filteredRows) {
-          const prior = existingById.get(incoming.id);
-          // Reprocess: if we already have this exact row (same submissionId+index)
-          // but its student name was never captured, update it in place with the
-          // corrected mapping. Preserve all user-entered fields (payment, status,
-          // notes, flags, etc.) — only refresh the fields sourced from Formstack.
+          let prior = existingById.get(incoming.id);
+          if ((!prior || !isUnnamed(prior.studentName)) && !isUnnamed(incoming.studentName)) {
+            const bucket = unnamedBySubmission.get(incoming.submissionId);
+            if (bucket && bucket.length > 0) {
+              prior = bucket.shift();
+            }
+          }
+          // Reprocess: if we already have a row from the same submission
+          // whose student name was never captured, update it in place with
+          // the corrected mapping. Preserve all user-entered fields
+          // (payment, status, notes, flags, etc.) — only refresh the
+          // fields sourced from Formstack.
           if (prior && isUnnamed(prior.studentName) && !isUnnamed(incoming.studentName)) {
             const merged: StudentRow = {
               ...prior,
