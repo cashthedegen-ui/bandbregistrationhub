@@ -18,6 +18,7 @@ import {
   sendCommunication,
   type TemplateRow,
 } from "@/lib/communications/communications.functions";
+import { buildLetterVariables, renderLetterHtml } from "@/lib/communications/letter-renderer";
 
 // Client-side eligibility check — mirrors the server-side validation so
 // staff never see a Send button that will just error out on submit.
