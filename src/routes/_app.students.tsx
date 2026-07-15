@@ -29,6 +29,8 @@ import { exportRows, exportStudentsClean } from "@/lib/excel";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
 import { ConfirmationLetterModal } from "@/components/confirmation-letter-modal";
+import { CommunicationPreviewModal } from "@/components/communication-preview-modal";
+import { StudentCommunicationHistory } from "@/components/student-communication-history";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
