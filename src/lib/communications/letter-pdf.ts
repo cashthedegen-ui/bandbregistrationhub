@@ -1,6 +1,22 @@
 import jsPDF from "jspdf";
 import type { LetterVariables } from "./letter-renderer";
-import { interpolateLetterBody } from "./letter-renderer";
+import { BB_LOGO_URL, interpolateLetterBody } from "./letter-renderer";
+
+// Cache the fetched logo as a data URL so repeated PDF renders don't refetch.
+let _logoDataUrl: string | null = null;
+async function loadLogoDataUrl(): Promise<string> {
+  if (_logoDataUrl) return _logoDataUrl;
+  const res = await fetch(BB_LOGO_URL);
+  const blob = await res.blob();
+  _logoDataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+  return _logoDataUrl;
+}
+
 
 // Strip HTML tags to plain paragraphs preserving <strong> as bold segments.
 // Returns an array of paragraphs; each paragraph is a list of {text, bold} runs.
