@@ -896,6 +896,8 @@ function StudentsPage() {
                               onPayHistory={() => setPlanAnchor(r)}
                               onReceipt={() => setReceiptOpen([r])}
                               onDelete={() => setDeleteRow(r)}
+                              onSendConfirmation={() => setCommsRow(r)}
+                              commsRefresh={commsRefresh}
                             />
                           </td>
                         </tr>
