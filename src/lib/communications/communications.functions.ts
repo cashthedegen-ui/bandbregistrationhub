@@ -135,7 +135,8 @@ export const sendCommunication = createServerFn({ method: "POST" })
       registration_date: student.submissionDate
         ? new Date(student.submissionDate).toLocaleDateString()
         : "",
-      school_year: "2026 – 2027",
+      payment_date: new Date().toLocaleDateString("en-US"),
+      school_year: "2026–2027",
       due_date: "",
       payment_link: "",
     };
