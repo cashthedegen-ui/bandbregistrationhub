@@ -57,20 +57,9 @@ export function interpolateLetterBody(body: string, vars: LetterVariables): { ht
   return { html, missing };
 }
 
-// The logo is drawn as inline SVG so it renders identically in the on-screen
-// preview and the emailed HTML — no external asset needed.
-export const BB_LOGO_SVG = `
-<svg viewBox="0 0 420 130" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="B and B Transportation, Inc.">
-  <g fill="#4b5563" font-family="Georgia, 'Times New Roman', serif" text-anchor="middle">
-    <text x="180" y="52" font-size="46" font-weight="700">B</text>
-    <text x="210" y="48" font-size="20" font-style="italic" font-weight="400">AND</text>
-    <text x="240" y="52" font-size="46" font-weight="700">B</text>
-    <line x1="60" y1="64" x2="360" y2="64" stroke="#4b5563" stroke-width="1.2"/>
-    <line x1="60" y1="68" x2="360" y2="68" stroke="#4b5563" stroke-width="1.2"/>
-    <text x="210" y="92" font-size="22" font-weight="700" letter-spacing="2">TRANSPORTATION, INC.</text>
-    <text x="210" y="114" font-size="13" font-style="italic" fill="#6b7280">"transporting the world's most precious cargo"</text>
-  </g>
-</svg>`;
+// Actual scanned B&B logo from the master confirmation PDF, served from the CDN.
+import bbLogoAsset from "@/assets/bb-logo.png.asset.json";
+export const BB_LOGO_URL = bbLogoAsset.url;
 
 // Fully-rendered letter HTML (paper-styled). Used for on-page preview
 // (wrapped in a container) and for the outgoing email body.
@@ -80,6 +69,10 @@ export function renderLetterHtml(opts: {
   standalone?: boolean; // true = full <html> doc (for email)
 }): { html: string; missing: string[] } {
   const { html: bodyHtml, missing } = interpolateLetterBody(opts.templateBodyHtml, opts.vars);
+
+  const logoSrc = opts.standalone
+    ? (typeof window !== "undefined" ? window.location.origin : "") + BB_LOGO_URL
+    : BB_LOGO_URL;
 
   const inner = `
 <div class="bb-letter" style="
@@ -92,10 +85,11 @@ export function renderLetterHtml(opts: {
   font-size:14px; line-height:1.55;
   position:relative;
 ">
-  <div style="display:flex; justify-content:center; align-items:center; margin:0 auto 6px; width:100%;">
-    <div style="width:360px; max-width:100%;">${BB_LOGO_SVG}</div>
+  <div style="text-align:center; margin:0 0 10px;">
+    <img src="${logoSrc}" alt="B and B Transportation, Inc." style="display:inline-block; width:420px; max-width:80%; height:auto;" />
   </div>
   <hr style="border:none; border-top:1px solid #9ca3af; margin:4px 0 28px;"/>
+
 
   <div style="text-align:center; font-size:32px; color:#6b7280; font-weight:400; letter-spacing:2px; margin-bottom:10px;">
     ${escapeHtml(opts.vars.school_year)}
