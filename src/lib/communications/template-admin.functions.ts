@@ -112,10 +112,29 @@ export const sendTestCommunication = createServerFn({ method: "POST" })
     }
     return data;
   })
-  .handler(async ({ data, context }): Promise<{ ok: boolean; status: string; message?: string; logId: string }> => {
+  .handler(async ({ data, context }): Promise<{ ok: boolean; status: string; message?: string; logId: string | null }> => {
     await requireAdmin(context);
     const c = (context.claims ?? {}) as Record<string, unknown>;
     const initiatedByEmail = (c.email as string) || null;
+
+    const webhookUrl = process.env.N8N_WEBHOOK_URL || "";
+    const webhookSecret = process.env.N8N_WEBHOOK_SECRET || "";
+    // TEMP diagnostic: presence only, never the value.
+    console.log("[sendTestCommunication] secrets:", {
+      has_webhook_url: !!webhookUrl,
+      has_webhook_secret: !!webhookSecret,
+    });
+
+    if (!webhookUrl) {
+      // Do NOT create a queued record when the webhook isn't even attempted.
+      return {
+        ok: false,
+        logId: null,
+        status: "failed",
+        message:
+          "n8n webhook URL is not configured. Save N8N_WEBHOOK_URL in backend secrets to enable sending.",
+      };
+    }
 
     const { data: tpl, error: tplErr } = await (context.supabase as any)
       .from("communication_templates")
@@ -126,6 +145,52 @@ export const sendTestCommunication = createServerFn({ method: "POST" })
     if (!tpl) throw new Error("Template not found.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Post to n8n FIRST — only record after the webhook has actually been attempted.
+    let n8nStatus = 0;
+    let n8nText = "";
+    let n8nOk = false;
+    let providerMessageId: string | null = null;
+    let networkError: string | null = null;
+    try {
+      const res = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(webhookSecret ? { "X-Webhook-Secret": webhookSecret } : {}),
+        },
+        body: JSON.stringify({
+          event: "send_test_communication",
+          is_test: true,
+          template_id: tpl.id,
+          template_name: tpl.template_name,
+          recipient_email: data.testEmail,
+          subject: `[TEST] ${data.renderedSubject}`,
+          html_body: data.renderedBody,
+          initiated_by: initiatedByEmail,
+          requested_at: new Date().toISOString(),
+        }),
+      });
+      n8nStatus = res.status;
+      n8nText = await res.text();
+      let parsed: any = null;
+      try { parsed = JSON.parse(n8nText); } catch { /* text response */ }
+      const jsonSaysFailed = parsed && typeof parsed === "object" && parsed.success === false;
+      n8nOk = res.ok && !jsonSaysFailed;
+      if (parsed && typeof parsed === "object") {
+        providerMessageId = parsed.message_id || parsed.id || parsed.provider_message_id || null;
+      }
+    } catch (e: any) {
+      networkError = e?.message ? String(e.message) : "Network error contacting n8n.";
+    }
+
+    const finalStatus = n8nOk ? "sent" : "failed";
+    const failureReason = n8nOk
+      ? null
+      : networkError
+        ? networkError.slice(0, 500)
+        : `n8n ${n8nStatus}: ${n8nText.slice(0, 500)}`;
+
     const { data: logRow, error: insErr } = await (supabaseAdmin as any)
       .from("communication_logs")
       .insert({
@@ -140,10 +205,13 @@ export const sendTestCommunication = createServerFn({ method: "POST" })
         rendered_subject: `[TEST] ${data.renderedSubject}`,
         rendered_body: data.renderedBody,
         channel: "email",
-        status: "queued",
+        status: finalStatus,
         is_test: true,
         initiated_by: context.userId,
         initiated_by_email: initiatedByEmail,
+        provider_message_id: providerMessageId,
+        failure_reason: failureReason,
+        delivered_at: n8nOk ? new Date().toISOString() : null,
         metadata: { is_test: true } as any,
       })
       .select("id")
@@ -151,64 +219,15 @@ export const sendTestCommunication = createServerFn({ method: "POST" })
     if (insErr) throw new Error(insErr.message);
     const logId = logRow.id as string;
 
-    const webhookUrl = process.env.N8N_WEBHOOK_URL || "";
-    const webhookSecret = process.env.N8N_WEBHOOK_SECRET || "";
-    if (!webhookUrl) {
-      await (supabaseAdmin as any)
-        .from("communication_logs")
-        .update({
-          status: "failed",
-          failure_reason: "n8n webhook is not configured yet. Add N8N_WEBHOOK_URL in backend secrets.",
-        })
-        .eq("id", logId);
-      return {
-        ok: false,
-        logId,
-        status: "failed",
-        message: "n8n webhook not configured. The test was queued but not delivered.",
-      };
+    if (n8nOk) {
+      return { ok: true, logId, status: "sent", message: "Test email sent." };
     }
-    await (supabaseAdmin as any).from("communication_logs").update({ status: "processing" }).eq("id", logId);
-    try {
-      const res = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(webhookSecret ? { "X-Webhook-Secret": webhookSecret } : {}),
-        },
-        body: JSON.stringify({
-          event: "send_test_communication",
-          is_test: true,
-          communication_log_id: logId,
-          template_id: tpl.id,
-          template_name: tpl.template_name,
-          recipient_email: data.testEmail,
-          subject: `[TEST] ${data.renderedSubject}`,
-          html_body: data.renderedBody,
-          initiated_by: initiatedByEmail,
-          requested_at: new Date().toISOString(),
-        }),
-      });
-      const txt = await res.text();
-      if (!res.ok) {
-        await (supabaseAdmin as any)
-          .from("communication_logs")
-          .update({ status: "failed", failure_reason: `n8n ${res.status}: ${txt.slice(0, 400)}` })
-          .eq("id", logId);
-        return { ok: false, logId, status: "failed", message: `n8n error ${res.status}` };
-      }
-      await (supabaseAdmin as any)
-        .from("communication_logs")
-        .update({ status: "sent", delivered_at: new Date().toISOString() })
-        .eq("id", logId);
-      return { ok: true, logId, status: "sent" };
-    } catch (e: any) {
-      await (supabaseAdmin as any)
-        .from("communication_logs")
-        .update({ status: "failed", failure_reason: e?.message || "Network error contacting n8n." })
-        .eq("id", logId);
-      return { ok: false, logId, status: "failed", message: e?.message || "Send failed." };
-    }
+    return {
+      ok: false,
+      logId,
+      status: "failed",
+      message: failureReason || `n8n error ${n8nStatus}`,
+    };
   });
 
 // Convenience: does the caller have the admin role?
