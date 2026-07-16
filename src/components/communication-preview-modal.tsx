@@ -264,11 +264,24 @@ export function CommunicationPreviewModal({
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-                Letter Preview
+                Email Body
+              </div>
+              <div className="rounded border border-border bg-background/60 p-3 text-sm">
+                <div dangerouslySetInnerHTML={{ __html: preview?.body || "" }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  PDF Attachment
+                </div>
+                <div className="text-[10px] font-mono text-muted-foreground truncate max-w-[60%]" title={preview?.pdfFilename}>
+                  {preview?.pdfFilename}
+                </div>
               </div>
               <div className="rounded border border-border bg-neutral-200 p-3 overflow-auto max-h-[520px]">
                 <div style={{ transform: "scale(0.55)", transformOrigin: "top left", width: "182%" }}>
-                  <div dangerouslySetInnerHTML={{ __html: preview?.body || "" }} />
+                  <div dangerouslySetInnerHTML={{ __html: preview?.letterHtml || "" }} />
                 </div>
               </div>
             </div>
