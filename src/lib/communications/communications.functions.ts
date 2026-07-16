@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { BB_LOGO_URL, buildLetterVariables, renderLetterHtml } from "./letter-renderer";
+import { BB_LOGO_URL, buildLetterVariables } from "./letter-renderer";
 import { buildLetterPdfFromBytes } from "./letter-pdf";
 
 // Communications system: send confirmation / reminder emails to families
