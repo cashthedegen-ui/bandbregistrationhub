@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 import type { LetterVariables } from "./letter-renderer";
 import { interpolateLetterBody, BB_LOGO_URL } from "./letter-renderer";
 
