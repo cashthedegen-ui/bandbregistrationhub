@@ -32,8 +32,64 @@ export function assertValidBase64(s: string, label: string): void {
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(s)) throw new Error(`${label}: not base64`);
 }
 
-// Fetch the B&B logo bytes from the same origin serving this request, then
-// build the letter PDF and return raw base64 (no prefix) ready for Resend.
+// Fetch the B&B logo bytes. Tries a list of candidate URLs (request origin
+// first, then known-public Lovable hosts) so a Worker self-fetch failure or
+// missing preview asset route doesn't kill the whole PDF build. Every fetch
+// is wrapped and its URL / status / body preview / stack are logged.
+async function fetchLogoBytes(origin: string): Promise<{ bytes: Uint8Array; url: string }> {
+  const path = BB_LOGO_URL;
+  const candidates: string[] = [];
+  const push = (u: string) => {
+    if (!u) return;
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)/i.test(u)) return;
+    if (!candidates.includes(u)) candidates.push(u);
+  };
+  if (path.startsWith("http")) push(path);
+  else {
+    if (origin && !/localhost|127\.0\.0\.1/i.test(origin)) push(origin.replace(/\/$/, "") + path);
+    push("https://bandbregistrationhub.lovable.app" + path);
+    push("https://project--28914fd9-acbb-4989-9331-17763ec76f37.lovable.app" + path);
+    push("https://project--28914fd9-acbb-4989-9331-17763ec76f37-dev.lovable.app" + path);
+  }
+  console.log("[pdf] logo fetch candidates", { origin, path, candidates });
+
+  const errors: string[] = [];
+  for (const url of candidates) {
+    console.log("[pdf] fetching logo", { url });
+    try {
+      const res = await fetch(url);
+      const ct = res.headers.get("content-type") || "";
+      console.log("[pdf] logo response", { url, status: res.status, ok: res.ok, contentType: ct });
+      if (!res.ok) {
+        let bodyPreview = "";
+        try { bodyPreview = (await res.text()).slice(0, 300); } catch { /* ignore */ }
+        errors.push(`HTTP ${res.status} @ ${url} :: ${bodyPreview}`);
+        continue;
+      }
+      if (ct.includes("text/html")) {
+        errors.push(`Expected image, got text/html @ ${url}`);
+        continue;
+      }
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (bytes.byteLength < 100) {
+        errors.push(`Logo too small (${bytes.byteLength}) @ ${url}`);
+        continue;
+      }
+      console.log("[pdf] logo fetched", { url, bytes: bytes.byteLength });
+      return { bytes, url };
+    } catch (e: any) {
+      console.error("[pdf] logo fetch threw", {
+        url,
+        message: e?.message || String(e),
+        cause: e?.cause ? String(e.cause) : undefined,
+        stack: e?.stack,
+      });
+      errors.push(`${e?.message || String(e)} @ ${url}`);
+    }
+  }
+  throw new Error(`Logo fetch failed for all candidates: ${errors.join(" | ")}`);
+}
+
 export async function buildConfirmationPdfBase64(params: {
   origin: string;
   templateBodyHtml: string;
@@ -41,19 +97,51 @@ export async function buildConfirmationPdfBase64(params: {
   studentName: string;
 }): Promise<PdfBuildResult> {
   const { origin, templateBodyHtml, vars, studentName } = params;
-  const logoUrl = BB_LOGO_URL.startsWith("http") ? BB_LOGO_URL : origin + BB_LOGO_URL;
-  const logoRes = await fetch(logoUrl);
-  if (!logoRes.ok) throw new Error(`logo fetch failed: HTTP ${logoRes.status}`);
-  const logoBytes = new Uint8Array(await logoRes.arrayBuffer());
-  if (logoBytes.byteLength < 100) throw new Error(`logo bytes too small (${logoBytes.byteLength})`);
+  console.log("[pdf] build start", {
+    origin,
+    studentName,
+    templateBodyHtmlLength: templateBodyHtml?.length ?? 0,
+    templateBodyHtmlPreview: (templateBodyHtml || "").slice(0, 300),
+    BB_LOGO_URL,
+  });
 
-  const { pdfBytes, base64 } = buildLetterPdfFromBytes(templateBodyHtml, vars, logoBytes);
+  let logoBytes: Uint8Array;
+  let logoUrlUsed: string;
+  try {
+    const r = await fetchLogoBytes(origin);
+    logoBytes = r.bytes;
+    logoUrlUsed = r.url;
+  } catch (e: any) {
+    console.error("[pdf] logo stage failed", { message: e?.message, stack: e?.stack });
+    throw new Error(`logo fetch failed: ${e?.message || String(e)}`);
+  }
+
+  let built: { pdfBytes: Uint8Array; base64: string };
+  try {
+    built = buildLetterPdfFromBytes(templateBodyHtml, vars, logoBytes);
+  } catch (e: any) {
+    console.error("[pdf] jsPDF render failed", {
+      message: e?.message,
+      stack: e?.stack,
+      logoUrlUsed,
+      logoBytesLength: logoBytes.byteLength,
+    });
+    throw new Error(`PDF render failed: ${e?.message || String(e)}`);
+  }
+  const { pdfBytes, base64 } = built;
   if (!pdfBytes || pdfBytes.byteLength < 500) {
     throw new Error(`PDF too small (${pdfBytes?.byteLength ?? 0} bytes)`);
   }
   assertValidBase64(base64, "PDF base64");
   const filename = buildConfirmationFilename(studentName);
   if (!filename.toLowerCase().endsWith(".pdf")) throw new Error("filename must end with .pdf");
+  console.log("[pdf] build ok", {
+    logoUrlUsed,
+    logoBytes: logoBytes.byteLength,
+    pdfByteLength: pdfBytes.byteLength,
+    base64Length: base64.length,
+    filename,
+  });
   return { base64, byteLength: pdfBytes.byteLength, base64Length: base64.length, filename };
 }
 
@@ -160,26 +248,37 @@ export async function sendConfirmationViaResend(input: ResendSendInput): Promise
     filename: input.pdfFilename,
   });
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      from: "B&B Transportation <info@bandbtrans.com>",
-      to: [input.to],
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-      attachments: [
-        {
-          filename: input.pdfFilename,
-          content: input.pdfBase64,
-        },
-      ],
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        from: "B&B Transportation <info@bandbtrans.com>",
+        to: [input.to],
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+        attachments: [
+          {
+            filename: input.pdfFilename,
+            content: input.pdfBase64,
+          },
+        ],
+      }),
+    });
+  } catch (e: any) {
+    console.error("[email] resend fetch threw", {
+      url: "https://api.resend.com/emails",
+      message: e?.message || String(e),
+      cause: e?.cause ? String(e.cause) : undefined,
+      stack: e?.stack,
+    });
+    throw new Error(`Resend fetch failed: ${e?.message || String(e)}`);
+  }
   const bodyText = await res.text();
   let providerId: string | null = null;
   try {

@@ -242,7 +242,11 @@ export const sendCommunication = createServerFn({ method: "POST" })
       });
     } catch (e: any) {
       const reason = `PDF generation failed: ${e?.message || String(e)}`.slice(0, 500);
-      console.error("[sendCommunication] " + reason);
+      console.error("[sendCommunication] PDF generation error", {
+        message: e?.message,
+        cause: e?.cause ? String(e.cause) : undefined,
+        stack: e?.stack,
+      });
       await (supabaseAdmin as any)
         .from("communication_logs")
         .update({ status: "failed", failure_reason: reason })
