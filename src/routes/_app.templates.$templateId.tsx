@@ -191,7 +191,7 @@ function TemplateDetailsPage() {
         },
       });
       if (res.ok) {
-        toast.success(`Test email queued to ${testEmail}`);
+        toast.success(res.message || `Test email sent to ${testEmail}`);
         setTestOpen(false);
       } else {
         toast.error(res.message || "Test send failed.");
