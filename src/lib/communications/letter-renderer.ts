@@ -147,5 +147,6 @@ export const SAMPLE_LETTER_VARIABLES: LetterVariables = {
   parent_name: "Michael Thompson",
   amount_paid: "$1,437.00",
   payment_date: new Date().toLocaleDateString("en-US"),
-  school_year: "2026–2027",
+  school_year: "2026\u20132027",
+  shuttle_location: "St. Luke\u2019s School",
 };
