@@ -116,7 +116,7 @@ function renderPdfDoc(vars: LetterVariables, logo: LogoInput): jsPDF {
   const logoW = 170;
   const logoH = Math.max(40, logoW * (logo.aspect || 0.5));
   const logoY = M_TOP;
-  doc.addImage(logo.image as any, "PNG", M_LEFT, logoY, logoW, logoH, "bb-logo", "NONE");
+  doc.addImage(logo.image as any, "PNG", M_LEFT, logoY, logoW, logoH, "bb-logo", "FAST");
 
   // ============ Title block (centered) ============
   const centerX = PAGE_W / 2;
