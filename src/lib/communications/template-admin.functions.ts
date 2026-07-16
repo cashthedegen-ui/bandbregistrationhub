@@ -97,18 +97,16 @@ export const listCommunicationTemplateVersions = createServerFn({ method: "GET" 
     return (rows ?? []) as TemplateVersionRow[];
   });
 
-// Send Test: renders the template with sample variables and posts to n8n
-// with is_test=true. Does NOT create production history rows for a student,
-// does NOT change payment status, does NOT enforce duplicate protection.
+// Send Test: renders the confirmation PDF with sample variables and sends
+// a real email via Resend with the PDF attached, so testers see exactly
+// what a family would receive. Does NOT enforce duplicate protection and
+// logs the send with is_test=true.
 export const sendTestCommunication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { templateId: string; testEmail: string; renderedSubject: string; renderedBody: string }) => {
+  .inputValidator((data: { templateId: string; testEmail: string; renderedSubject?: string; renderedBody?: string }) => {
     if (!data?.templateId) throw new Error("Missing template id.");
     if (!data?.testEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.testEmail)) {
       throw new Error("A valid test email address is required.");
-    }
-    if (!data?.renderedSubject || !data?.renderedBody) {
-      throw new Error("Rendered content is required.");
     }
     return data;
   })
@@ -117,79 +115,96 @@ export const sendTestCommunication = createServerFn({ method: "POST" })
     const c = (context.claims ?? {}) as Record<string, unknown>;
     const initiatedByEmail = (c.email as string) || null;
 
-    const webhookUrl = process.env.N8N_WEBHOOK_URL || "";
-    const webhookSecret = process.env.N8N_WEBHOOK_SECRET || "";
-    // TEMP diagnostic: presence only, never the value.
-    console.log("[sendTestCommunication] secrets:", {
-      has_webhook_url: !!webhookUrl,
-      has_webhook_secret: !!webhookSecret,
-    });
-
-    if (!webhookUrl) {
-      // Do NOT create a queued record when the webhook isn't even attempted.
-      return {
-        ok: false,
-        logId: null,
-        status: "failed",
-        message:
-          "n8n webhook URL is not configured. Save N8N_WEBHOOK_URL in backend secrets to enable sending.",
-      };
-    }
-
     const { data: tpl, error: tplErr } = await (context.supabase as any)
       .from("communication_templates")
-      .select("id, template_name, communication_type, school_or_program")
+      .select("id, template_name, communication_type, school_or_program, email_body")
       .eq("id", data.templateId)
       .maybeSingle();
     if (tplErr) throw new Error(tplErr.message);
     if (!tpl) throw new Error("Template not found.");
 
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const {
+      buildConfirmationPdfBase64,
+      makeLetterVariables,
+      buildCoveringEmail,
+      sendConfirmationViaResend,
+    } = await import("./pdf-send");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Post to n8n FIRST — only record after the webhook has actually been attempted.
-    let n8nStatus = 0;
-    let n8nText = "";
-    let n8nOk = false;
-    let providerMessageId: string | null = null;
-    let networkError: string | null = null;
+    // Use sample-but-plausible data for the letter body.
+    const sampleStudentName = "Sarah Thompson";
+    const samplePurchaserName = "Michael Thompson";
+
+    let pdfBase64: string;
+    let pdfFilename: string;
+    let pdfByteLength = 0;
+    let base64Length = 0;
     try {
-      const res = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(webhookSecret ? { "X-Webhook-Secret": webhookSecret } : {}),
-        },
-        body: JSON.stringify({
-          event: "send_test_communication",
-          is_test: true,
-          template_id: tpl.id,
-          template_name: tpl.template_name,
-          recipient_email: data.testEmail,
-          subject: `[TEST] ${data.renderedSubject}`,
-          html_body: data.renderedBody,
-          initiated_by: initiatedByEmail,
-          requested_at: new Date().toISOString(),
-        }),
+      const origin = new URL(getRequest().url).origin;
+      const letterVars = makeLetterVariables({
+        studentName: sampleStudentName,
+        parentName: samplePurchaserName,
+        amountPaid: 1437,
       });
-      n8nStatus = res.status;
-      n8nText = await res.text();
-      let parsed: any = null;
-      try { parsed = JSON.parse(n8nText); } catch { /* text response */ }
-      const jsonSaysFailed = parsed && typeof parsed === "object" && parsed.success === false;
-      n8nOk = res.ok && !jsonSaysFailed;
-      if (parsed && typeof parsed === "object") {
-        providerMessageId = parsed.message_id || parsed.id || parsed.provider_message_id || null;
-      }
+      const built = await buildConfirmationPdfBase64({
+        origin,
+        templateBodyHtml: tpl.email_body || "",
+        vars: letterVars,
+        studentName: sampleStudentName,
+      });
+      pdfBase64 = built.base64;
+      pdfFilename = built.filename;
+      pdfByteLength = built.byteLength;
+      base64Length = built.base64Length;
+      console.log("[sendTestCommunication] pdf built", { pdfByteLength, base64Length, filename: pdfFilename });
     } catch (e: any) {
-      networkError = e?.message ? String(e.message) : "Network error contacting n8n.";
+      const reason = `PDF generation failed: ${e?.message || String(e)}`.slice(0, 500);
+      console.error("[sendTestCommunication] " + reason);
+      return { ok: false, logId: null, status: "failed", message: reason };
     }
 
-    const finalStatus = n8nOk ? "sent" : "failed";
-    const failureReason = n8nOk
+    const cover = buildCoveringEmail({
+      purchaserName: samplePurchaserName,
+      studentName: sampleStudentName,
+    });
+    const testSubject = `[TEST] ${cover.subject}`;
+
+    let resendOk = false;
+    let resendStatus = 0;
+    let providerId: string | null = null;
+    let errorBody: string | null = null;
+    try {
+      const result = await sendConfirmationViaResend({
+        to: data.testEmail,
+        subject: testSubject,
+        html: cover.html,
+        text: cover.text,
+        pdfBase64,
+        pdfFilename,
+      });
+      resendOk = result.ok;
+      resendStatus = result.status;
+      providerId = result.providerId;
+      errorBody = result.errorBody;
+      console.log("[sendTestCommunication] resend result", {
+        ok: resendOk,
+        status: resendStatus,
+        providerId,
+        pdfByteLength,
+        base64Length,
+        filename: pdfFilename,
+        error: errorBody,
+      });
+    } catch (e: any) {
+      errorBody = (e?.message ? String(e.message) : "Network error contacting Resend.").slice(0, 500);
+      console.error("[sendTestCommunication] " + errorBody);
+    }
+
+    const finalStatus = resendOk ? "sent" : "failed";
+    const failureReason = resendOk
       ? null
-      : networkError
-        ? networkError.slice(0, 500)
-        : `n8n ${n8nStatus}: ${n8nText.slice(0, 500)}`;
+      : (errorBody ? `Resend ${resendStatus}: ${errorBody}` : `Resend ${resendStatus}`).slice(0, 500);
 
     const { data: logRow, error: insErr } = await (supabaseAdmin as any)
       .from("communication_logs")
@@ -202,32 +217,25 @@ export const sendTestCommunication = createServerFn({ method: "POST" })
         recipient_email: data.testEmail,
         communication_type: tpl.communication_type,
         school_or_program: tpl.school_or_program,
-        rendered_subject: `[TEST] ${data.renderedSubject}`,
-        rendered_body: data.renderedBody,
+        rendered_subject: testSubject,
+        rendered_body: cover.html,
         channel: "email",
         status: finalStatus,
         is_test: true,
         initiated_by: context.userId,
         initiated_by_email: initiatedByEmail,
-        provider_message_id: providerMessageId,
+        provider_message_id: providerId,
         failure_reason: failureReason,
-        delivered_at: n8nOk ? new Date().toISOString() : null,
-        metadata: { is_test: true } as any,
+        delivered_at: resendOk ? new Date().toISOString() : null,
+        metadata: { is_test: true, pdf_bytes: pdfByteLength } as any,
       })
       .select("id")
       .single();
     if (insErr) throw new Error(insErr.message);
     const logId = logRow.id as string;
 
-    if (n8nOk) {
-      return { ok: true, logId, status: "sent", message: "Test email sent." };
-    }
-    return {
-      ok: false,
-      logId,
-      status: "failed",
-      message: failureReason || `n8n error ${n8nStatus}`,
-    };
+    if (resendOk) return { ok: true, logId, status: "sent", message: "Test email sent." };
+    return { ok: false, logId, status: "failed", message: failureReason || `Email send failed (${resendStatus}).` };
   });
 
 // Convenience: does the caller have the admin role?
