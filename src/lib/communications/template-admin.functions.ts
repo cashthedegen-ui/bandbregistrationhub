@@ -160,7 +160,11 @@ export const sendTestCommunication = createServerFn({ method: "POST" })
       console.log("[sendTestCommunication] pdf built", { pdfByteLength, base64Length, filename: pdfFilename });
     } catch (e: any) {
       const reason = `PDF generation failed: ${e?.message || String(e)}`.slice(0, 500);
-      console.error("[sendTestCommunication] " + reason);
+      console.error("[sendTestCommunication] PDF generation error", {
+        message: e?.message,
+        cause: e?.cause ? String(e.cause) : undefined,
+        stack: e?.stack,
+      });
       return { ok: false, logId: null, status: "failed", message: reason };
     }
 
