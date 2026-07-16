@@ -1,6 +1,23 @@
 import jsPDF from "jspdf";
 import type { LetterVariables } from "./letter-renderer";
-import { interpolateLetterBody } from "./letter-renderer";
+import { interpolateLetterBody, BB_LOGO_URL } from "./letter-renderer";
+
+// Cache the loaded logo image so repeated PDF generations don't re-fetch.
+let logoImagePromise: Promise<HTMLImageElement> | null = null;
+function loadLogoImage(): Promise<HTMLImageElement> {
+  if (logoImagePromise) return logoImagePromise;
+  logoImagePromise = new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = (e) => {
+      logoImagePromise = null;
+      reject(e);
+    };
+    img.src = BB_LOGO_URL;
+  });
+  return logoImagePromise;
+}
 
 // Strip HTML tags to plain paragraphs preserving <strong> as bold segments.
 // Returns an array of paragraphs; each paragraph is a list of {text, bold} runs.
@@ -50,7 +67,7 @@ function stripTags(s: string): string {
     .replace(/&quot;/g, '"');
 }
 
-export function buildLetterPdf(templateBodyHtml: string, vars: LetterVariables): jsPDF {
+export async function buildLetterPdf(templateBodyHtml: string, vars: LetterVariables): Promise<jsPDF> {
   const { html } = interpolateLetterBody(templateBodyHtml, vars);
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const W = doc.internal.pageSize.getWidth();
@@ -60,63 +77,22 @@ export function buildLetterPdf(templateBodyHtml: string, vars: LetterVariables):
   const gray = { r: 75, g: 85, b: 99 };
   const light = { r: 156, g: 163, b: 175 };
 
-  // ===== Logo (top-centered, mirrors preview/email SVG) =====
-  doc.setTextColor(gray.r, gray.g, gray.b);
-  const centerX = W / 2;
-
-  // Baseline for "B AND B" row
-  const logoTop = 58;
-  const bY = logoTop + 30;
-
-  // Measure widths so the group is truly centered
-  doc.setFont("times", "bold");
-  doc.setFontSize(34);
-  const bW = doc.getTextWidth("B");
-  doc.setFont("times", "italic");
-  doc.setFontSize(16);
-  const andW = doc.getTextWidth("AND");
-  const gapPx = 10;
-  const groupW = bW * 2 + andW + gapPx * 2;
-  let x = centerX - groupW / 2;
-
-  doc.setFont("times", "bold");
-  doc.setFontSize(34);
-  doc.text("B", x, bY);
-  x += bW + gapPx;
-  doc.setFont("times", "italic");
-  doc.setFontSize(16);
-  doc.text("AND", x, bY - 4);
-  x += andW + gapPx;
-  doc.setFont("times", "bold");
-  doc.setFontSize(34);
-  doc.text("B", x, bY);
-
-  // Double line under logo
-  const lineY = bY + 10;
-  doc.setDrawColor(gray.r, gray.g, gray.b);
-  doc.setLineWidth(0.6);
-  doc.line(M + 40, lineY, W - M - 40, lineY);
-  doc.line(M + 40, lineY + 3, W - M - 40, lineY + 3);
-
-  // "TRANSPORTATION, INC."
-  doc.setFont("times", "bold");
-  doc.setFontSize(18);
-  doc.text("TRANSPORTATION, INC.", centerX, lineY + 24, { align: "center" });
-
-  // Tagline
-  doc.setFont("times", "italic");
-  doc.setFontSize(10);
-  doc.setTextColor(107, 114, 128);
-  doc.text('"transporting the world\'s most precious cargo"', centerX, lineY + 40, { align: "center" });
-
-  // Horizontal divider under logo block
-  const dividerY = lineY + 54;
-  doc.setDrawColor(light.r, light.g, light.b);
-  doc.setLineWidth(0.5);
-  doc.line(M, dividerY, W - M, dividerY);
+  // ===== Logo (top-left, matches HTML/email placement) =====
+  // 36px left / 28px top padding, max width 220px, height auto (aspect preserved).
+  const logo = await loadLogoImage();
+  const logoLeft = 36;
+  const logoTop = 28;
+  const logoMaxW = 220;
+  const aspect = logo.naturalWidth > 0 ? logo.naturalHeight / logo.naturalWidth : 0.5;
+  const logoW = logoMaxW;
+  const logoH = logoMaxW * aspect;
+  // Pass the HTMLImageElement so jsPDF embeds the original PNG data (no re-encoding
+  // to JPEG); alias uses the CDN asset ID for cache-friendly single embed.
+  doc.addImage(logo, "PNG", logoLeft, logoTop, logoW, logoH, "bb-logo", "NONE");
 
   // ===== School year =====
-  let y = dividerY + 46;
+  const centerX = W / 2;
+  let y = logoTop + logoH + 40;
   doc.setTextColor(107, 114, 128);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(28);
@@ -211,14 +187,14 @@ function flowRuns(doc: jsPDF, runs: Run[], x0: number, y0: number, maxW: number,
   return y + lineH;
 }
 
-export function downloadLetterPdf(templateBodyHtml: string, vars: LetterVariables, filenameHint?: string) {
-  const doc = buildLetterPdf(templateBodyHtml, vars);
+export async function downloadLetterPdf(templateBodyHtml: string, vars: LetterVariables, filenameHint?: string) {
+  const doc = await buildLetterPdf(templateBodyHtml, vars);
   const safe = (filenameHint || vars.student_name || "confirmation").replace(/[^a-z0-9]+/gi, "_");
   doc.save(`StLukes_Confirmation_${safe}.pdf`);
 }
 
-export function openLetterPdfInNewTab(templateBodyHtml: string, vars: LetterVariables) {
-  const doc = buildLetterPdf(templateBodyHtml, vars);
+export async function openLetterPdfInNewTab(templateBodyHtml: string, vars: LetterVariables) {
+  const doc = await buildLetterPdf(templateBodyHtml, vars);
   const url = doc.output("bloburl");
   window.open(url, "_blank", "noopener");
 }
