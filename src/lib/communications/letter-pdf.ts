@@ -2,42 +2,27 @@ import jsPDF from "jspdf";
 import type { LetterVariables } from "./letter-renderer";
 import { interpolateLetterBody, BB_LOGO_URL } from "./letter-renderer";
 
-// Cache the loaded logo image so repeated PDF generations don't re-fetch.
-let logoImagePromise: Promise<HTMLImageElement> | null = null;
-function loadLogoImage(): Promise<HTMLImageElement> {
-  if (logoImagePromise) return logoImagePromise;
-  logoImagePromise = new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = (e) => {
-      logoImagePromise = null;
-      reject(e);
-    };
-    img.src = BB_LOGO_URL;
-  });
-  return logoImagePromise;
-}
+// ============================================================================
+// Shared PDF renderer for the St. Luke's Parking Shuttle confirmation letter.
+// Works both client-side (loads the logo via HTMLImageElement) and server-side
+// (accepts logo bytes and parses PNG dimensions directly).
+// ============================================================================
 
 // Strip HTML tags to plain paragraphs preserving <strong> as bold segments.
-// Returns an array of paragraphs; each paragraph is a list of {text, bold} runs.
 interface Run { text: string; bold: boolean }
 type Paragraph = Run[];
 
 function htmlToParagraphs(html: string): Paragraph[] {
-  // Normalise
   const cleaned = html
     .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/\r\n?/g, "\n")
     .replace(/<br\s*\/?>(\s*)/gi, "\n");
-  // Split on </p> boundaries
   const chunks = cleaned.split(/<\/p\s*>/i);
   const paras: Paragraph[] = [];
   for (const chunk of chunks) {
     const opened = chunk.replace(/<p[^>]*>/i, "");
     if (!opened.trim()) continue;
     const runs: Run[] = [];
-    // Tokenize <strong>/<b>
     const re = /<(strong|b)[^>]*>([\s\S]*?)<\/(strong|b)>/gi;
     let last = 0;
     let m: RegExpExecArray | null;
@@ -67,8 +52,13 @@ function stripTags(s: string): string {
     .replace(/&quot;/g, '"');
 }
 
-export async function buildLetterPdf(templateBodyHtml: string, vars: LetterVariables): Promise<jsPDF> {
-  const { html } = interpolateLetterBody(templateBodyHtml, vars);
+interface LogoInput {
+  // Either an HTMLImageElement (browser) or a base64 data URL string (server).
+  image: HTMLImageElement | string;
+  aspect: number; // height / width
+}
+
+function renderPdfDoc(bodyHtml: string, vars: LetterVariables, logo: LogoInput): jsPDF {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -77,18 +67,13 @@ export async function buildLetterPdf(templateBodyHtml: string, vars: LetterVaria
   const gray = { r: 75, g: 85, b: 99 };
   const light = { r: 156, g: 163, b: 175 };
 
-  // ===== Logo (top-left, matches HTML/email placement) =====
-  // 36px left / 28px top padding, max width 220px, height auto (aspect preserved).
-  const logo = await loadLogoImage();
+  // ===== Logo (top-left) =====
   const logoLeft = 36;
   const logoTop = 28;
   const logoMaxW = 220;
-  const aspect = logo.naturalWidth > 0 ? logo.naturalHeight / logo.naturalWidth : 0.5;
   const logoW = logoMaxW;
-  const logoH = logoMaxW * aspect;
-  // Pass the HTMLImageElement so jsPDF embeds the original PNG data (no re-encoding
-  // to JPEG); alias uses the CDN asset ID for cache-friendly single embed.
-  doc.addImage(logo, "PNG", logoLeft, logoTop, logoW, logoH, "bb-logo", "NONE");
+  const logoH = logoMaxW * logo.aspect;
+  doc.addImage(logo.image as any, "PNG", logoLeft, logoTop, logoW, logoH, "bb-logo", "NONE");
 
   // ===== School year =====
   const centerX = W / 2;
@@ -105,22 +90,18 @@ export async function buildLetterPdf(templateBodyHtml: string, vars: LetterVaria
   doc.setFontSize(22);
   doc.text("St Luke\u2019s School Parking Shuttle", centerX, y, { align: "center" });
 
-
   // ===== Body paragraphs =====
   y += 44;
-  const paragraphs = htmlToParagraphs(html);
+  const paragraphs = htmlToParagraphs(bodyHtml);
   const bodyMaxW = W - M * 2;
   doc.setTextColor(gray.r, gray.g, gray.b);
 
   for (const para of paragraphs) {
-    // Detect "field-style" line: single run beginning with "Date:" / "Amount Paid:" / "Purchaser:"
-    // Rendered flat with a small gap.
     const flat = para.map((r) => r.text).join("");
     const isField = /^(Date|Amount Paid|Purchaser)\s*:/.test(flat.trim());
 
     if (isField) {
       doc.setFontSize(13);
-      // Split label vs value on the first ":"
       const idx = flat.indexOf(":");
       const label = flat.slice(0, idx + 1);
       const value = flat.slice(idx + 1).trim();
@@ -134,9 +115,8 @@ export async function buildLetterPdf(templateBodyHtml: string, vars: LetterVaria
     }
 
     doc.setFontSize(12.5);
-    // Layout runs with wrapping. Build a token list then flow it.
     y = flowRuns(doc, para, M, y, bodyMaxW, 17);
-    y += 8; // paragraph gap
+    y += 8;
   }
 
   // ===== Footer =====
@@ -155,7 +135,6 @@ export async function buildLetterPdf(templateBodyHtml: string, vars: LetterVaria
   return doc;
 }
 
-// Flow a paragraph of {text, bold} runs with word wrapping. Returns next y.
 function flowRuns(doc: jsPDF, runs: Run[], x0: number, y0: number, maxW: number, lineH: number): number {
   const spaceW = (bold: boolean) => {
     doc.setFont("helvetica", bold ? "bold" : "normal");
@@ -187,6 +166,33 @@ function flowRuns(doc: jsPDF, runs: Run[], x0: number, y0: number, maxW: number,
   return y + lineH;
 }
 
+// ============================================================================
+// Browser entry — loads the CDN logo via HTMLImageElement.
+// ============================================================================
+
+let logoImagePromise: Promise<HTMLImageElement> | null = null;
+function loadLogoImage(): Promise<HTMLImageElement> {
+  if (logoImagePromise) return logoImagePromise;
+  logoImagePromise = new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = (e) => {
+      logoImagePromise = null;
+      reject(e);
+    };
+    img.src = BB_LOGO_URL;
+  });
+  return logoImagePromise;
+}
+
+export async function buildLetterPdf(templateBodyHtml: string, vars: LetterVariables): Promise<jsPDF> {
+  const { html } = interpolateLetterBody(templateBodyHtml, vars);
+  const img = await loadLogoImage();
+  const aspect = img.naturalWidth > 0 ? img.naturalHeight / img.naturalWidth : 0.5;
+  return renderPdfDoc(html, vars, { image: img, aspect });
+}
+
 export async function downloadLetterPdf(templateBodyHtml: string, vars: LetterVariables, filenameHint?: string) {
   const doc = await buildLetterPdf(templateBodyHtml, vars);
   const safe = (filenameHint || vars.student_name || "confirmation").replace(/[^a-z0-9]+/gi, "_");
@@ -197,4 +203,43 @@ export async function openLetterPdfInNewTab(templateBodyHtml: string, vars: Lett
   const doc = await buildLetterPdf(templateBodyHtml, vars);
   const url = doc.output("bloburl");
   window.open(url, "_blank", "noopener");
+}
+
+// ============================================================================
+// Server entry — accepts raw PNG bytes (from a fetch on the server) and
+// produces a PDF as a Uint8Array, suitable for attaching to an email.
+// ============================================================================
+
+// Parse a PNG's width/height from its IHDR chunk (bytes 16..24).
+function parsePngDims(bytes: Uint8Array): { width: number; height: number } {
+  if (bytes.length < 24) throw new Error("Invalid PNG (too short)");
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const width = dv.getUint32(16, false);
+  const height = dv.getUint32(20, false);
+  return { width, height };
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  // Cross-runtime base64 (Node/Worker/Browser).
+  // Buffer exists in Node/Worker with nodejs_compat.
+  if (typeof Buffer !== "undefined") return Buffer.from(bytes).toString("base64");
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (globalThis as any).btoa(bin);
+}
+
+export function buildLetterPdfFromBytes(
+  templateBodyHtml: string,
+  vars: LetterVariables,
+  logoPngBytes: Uint8Array,
+): { pdfBytes: Uint8Array; base64: string } {
+  const { html } = interpolateLetterBody(templateBodyHtml, vars);
+  const { width, height } = parsePngDims(logoPngBytes);
+  const aspect = width > 0 ? height / width : 0.5;
+  const dataUrl = `data:image/png;base64,${bytesToBase64(logoPngBytes)}`;
+  const doc = renderPdfDoc(html, vars, { image: dataUrl, aspect });
+  const ab = doc.output("arraybuffer") as ArrayBuffer;
+  const pdfBytes = new Uint8Array(ab);
+  return { pdfBytes, base64: bytesToBase64(pdfBytes) };
 }

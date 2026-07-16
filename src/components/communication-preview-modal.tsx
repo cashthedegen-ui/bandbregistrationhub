@@ -95,8 +95,9 @@ export function CommunicationPreviewModal({
     [student, template],
   );
 
-  // Preview via the shared letter renderer so the modal shows the exact
-  // letter that will be sent (matching the approved PDF layout).
+  // Preview: the outgoing email is a short covering note; the confirmation
+  // letter itself is attached as a generated PDF. Show both so staff can
+  // verify what the recipient will actually receive.
   const preview = useMemo(() => {
     if (!template || !student) return null;
     const paidAmount =
@@ -108,22 +109,24 @@ export function CommunicationPreviewModal({
       paymentDate: new Date(),
       schoolYear: "2026–2027",
     });
-    const substituteSubject = (s: string): string =>
-      s.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k: string) => {
-        const map: Record<string, string> = {
-          student_name: vars.student_name,
-          parent_name: vars.parent_name,
-          amount_paid: vars.amount_paid,
-          payment_date: vars.payment_date,
-          school_year: vars.school_year,
-        };
-        return map[k] ?? `{{${k}}}`;
-      });
-    const { html, missing } = renderLetterHtml({
+    const { html: letterHtml, missing } = renderLetterHtml({
       templateBodyHtml: template.email_body,
       vars,
     });
-    return { subject: substituteSubject(template.subject), body: html, missing };
+    const purchaserFirstName = (vars.parent_name || "").trim().split(/\s+/)[0] || "there";
+    const shortSubject = "St. Luke\u2019s Parking Shuttle Payment Confirmation (2026\u20132027)";
+    const shortBody = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.55;">
+<p>Hi ${escapeHtml(purchaserFirstName)},</p>
+<p>Attached is the 2026&ndash;2027 St. Luke&rsquo;s School Parking Shuttle payment confirmation for ${escapeHtml(vars.student_name)}.</p>
+<p>Please keep this confirmation for your records.</p>
+<p>Thank you,<br/>B&amp;B Transportation<br/>203-393-9750<br/>www.bandbtrans.com</p>
+</div>`;
+    const nameSlug = (vars.student_name || "Student")
+      .trim()
+      .replace(/[^\p{L}\p{N}]+/gu, "-")
+      .replace(/^-+|-+$/g, "");
+    const pdfFilename = `${nameSlug}-St-Lukes-Parking-Shuttle-Confirmation-2026-2027.pdf`;
+    return { subject: shortSubject, body: shortBody, letterHtml, pdfFilename, missing };
   }, [template, student]);
 
   const handleSend = async () => {
@@ -261,11 +264,24 @@ export function CommunicationPreviewModal({
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-                Letter Preview
+                Email Body
+              </div>
+              <div className="rounded border border-border bg-background/60 p-3 text-sm">
+                <div dangerouslySetInnerHTML={{ __html: preview?.body || "" }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  PDF Attachment
+                </div>
+                <div className="text-[10px] font-mono text-muted-foreground truncate max-w-[60%]" title={preview?.pdfFilename}>
+                  {preview?.pdfFilename}
+                </div>
               </div>
               <div className="rounded border border-border bg-neutral-200 p-3 overflow-auto max-h-[520px]">
                 <div style={{ transform: "scale(0.55)", transformOrigin: "top left", width: "182%" }}>
-                  <div dangerouslySetInnerHTML={{ __html: preview?.body || "" }} />
+                  <div dangerouslySetInnerHTML={{ __html: preview?.letterHtml || "" }} />
                 </div>
               </div>
             </div>
@@ -316,6 +332,12 @@ function Field({ label, value }: { label: string; value: string }) {
 
 function fmtMoney(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+}
+
+function escapeHtml(s: string): string {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;",
+  );
 }
 
 // Small status badge helper for history entries.
