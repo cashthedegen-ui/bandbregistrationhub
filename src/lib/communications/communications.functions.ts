@@ -212,39 +212,36 @@ export const sendCommunication = createServerFn({ method: "POST" })
     const logId = logRow.id as string;
 
     // 6. Generate the confirmation PDF server-side.
-    //    - Fetch the B&B logo from the same origin as the request.
-    //    - Render the PDF with jsPDF using the shared renderer.
-    //    - Base64-encode for the Resend attachment payload.
+    const {
+      buildConfirmationPdfBase64,
+      makeLetterVariables,
+      buildCoveringEmail,
+      sendConfirmationViaResend,
+    } = await import("./pdf-send");
     let pdfBase64: string;
     let pdfFilename: string;
+    let pdfByteLength = 0;
     try {
-      const req = getRequest();
-      const origin = new URL(req.url).origin;
-      const logoUrl = BB_LOGO_URL.startsWith("http") ? BB_LOGO_URL : origin + BB_LOGO_URL;
-      const logoRes = await fetch(logoUrl);
-      if (!logoRes.ok) {
-        throw new Error(`logo fetch failed: HTTP ${logoRes.status}`);
-      }
-      const logoBytes = new Uint8Array(await logoRes.arrayBuffer());
-
-      const letterVars = buildLetterVariables({
+      const origin = new URL(getRequest().url).origin;
+      const letterVars = makeLetterVariables({
         studentName: student.studentName,
         parentName: student.parentName,
         amountPaid: paidAmount,
-        paymentDate: new Date(),
-        schoolYear: "2026–2027",
       });
-      const { base64 } = buildLetterPdfFromBytes(
-        tpl.email_body || "",
-        letterVars,
-        logoBytes,
-      );
-      pdfBase64 = base64;
-      const nameSlug = (student.studentName || "Student")
-        .trim()
-        .replace(/[^\p{L}\p{N}]+/gu, "-")
-        .replace(/^-+|-+$/g, "");
-      pdfFilename = `${nameSlug}-St-Lukes-Parking-Shuttle-Confirmation-2026-2027.pdf`;
+      const built = await buildConfirmationPdfBase64({
+        origin,
+        templateBodyHtml: tpl.email_body || "",
+        vars: letterVars,
+        studentName: student.studentName,
+      });
+      pdfBase64 = built.base64;
+      pdfFilename = built.filename;
+      pdfByteLength = built.byteLength;
+      console.log("[sendCommunication] pdf built", {
+        pdfByteLength,
+        base64Length: built.base64Length,
+        filename: pdfFilename,
+      });
     } catch (e: any) {
       const reason = `PDF generation failed: ${e?.message || String(e)}`.slice(0, 500);
       console.error("[sendCommunication] " + reason);
@@ -255,87 +252,48 @@ export const sendCommunication = createServerFn({ method: "POST" })
       return { ok: false, logId, status: "failed", message: reason };
     }
 
-    // 7. Compose the short covering email and send via Resend directly.
-    const resendKey = process.env.RESEND_API_KEY || process.env.resend_api_key || "";
-    if (!resendKey) {
-      const reason = "Resend API key is not configured (RESEND_API_KEY secret missing).";
-      console.error("[sendCommunication] " + reason);
-      await (supabaseAdmin as any)
-        .from("communication_logs")
-        .update({ status: "failed", failure_reason: reason })
-        .eq("id", logId);
-      return { ok: false, logId, status: "failed", message: reason };
-    }
-
-    const purchaserFirstName =
-      (student.parentName || "").trim().split(/\s+/)[0] || "there";
-    const shortSubject = "St. Luke\u2019s Parking Shuttle Payment Confirmation (2026\u20132027)";
-    const shortText =
-      `Hi ${purchaserFirstName},\n\n` +
-      `Attached is the 2026\u20132027 St. Luke\u2019s School Parking Shuttle payment confirmation for ${student.studentName}.\n\n` +
-      `Please keep this confirmation for your records.\n\n` +
-      `Thank you,\n` +
-      `B&B Transportation\n` +
-      `203-393-9750\n` +
-      `www.bandbtrans.com`;
-    const shortHtml = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.55;background:#ffffff;">
-<p>Hi ${escapeHtml(purchaserFirstName)},</p>
-<p>Attached is the 2026&ndash;2027 St. Luke&rsquo;s School Parking Shuttle payment confirmation for ${escapeHtml(student.studentName)}.</p>
-<p>Please keep this confirmation for your records.</p>
-<p>Thank you,<br/>
-B&amp;B Transportation<br/>
-203-393-9750<br/>
-<a href="https://www.bandbtrans.com">www.bandbtrans.com</a></p>
-</body></html>`;
+    // 7. Compose the short covering email + send via Resend with the PDF attached.
+    const cover = buildCoveringEmail({
+      purchaserName: student.parentName,
+      studentName: student.studentName,
+    });
 
     await (supabaseAdmin as any)
       .from("communication_logs")
-      .update({ status: "processing", rendered_subject: shortSubject, rendered_body: shortHtml })
+      .update({ status: "processing", rendered_subject: cover.subject, rendered_body: cover.html })
       .eq("id", logId);
 
     try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${resendKey}`,
-        },
-        body: JSON.stringify({
-          from: "B&B Transportation <info@bandbtrans.com>",
-          to: [student.parentEmail],
-          subject: shortSubject,
-          html: shortHtml,
-          text: shortText,
-          attachments: [
-            {
-              filename: pdfFilename,
-              content: pdfBase64,
-            },
-          ],
-        }),
+      const result = await sendConfirmationViaResend({
+        to: student.parentEmail,
+        subject: cover.subject,
+        html: cover.html,
+        text: cover.text,
+        pdfBase64,
+        pdfFilename,
       });
-      const respText = await res.text();
-      let providerId: string | null = null;
-      try {
-        const j = JSON.parse(respText);
-        providerId = j?.id || j?.message_id || null;
-      } catch {
-        /* keep text */
-      }
-      if (!res.ok) {
-        const reason = `Resend ${res.status}: ${respText.slice(0, 500)}`;
-        console.error("[sendCommunication] " + reason);
+      console.log("[sendCommunication] resend result", {
+        ok: result.ok,
+        status: result.status,
+        providerId: result.providerId,
+        pdfByteLength,
+        base64Length: pdfBase64.length,
+        filename: pdfFilename,
+        error: result.errorBody,
+      });
+      if (!result.ok) {
+        const reason = `Resend ${result.status}: ${result.errorBody || "no body"}`.slice(0, 500);
         await (supabaseAdmin as any)
           .from("communication_logs")
           .update({ status: "failed", failure_reason: reason })
           .eq("id", logId);
-        return { ok: false, logId, status: "failed", message: `Email send failed (${res.status}).` };
+        return { ok: false, logId, status: "failed", message: `Email send failed (${result.status}).` };
       }
       await (supabaseAdmin as any)
         .from("communication_logs")
         .update({
           status: "sent",
-          provider_message_id: providerId,
+          provider_message_id: result.providerId,
           delivered_at: new Date().toISOString(),
         })
         .eq("id", logId);
@@ -351,11 +309,6 @@ B&amp;B Transportation<br/>
     }
   });
 
-function escapeHtml(s: string): string {
-  return String(s).replace(/[&<>"']/g, (c) =>
-    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;",
-  );
-}
 
 
 export interface CommunicationLogRow {
