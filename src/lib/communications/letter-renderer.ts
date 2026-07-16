@@ -14,9 +14,10 @@ const CURRENCY = new Intl.NumberFormat("en-US", { style: "currency", currency: "
 export interface LetterVariables {
   student_name: string;
   parent_name: string;
-  amount_paid: string;   // pre-formatted "$1,437.00"
-  payment_date: string;  // "8/28/2025" style
-  school_year: string;   // "2026–2027"
+  amount_paid: string;      // pre-formatted "$1,437.00"
+  payment_date: string;     // "8/28/2025" style
+  school_year: string;      // "2026–2027"
+  shuttle_location: string; // e.g. "St. Luke's School"
 }
 
 export function buildLetterVariables(input: {
@@ -25,6 +26,7 @@ export function buildLetterVariables(input: {
   amountPaid?: number | null;
   paymentDate?: string | Date | null;
   schoolYear?: string;
+  shuttleLocation?: string;
 }): LetterVariables {
   const dt =
     input.paymentDate instanceof Date
@@ -40,7 +42,8 @@ export function buildLetterVariables(input: {
     parent_name: input.parentName?.trim() || "",
     amount_paid: CURRENCY.format(Number(input.amountPaid ?? 0)),
     payment_date: dateStr,
-    school_year: input.schoolYear || "2026–2027",
+    school_year: input.schoolYear || "2026\u20132027",
+    shuttle_location: input.shuttleLocation?.trim() || "St. Luke\u2019s School",
   };
 }
 
