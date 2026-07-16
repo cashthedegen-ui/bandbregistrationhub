@@ -248,26 +248,37 @@ export async function sendConfirmationViaResend(input: ResendSendInput): Promise
     filename: input.pdfFilename,
   });
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      from: "B&B Transportation <info@bandbtrans.com>",
-      to: [input.to],
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-      attachments: [
-        {
-          filename: input.pdfFilename,
-          content: input.pdfBase64,
-        },
-      ],
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        from: "B&B Transportation <info@bandbtrans.com>",
+        to: [input.to],
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+        attachments: [
+          {
+            filename: input.pdfFilename,
+            content: input.pdfBase64,
+          },
+        ],
+      }),
+    });
+  } catch (e: any) {
+    console.error("[email] resend fetch threw", {
+      url: "https://api.resend.com/emails",
+      message: e?.message || String(e),
+      cause: e?.cause ? String(e.cause) : undefined,
+      stack: e?.stack,
+    });
+    throw new Error(`Resend fetch failed: ${e?.message || String(e)}`);
+  }
   const bodyText = await res.text();
   let providerId: string | null = null;
   try {
