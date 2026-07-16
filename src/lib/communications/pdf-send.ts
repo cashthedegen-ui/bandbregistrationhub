@@ -203,13 +203,18 @@ export function makeLetterVariables(input: {
   studentName: string;
   parentName: string;
   amountPaid: number;
+  paymentDate?: string | Date | null;
+  shuttleLocation?: string;
 }): LetterVariables {
   return buildLetterVariables({
     studentName: input.studentName,
     parentName: input.parentName,
     amountPaid: input.amountPaid,
-    paymentDate: new Date(),
-    schoolYear: "2026–2027",
+    paymentDate: input.paymentDate ?? new Date(),
+    schoolYear: "2026\u20132027",
+    shuttleLocation: input.shuttleLocation,
+  });
+}
   });
 }
 
