@@ -211,78 +211,125 @@ export const sendCommunication = createServerFn({ method: "POST" })
     if (insErr) throw new Error(`Failed to record log: ${insErr.message}`);
     const logId = logRow.id as string;
 
-    // 6. Post to n8n webhook
-    const webhookUrl = process.env.N8N_WEBHOOK_URL || "";
-    const webhookSecret = process.env.N8N_WEBHOOK_SECRET || "";
+    // 6. Generate the confirmation PDF server-side.
+    //    - Fetch the B&B logo from the same origin as the request.
+    //    - Render the PDF with jsPDF using the shared renderer.
+    //    - Base64-encode for the Resend attachment payload.
+    let pdfBase64: string;
+    let pdfFilename: string;
+    try {
+      const req = getRequest();
+      const origin = new URL(req.url).origin;
+      const logoUrl = BB_LOGO_URL.startsWith("http") ? BB_LOGO_URL : origin + BB_LOGO_URL;
+      const logoRes = await fetch(logoUrl);
+      if (!logoRes.ok) {
+        throw new Error(`logo fetch failed: HTTP ${logoRes.status}`);
+      }
+      const logoBytes = new Uint8Array(await logoRes.arrayBuffer());
 
-    if (!webhookUrl) {
+      const letterVars = buildLetterVariables({
+        studentName: student.studentName,
+        parentName: student.parentName,
+        amountPaid: paidAmount,
+        paymentDate: new Date(),
+        schoolYear: "2026–2027",
+      });
+      const { base64 } = buildLetterPdfFromBytes(
+        tpl.email_body || "",
+        letterVars,
+        logoBytes,
+      );
+      pdfBase64 = base64;
+      const nameSlug = (student.studentName || "Student")
+        .trim()
+        .replace(/[^\p{L}\p{N}]+/gu, "-")
+        .replace(/^-+|-+$/g, "");
+      pdfFilename = `${nameSlug}-St-Lukes-Parking-Shuttle-Confirmation-2026-2027.pdf`;
+    } catch (e: any) {
+      const reason = `PDF generation failed: ${e?.message || String(e)}`.slice(0, 500);
+      console.error("[sendCommunication] " + reason);
       await (supabaseAdmin as any)
         .from("communication_logs")
-        .update({
-          status: "failed",
-          failure_reason:
-            "n8n webhook is not configured yet. Save N8N_WEBHOOK_URL (and N8N_WEBHOOK_SECRET) in backend secrets to enable sending.",
-        })
+        .update({ status: "failed", failure_reason: reason })
         .eq("id", logId);
-      return {
-        ok: false,
-        logId,
-        status: "failed",
-        message:
-          "n8n webhook is not configured yet. The message was recorded as failed. Add the N8N webhook URL in backend secrets to enable delivery.",
-      };
+      return { ok: false, logId, status: "failed", message: reason };
     }
+
+    // 7. Compose the short covering email and send via Resend directly.
+    const resendKey = process.env.RESEND_API_KEY || process.env.resend_api_key || "";
+    if (!resendKey) {
+      const reason = "Resend API key is not configured (RESEND_API_KEY secret missing).";
+      console.error("[sendCommunication] " + reason);
+      await (supabaseAdmin as any)
+        .from("communication_logs")
+        .update({ status: "failed", failure_reason: reason })
+        .eq("id", logId);
+      return { ok: false, logId, status: "failed", message: reason };
+    }
+
+    const purchaserFirstName =
+      (student.parentName || "").trim().split(/\s+/)[0] || "there";
+    const shortSubject = "St. Luke\u2019s Parking Shuttle Payment Confirmation (2026\u20132027)";
+    const shortText =
+      `Hi ${purchaserFirstName},\n\n` +
+      `Attached is the 2026\u20132027 St. Luke\u2019s School Parking Shuttle payment confirmation for ${student.studentName}.\n\n` +
+      `Please keep this confirmation for your records.\n\n` +
+      `Thank you,\n` +
+      `B&B Transportation\n` +
+      `203-393-9750\n` +
+      `www.bandbtrans.com`;
+    const shortHtml = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.55;background:#ffffff;">
+<p>Hi ${escapeHtml(purchaserFirstName)},</p>
+<p>Attached is the 2026&ndash;2027 St. Luke&rsquo;s School Parking Shuttle payment confirmation for ${escapeHtml(student.studentName)}.</p>
+<p>Please keep this confirmation for your records.</p>
+<p>Thank you,<br/>
+B&amp;B Transportation<br/>
+203-393-9750<br/>
+<a href="https://www.bandbtrans.com">www.bandbtrans.com</a></p>
+</body></html>`;
 
     await (supabaseAdmin as any)
       .from("communication_logs")
-      .update({ status: "processing" })
+      .update({ status: "processing", rendered_subject: shortSubject, rendered_body: shortHtml })
       .eq("id", logId);
 
-    const outbound = {
-      event: "send_communication",
-      communication_log_id: logId,
-      template_id: tpl.id,
-      template_name: tpl.template_name,
-      student_id: student.id,
-      student_name: student.studentName,
-      parent_name: student.parentName,
-      recipient_email: student.parentEmail,
-      recipient_phone: student.parentPhone || null,
-      school_program: tpl.school_or_program,
-      communication_type: tpl.communication_type,
-      subject: renderedSubject,
-      html_body: renderedBody,
-      plain_text_body: plainBody,
-      initiated_by: initiatedByEmail,
-      requested_at: new Date().toISOString(),
-    };
-
     try {
-      const res = await fetch(webhookUrl, {
+      const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(webhookSecret ? { "X-Webhook-Secret": webhookSecret } : {}),
+          Authorization: `Bearer ${resendKey}`,
         },
-        body: JSON.stringify(outbound),
+        body: JSON.stringify({
+          from: "B&B Transportation <info@bandbtrans.com>",
+          to: [student.parentEmail],
+          subject: shortSubject,
+          html: shortHtml,
+          text: shortText,
+          attachments: [
+            {
+              filename: pdfFilename,
+              content: pdfBase64,
+            },
+          ],
+        }),
       });
       const respText = await res.text();
-      if (!res.ok) {
-        await (supabaseAdmin as any)
-          .from("communication_logs")
-          .update({
-            status: "failed",
-            failure_reason: `n8n returned ${res.status}: ${respText.slice(0, 500)}`,
-          })
-          .eq("id", logId);
-        return { ok: false, logId, status: "failed", message: `n8n error ${res.status}` };
-      }
       let providerId: string | null = null;
       try {
         const j = JSON.parse(respText);
-        providerId = j?.message_id || j?.id || j?.provider_message_id || null;
+        providerId = j?.id || j?.message_id || null;
       } catch {
-        /* keep as-is */
+        /* keep text */
+      }
+      if (!res.ok) {
+        const reason = `Resend ${res.status}: ${respText.slice(0, 500)}`;
+        console.error("[sendCommunication] " + reason);
+        await (supabaseAdmin as any)
+          .from("communication_logs")
+          .update({ status: "failed", failure_reason: reason })
+          .eq("id", logId);
+        return { ok: false, logId, status: "failed", message: `Email send failed (${res.status}).` };
       }
       await (supabaseAdmin as any)
         .from("communication_logs")
@@ -294,16 +341,22 @@ export const sendCommunication = createServerFn({ method: "POST" })
         .eq("id", logId);
       return { ok: true, logId, status: "sent" };
     } catch (e: any) {
+      const reason = (e?.message ? String(e.message) : "Network error contacting Resend.").slice(0, 500);
+      console.error("[sendCommunication] " + reason);
       await (supabaseAdmin as any)
         .from("communication_logs")
-        .update({
-          status: "failed",
-          failure_reason: e?.message ? String(e.message).slice(0, 500) : "Network error contacting n8n.",
-        })
+        .update({ status: "failed", failure_reason: reason })
         .eq("id", logId);
-      return { ok: false, logId, status: "failed", message: e?.message || "Send failed." };
+      return { ok: false, logId, status: "failed", message: reason };
     }
   });
+
+function escapeHtml(s: string): string {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;",
+  );
+}
+
 
 export interface CommunicationLogRow {
   id: string;
