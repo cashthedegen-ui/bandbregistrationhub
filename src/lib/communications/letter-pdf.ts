@@ -187,14 +187,14 @@ function flowRuns(doc: jsPDF, runs: Run[], x0: number, y0: number, maxW: number,
   return y + lineH;
 }
 
-export function downloadLetterPdf(templateBodyHtml: string, vars: LetterVariables, filenameHint?: string) {
-  const doc = buildLetterPdf(templateBodyHtml, vars);
+export async function downloadLetterPdf(templateBodyHtml: string, vars: LetterVariables, filenameHint?: string) {
+  const doc = await buildLetterPdf(templateBodyHtml, vars);
   const safe = (filenameHint || vars.student_name || "confirmation").replace(/[^a-z0-9]+/gi, "_");
   doc.save(`StLukes_Confirmation_${safe}.pdf`);
 }
 
-export function openLetterPdfInNewTab(templateBodyHtml: string, vars: LetterVariables) {
-  const doc = buildLetterPdf(templateBodyHtml, vars);
+export async function openLetterPdfInNewTab(templateBodyHtml: string, vars: LetterVariables) {
+  const doc = await buildLetterPdf(templateBodyHtml, vars);
   const url = doc.output("bloburl");
   window.open(url, "_blank", "noopener");
 }
