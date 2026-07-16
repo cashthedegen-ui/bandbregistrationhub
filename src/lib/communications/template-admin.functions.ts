@@ -146,6 +146,7 @@ export const sendTestCommunication = createServerFn({ method: "POST" })
         studentName: sampleStudentName,
         parentName: samplePurchaserName,
         amountPaid: 1437,
+        shuttleLocation: tpl.school_or_program || "St. Luke\u2019s School",
       });
       const built = await buildConfirmationPdfBase64({
         origin,

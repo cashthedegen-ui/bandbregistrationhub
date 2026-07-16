@@ -225,6 +225,7 @@ export const sendCommunication = createServerFn({ method: "POST" })
         studentName: student.studentName,
         parentName: student.parentName,
         amountPaid: paidAmount,
+        shuttleLocation: student.schoolName,
       });
       const built = await buildConfirmationPdfBase64({
         origin,

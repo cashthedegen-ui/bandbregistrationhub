@@ -90,6 +90,29 @@ async function fetchLogoBytes(origin: string): Promise<{ bytes: Uint8Array; url:
   throw new Error(`Logo fetch failed for all candidates: ${errors.join(" | ")}`);
 }
 
+// Verify every field the family-facing PDF renders. Throws with a clear
+// message listing which fields are blank so the send is blocked before an
+// email is created.
+function validateLetterVars(vars: LetterVariables): void {
+  const missing: string[] = [];
+  const check = (v: string | undefined, label: string) => {
+    if (!v || !String(v).trim()) missing.push(label);
+  };
+  check(vars.student_name, "student name");
+  check(vars.parent_name, "purchaser name");
+  check(vars.amount_paid, "amount paid");
+  check(vars.payment_date, "payment date");
+  check(vars.school_year, "school year");
+  check(vars.shuttle_location, "shuttle location");
+  // amount_paid is pre-formatted currency; a raw "$0.00" is valid but a
+  // literal empty currency string should never occur.
+  if (missing.length > 0) {
+    throw new Error(
+      `Cannot generate confirmation PDF — missing required field(s): ${missing.join(", ")}.`,
+    );
+  }
+}
+
 export async function buildConfirmationPdfBase64(params: {
   origin: string;
   templateBodyHtml: string;
@@ -100,10 +123,11 @@ export async function buildConfirmationPdfBase64(params: {
   console.log("[pdf] build start", {
     origin,
     studentName,
-    templateBodyHtmlLength: templateBodyHtml?.length ?? 0,
-    templateBodyHtmlPreview: (templateBodyHtml || "").slice(0, 300),
+    vars,
     BB_LOGO_URL,
   });
+
+  validateLetterVars(vars);
 
   let logoBytes: Uint8Array;
   let logoUrlUsed: string;
@@ -132,6 +156,12 @@ export async function buildConfirmationPdfBase64(params: {
   if (!pdfBytes || pdfBytes.byteLength < 500) {
     throw new Error(`PDF too small (${pdfBytes?.byteLength ?? 0} bytes)`);
   }
+  // The layout is one page by construction; sanity-check that jsPDF didn't
+  // spill onto a second page (would indicate a wrapping regression).
+  const pageCount = countPdfPages(pdfBytes);
+  if (pageCount !== 1) {
+    throw new Error(`Confirmation PDF must be a single page, got ${pageCount}.`);
+  }
   assertValidBase64(base64, "PDF base64");
   const filename = buildConfirmationFilename(studentName);
   if (!filename.toLowerCase().endsWith(".pdf")) throw new Error("filename must end with .pdf");
@@ -140,10 +170,22 @@ export async function buildConfirmationPdfBase64(params: {
     logoBytes: logoBytes.byteLength,
     pdfByteLength: pdfBytes.byteLength,
     base64Length: base64.length,
+    pageCount,
     filename,
   });
   return { base64, byteLength: pdfBytes.byteLength, base64Length: base64.length, filename };
 }
+
+// Count "/Type /Page" occurrences (excluding /Pages) in the raw PDF bytes.
+// Cheap heuristic that's plenty accurate for our generated documents.
+function countPdfPages(bytes: Uint8Array): number {
+  const s = typeof Buffer !== "undefined"
+    ? Buffer.from(bytes).toString("latin1")
+    : Array.from(bytes).map((b) => String.fromCharCode(b)).join("");
+  const matches = s.match(/\/Type\s*\/Page(?!s)/g);
+  return matches ? matches.length : 0;
+}
+
 
 // Convenience: pick the paid amount from an incoming student payload the same
 // way the letter preview does.
@@ -161,13 +203,16 @@ export function makeLetterVariables(input: {
   studentName: string;
   parentName: string;
   amountPaid: number;
+  paymentDate?: string | Date | null;
+  shuttleLocation?: string;
 }): LetterVariables {
   return buildLetterVariables({
     studentName: input.studentName,
     parentName: input.parentName,
     amountPaid: input.amountPaid,
-    paymentDate: new Date(),
-    schoolYear: "2026–2027",
+    paymentDate: input.paymentDate ?? new Date(),
+    schoolYear: "2026\u20132027",
+    shuttleLocation: input.shuttleLocation,
   });
 }
 
