@@ -155,7 +155,7 @@ export const sendCommunication = createServerFn({ method: "POST" })
 
     const renderedSubject = subj.output;
     const renderedBody = body.output;
-    const plainBody = stripHtml(renderedBody);
+    // (plain-text body was previously sent to n8n; no longer needed)
 
     // 4. Duplicate protection: previous successful send for this student/template
     if (!data.force) {
