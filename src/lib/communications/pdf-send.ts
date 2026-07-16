@@ -215,8 +215,6 @@ export function makeLetterVariables(input: {
     shuttleLocation: input.shuttleLocation,
   });
 }
-  });
-}
 
 function escapeHtml(s: string): string {
   return String(s).replace(/[&<>"']/g, (c) =>
