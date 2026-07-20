@@ -1283,6 +1283,12 @@ function StudentsPage() {
         onClose={() => setCommsRow(null)}
         onSent={() => setCommsRefresh((n) => n + 1)}
       />
+      <ExportStudentsDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        students={students}
+        planFamilyKeys={planFamilyKeys}
+      />
     </>
   );
 }
