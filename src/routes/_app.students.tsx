@@ -25,7 +25,8 @@ import {
 } from "lucide-react";
 import { PaymentPlanDrawer } from "@/components/payment-plan-drawer";
 import type { PaymentStatus, PaymentType, Status, StudentRow } from "@/lib/types";
-import { exportRows, exportStudentsClean } from "@/lib/excel";
+import { exportRows } from "@/lib/excel";
+import { ExportStudentsDialog } from "@/components/export-students-dialog";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
 import { ConfirmationLetterModal } from "@/components/confirmation-letter-modal";
@@ -124,6 +125,7 @@ function StudentsPage() {
     skipped: number;
     unresolved: Array<{ id: string; submissionId: string; parentName: string; reason: string }>;
   }>(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   // Read-only: fetch plan family keys so we can show a "Payment Plan" badge / filter.
   const [planFamilyKeys, setPlanFamilyKeys] = useState<Set<string>>(new Set());
@@ -220,8 +222,7 @@ function StudentsPage() {
 
   const exportAllClean = () => {
     if (!students.length) return toast.warning("No students to export");
-    exportStudentsClean(students);
-    toast.success(`Exported ${students.length} students`);
+    setExportOpen(true);
   };
 
   const activeDupGroup = dupGroupOpen ? dupGroups.find((g) => g.id === dupGroupOpen) : null;
@@ -1281,6 +1282,12 @@ function StudentsPage() {
         open={!!commsRow}
         onClose={() => setCommsRow(null)}
         onSent={() => setCommsRefresh((n) => n + 1)}
+      />
+      <ExportStudentsDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        students={students}
+        planFamilyKeys={planFamilyKeys}
       />
     </>
   );
