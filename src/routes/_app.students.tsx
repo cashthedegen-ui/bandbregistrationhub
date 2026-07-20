@@ -125,6 +125,7 @@ function StudentsPage() {
     skipped: number;
     unresolved: Array<{ id: string; submissionId: string; parentName: string; reason: string }>;
   }>(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   // Read-only: fetch plan family keys so we can show a "Payment Plan" badge / filter.
   const [planFamilyKeys, setPlanFamilyKeys] = useState<Set<string>>(new Set());
