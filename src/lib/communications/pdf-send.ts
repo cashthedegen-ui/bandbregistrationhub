@@ -231,20 +231,29 @@ export interface CoveringEmail {
 export function buildCoveringEmail(input: {
   purchaserName: string;
   studentName: string;
+  program?: string;
+  templateName?: string;
 }): CoveringEmail {
   const firstName = (input.purchaserName || "").trim().split(/\s+/)[0] || "there";
   const student = input.studentName || "your student";
   const subject = "St. Luke\u2019s Parking Shuttle Payment Confirmation (2026\u20132027)";
+
+  const label = ((input.program || "") + " " + (input.templateName || "")).toLowerCase();
+  const isStLukes = label.includes("st. luke") || label.includes("st luke");
+  const recordsSentence = isStLukes
+    ? "Please take this confirmation to the Town of Lewisboro Parks and Recreation when you go to register for a parking space."
+    : "Please keep this confirmation for your records.";
+
   const html =
     `<p>Hi ${escapeHtml(firstName)},</p>` +
     `<p>Attached is the 2026\u20132027 St. Luke\u2019s School Parking Shuttle payment confirmation for <strong>${escapeHtml(student)}</strong>.</p>` +
-    `<p>Please keep this confirmation for your records.</p>` +
+    `<p>${escapeHtml(recordsSentence)}</p>` +
     `<p>Thank you,<br>B&amp;B Transportation<br>203-393-9750<br>` +
     `<a href="https://www.bandbtrans.com">www.bandbtrans.com</a></p>`;
   const text =
     `Hi ${firstName},\n\n` +
     `Attached is the 2026\u20132027 St. Luke\u2019s School Parking Shuttle payment confirmation for ${student}.\n\n` +
-    `Please keep this confirmation for your records.\n\n` +
+    `${recordsSentence}\n\n` +
     `Thank you,\n` +
     `B&B Transportation\n` +
     `203-393-9750\n` +
