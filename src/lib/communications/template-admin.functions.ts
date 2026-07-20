@@ -172,6 +172,8 @@ export const sendTestCommunication = createServerFn({ method: "POST" })
     const cover = buildCoveringEmail({
       purchaserName: samplePurchaserName,
       studentName: sampleStudentName,
+      program: tpl.school_or_program,
+      templateName: tpl.template_name,
     });
     const testSubject = `[TEST] ${cover.subject}`;
 
