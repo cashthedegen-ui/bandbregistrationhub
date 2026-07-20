@@ -25,7 +25,8 @@ import {
 } from "lucide-react";
 import { PaymentPlanDrawer } from "@/components/payment-plan-drawer";
 import type { PaymentStatus, PaymentType, Status, StudentRow } from "@/lib/types";
-import { exportRows, exportStudentsClean } from "@/lib/excel";
+import { exportRows } from "@/lib/excel";
+import { ExportStudentsDialog } from "@/components/export-students-dialog";
 import { downloadAllReceipts, downloadReceipt } from "@/lib/receipt";
 import { ReceiptModal } from "@/components/receipt-modal";
 import { ConfirmationLetterModal } from "@/components/confirmation-letter-modal";
