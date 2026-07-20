@@ -222,8 +222,7 @@ function StudentsPage() {
 
   const exportAllClean = () => {
     if (!students.length) return toast.warning("No students to export");
-    exportStudentsClean(students);
-    toast.success(`Exported ${students.length} students`);
+    setExportOpen(true);
   };
 
   const activeDupGroup = dupGroupOpen ? dupGroups.find((g) => g.id === dupGroupOpen) : null;
