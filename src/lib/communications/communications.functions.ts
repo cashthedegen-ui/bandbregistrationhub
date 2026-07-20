@@ -259,6 +259,8 @@ export const sendCommunication = createServerFn({ method: "POST" })
     const cover = buildCoveringEmail({
       purchaserName: student.parentName,
       studentName: student.studentName,
+      program: student.schoolName,
+      templateName: tpl.template_name,
     });
 
     await (supabaseAdmin as any)
